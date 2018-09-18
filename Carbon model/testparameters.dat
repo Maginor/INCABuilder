@@ -1,0 +1,81 @@
+index_sets:
+"Landscape units" : {"Forest" "Arable" "Urban"}
+"Soil boxes" : {"Box 1" "Box 2"}
+"Reaches" : {"First reach" {"Second reach" "First reach"}}
+
+parameters:
+###################### (no index sets) ######################
+"Timesteps" :
+100
+
+"Start date" :
+"1999-1-1"
+
+###################### "Landscape units" ######################
+"Degree day factor" :
+2.5 2.5 2.5
+
+"Refreezing coefficient" :
+0.05 0.05 0.05
+
+"Storage fraction" :
+0.1 0.1 0.1
+
+"Snow threshold temperature" :
+0 0 0
+
+"Initial snow depth" :
+0 0 0
+
+###################### "Landscape units" "Soil boxes" ######################
+"Evaporation constant" :
+0.1 0
+0.1 0
+0.1 0
+
+"Evaporation exponent" :
+1 1
+1 1
+1 1
+
+"Fraction of field capacity where evaporation reaches its maximal" :
+0.7 0.7
+0.7 0.7
+0.7 0.7
+
+"Field capacity" :
+150 150
+150 150
+150 150
+
+"Relative runoff exponent" :
+2 2
+2 2
+2 2
+
+"Initial soil moisture" :
+70 70
+70 70
+70 70
+
+###################### "Reaches" ######################
+"First recession coefficent for upper groundwater storage" :
+0.1 0.1
+
+"Recession coefficient for lower groundwater storage" :
+0.1 0.1
+
+"Threshold for second runoff in upper storage" :
+10 10
+
+"Percolation rate from upper to lower groundwater storage" :
+0.1 0.1
+
+"Flow routing max base" :
+5 5
+
+###################### "Reaches" "Landscape units" ######################
+"%" :
+33.333333 33.333333 33.333333
+33.333333 33.333333 33.333333
+

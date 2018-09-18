@@ -5,12 +5,12 @@
 
 
 static void
-WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, int Rgt, int Dpt, const char *Type, bool IsIndexer, bool IsIndex)
+WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, int Rgt, int Dpt, const char *Type, const char *Unit, bool IsIndexer, bool IsIndex)
 {
 	const char *InsertParameterStructureEntry =
-		"INSERT INTO ParameterStructure (ID, name, lft, rgt, dpt, type, isIndexer, isIndex) "
+		"INSERT INTO ParameterStructure (ID, name, lft, rgt, dpt, type, unit, isIndexer, isIndex) "
 		"VALUES "
-		"(?, ?, ?, ?, ?, ?, ?, ?)";
+		"(?, ?, ?, ?, ?, ?, ?, ?, ?)";
 	
 	sqlite3_stmt *Statement;
 	int rc = sqlite3_prepare_v2(Db, InsertParameterStructureEntry, -1, &Statement, 0);
@@ -26,10 +26,18 @@ WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, in
 	}
 	else
 	{
-		rc = sqlite3_bind_text(Statement, 6, "", -1, SQLITE_STATIC);
+		rc = sqlite3_bind_null(Statement, 6);
 	}
-	rc = sqlite3_bind_int(Statement, 7, IsIndexer);
-	rc = sqlite3_bind_int(Statement, 8, IsIndex);
+	if(Unit)
+	{
+		rc = sqlite3_bind_text(Statement, 7, Unit, -1, SQLITE_STATIC);
+	}
+	else
+	{
+		rc = sqlite3_bind_null(Statement, 7);
+	}
+	rc = sqlite3_bind_int(Statement, 8, IsIndexer);
+	rc = sqlite3_bind_int(Statement, 9, IsIndex);
 	
 	rc = sqlite3_step(Statement);
 	sqlite3_finalize(Statement);
@@ -38,7 +46,7 @@ WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, in
 static void
 WriteParameterValueToDatabase(sqlite3 *Db, int ID, parameter_value Min, parameter_value Max, parameter_value Value, parameter_type Type)
 {
-	const char *Typenames[4] = { "double", "int", "bool", "ptime" }; //NOTE: Volatile! Depends on parameter_type not being changed.
+	const char *Typenames[4] = { "double", "int", "bool", "ptime" }; //NOTE: Volatile! Depends on these being in the same order as in the definition of parameter_type.
 	char InsertValues[512];
 	sprintf(InsertValues,
 		"INSERT INTO ParameterValues_%s (ID, minimum, maximum, value) "
@@ -90,20 +98,22 @@ WriteParametersForParameterGroupToDatabase(inca_data_set *DataSet, handle_t Para
 		int LftOfParameter = RunningLft++;
 		int RgtOfParameter = RunningLft++;
 		parameter_spec &ParSpec = Model->ParameterSpecs[ParameterHandle];
+		const char *Unit = 0;
+		if(IsValid(ParSpec.Unit)) Unit = GetName(Model, ParSpec.Unit);
 		switch(ParSpec.Type)
 		{
 			//TODO: Write out the values too.
 			case ParameterType_Double:
-				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "DOUBLE", false, false);
+				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "DOUBLE", Unit, false, false);
 				break;
 			case ParameterType_UInt:
-				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "UINT", false, false);
+				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "UINT", Unit, false, false);
 				break;
 			case ParameterType_Bool:
-				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "BOOL", false, false);
+				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "BOOL", Unit, false, false);
 				break;
 			case ParameterType_Time:
-				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "PTIME", false, false);
+				WriteStructureEntryToDatabase(Db, IdOfParameter, ParSpec.Name, LftOfParameter, RgtOfParameter, Dpt, "PTIME", Unit, false, false);
 				break;
 			
 		}
@@ -144,7 +154,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, handle_t Param
 			int RgtOfIndex = RunningLft++;
 			int DptOfIndex = Dpt + 1;
 			const char *IndexName = DataSet->IndexNames[IndexSet.Handle][Index];
-			WriteStructureEntryToDatabase(Db, IdOfIndex, IndexName, LftOfIndex, RgtOfIndex, DptOfIndex, 0, false, true);
+			WriteStructureEntryToDatabase(Db, IdOfIndex, IndexName, LftOfIndex, RgtOfIndex, DptOfIndex, 0, 0, false, true);
 		}
 	}
 	else
@@ -154,7 +164,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, handle_t Param
 	
 	int RgtOfGroup = RunningLft++;
 	
-	WriteStructureEntryToDatabase(Db, IDOfGroup, Spec.Name, LftOfGroup, RgtOfGroup, Dpt, 0, true, false);
+	WriteStructureEntryToDatabase(Db, IDOfGroup, Spec.Name, LftOfGroup, RgtOfGroup, Dpt, 0, 0, true, false);
 }
 
 static void
@@ -178,6 +188,7 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname)
 		"rgt INTEGER NOT NULL, "
 		"dpt INTEGER NOT NULL, "
 		"type TEXT, "
+		"unit TEXT, "
 		"isIndexer BOOLEAN, "
 		"isIndex BOOLEAN )";
 	
@@ -263,7 +274,7 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname)
 	}
 
 	int ModelRgt = RunningLft;
-	WriteStructureEntryToDatabase(Db, 1, "Root", 0, ModelRgt, 0, 0, false, false);
+	WriteStructureEntryToDatabase(Db, 1, "Root", 0, ModelRgt, 0, 0, 0, false, false);
 	
 	
 	
@@ -374,8 +385,6 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		Entry.IsIndexer = (bool) sqlite3_column_int(Statement, 3);
 		Entry.IsIndex   = (bool) sqlite3_column_int(Statement, 4);
 		Entry.Dpt       = sqlite3_column_int(Statement, 5);
-		
-		//std::cout << Entry.ID << std::endl;
 		
 		ParameterStructure.push_back(Entry);
 	}
@@ -664,15 +673,23 @@ WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructur
 }
 
 static void
-WriteStructureEntryToDatabase(sqlite3 *Db, sqlite3_stmt *Statement, int ID, const char *Name, int Lft, int Rgt, int Dpt, bool IsIndexer, bool IsIndex)
+WriteStructureEntryToDatabase(sqlite3 *Db, sqlite3_stmt *Statement, int ID, const char *Name, int Lft, int Rgt, int Dpt, const char *Unit, bool IsIndexer, bool IsIndex)
 {	
 	int rc = sqlite3_bind_int(Statement, 1, ID);
 	rc = sqlite3_bind_text(Statement, 2, Name, -1, SQLITE_STATIC);
 	rc = sqlite3_bind_int(Statement, 3, Lft);
 	rc = sqlite3_bind_int(Statement, 4, Rgt);
 	rc = sqlite3_bind_int(Statement, 5, Dpt);
-	rc = sqlite3_bind_int(Statement, 6, IsIndexer);
-	rc = sqlite3_bind_int(Statement, 7, IsIndex);
+	if(Unit)
+	{
+		rc = sqlite3_bind_text(Statement, 6, Unit, -1, SQLITE_STATIC);
+	}
+	else
+	{
+		rc = sqlite3_bind_null(Statement, 6);
+	}
+	rc = sqlite3_bind_int(Statement, 7, IsIndexer);
+	rc = sqlite3_bind_int(Statement, 8, IsIndex);
 	
 	rc = sqlite3_step(Statement);
 	
@@ -688,6 +705,8 @@ WriteStructureEntryToDatabase(sqlite3 *Db, sqlite3_stmt *Statement, int ID, cons
 static void
 WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *InsertValueStatement, sqlite3_stmt *InsertStructureStatement, std::vector<database_structure_tree> &StructureTree, size_t CurrentLevel, int Dpt, int &RunningID, int &RunningLft, index_t *Indexes, s64 StartDate, s64 Step, int Mode)
 {
+	inca_model *Model = DataSet->Model;
+	
 	for(database_structure_tree &Tree : StructureTree)
 	{	
 		index_set IndexSet = Tree.IndexSet;
@@ -711,11 +730,17 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 					int IDOfHandle  = RunningID++;
 					const char *Name;
 					if(Mode == 0)
-						Name = GetName(DataSet->Model, equation {Handle});
+						Name = GetName(Model, equation {Handle});
 					else
-						Name = GetName(DataSet->Model, input {Handle});
+						Name = GetName(Model, input {Handle});
 					
-					WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt + 2, false, false);
+					const char *Unit = 0;
+					if(Mode == 0 && IsValid(Model->EquationSpecs[Handle].Unit))
+					{
+						Unit = GetName(Model, Model->EquationSpecs[Handle].Unit);
+					}
+					
+					WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt + 2, Unit, false, false);
 					WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, CurrentLevel + 1, StartDate, Step);
 				}
 				
@@ -723,12 +748,12 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				
 				int RgtOfIndex = RunningLft++;
 				const char *IndexName = DataSet->IndexNames[IndexSet.Handle][Index];
-				WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfIndex, IndexName, LftOfIndex, RgtOfIndex, Dpt + 1, false, true);
+				WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfIndex, IndexName, LftOfIndex, RgtOfIndex, Dpt + 1, 0, false, true);
 			}
 			
 			int RgtOfIndexSet = RunningLft++;
 			const char *IndexSetName = GetName(DataSet->Model, IndexSet);
-			WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfIndexSet, IndexSetName, LftOfIndexSet, RgtOfIndexSet, Dpt, true, false);
+			WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfIndexSet, IndexSetName, LftOfIndexSet, RgtOfIndexSet, Dpt, 0, true, false);
 		}
 		else
 		{
@@ -743,7 +768,13 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				else
 					Name = GetName(DataSet->Model, input {Handle});
 				
-				WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt, false, false);
+				const char *Unit = 0;
+				if(Mode == 0 && IsValid(Model->EquationSpecs[Handle].Unit))
+				{
+					Unit = GetName(Model, Model->EquationSpecs[Handle].Unit);
+				}
+				
+				WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt, Unit, false, false);
 				WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, 0, StartDate, Step);
 			}
 		}
@@ -774,6 +805,7 @@ WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructu
 		"lft INTEGER NOT NULL, "
 		"rgt INTEGER NOT NULL, "
 		"dpt INTEGER NOT NULL, "
+		"unit TEXT, "
 		"isIndexer BOOLEAN, "
 		"isIndex BOOLEAN )",
 		StructureTable
@@ -785,7 +817,7 @@ WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructu
 	rc = sqlite3_step(Statement);
 	sqlite3_finalize(Statement);
 	
-	//TODO: It is actually very unnecessary to store the dates for each series. The dates could have been stored as a single series instead.
+	//TODO: It is very unnecessary to store the dates for each series. The dates could have been stored as a single series instead.
 	
 	char CreateValueTable[512];
 	sprintf(CreateValueTable,
@@ -822,9 +854,9 @@ WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructu
 	
 	char InsertStructureEntry[512];
 	sprintf(InsertStructureEntry,
-		"INSERT INTO %s (ID, name, lft, rgt, dpt, isIndexer, isIndex) "
+		"INSERT INTO %s (ID, name, lft, rgt, dpt, unit, isIndexer, isIndex) "
 		"VALUES "
-		"(?, ?, ?, ?, ?, ?, ?)",
+		"(?, ?, ?, ?, ?, ?, ?, ?)",
 		StructureTable
 	);
 	

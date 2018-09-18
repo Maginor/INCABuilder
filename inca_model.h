@@ -11,6 +11,7 @@ Important TODOs:
 	- In the equation placement optimization, try to move entire batches to reduce the number of batch groups if possible.
 	- Give warning if not all input series received values?
 	- Maybe just use fscanf for reading numbers in inca_io, but it is actually a little complicated since we have to figure out the type in any case.
+	- Register units with inputs too? They are after all expected to be in a certain unit.
 	
 Bugs:
 	- Check the dependency system with maximumnitrogenuptake in incan-classic again.. I may have misread it, but there is a potential bug there.
@@ -532,6 +533,7 @@ GET_ENTITY_NAME(parameter_ptime, Parameter)
 GET_ENTITY_NAME(index_set, IndexSet)
 GET_ENTITY_NAME(parameter_group, ParameterGroup)
 GET_ENTITY_NAME(solver, Solver)
+GET_ENTITY_NAME(unit, Unit)
 
 #undef GET_ENTITY_NAME
 

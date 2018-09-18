@@ -10,7 +10,6 @@
 #include "inca_model.cpp"
 #include "inca_io.cpp"
 #include "inca_solvers.h"
-#include "inca_math.h"
 
 #define INCA_H
 #endif

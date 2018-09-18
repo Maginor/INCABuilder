@@ -65,7 +65,7 @@ AddSoilTemperatureModel(inca_model *Model)
 	
 	EQUATION(Model, SoilTemperature,
 		return RESULT(COUPSoilTemperature)
-			* Exp(PARAMETER(SnowDepthSoilTemperatureFactor) * RESULT(SnowDepth));
+			* std::exp(PARAMETER(SnowDepthSoilTemperatureFactor) * RESULT(SnowDepth));
 	)
 }
 

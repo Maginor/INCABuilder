@@ -8,6 +8,8 @@
 #define Max(A, B) ((A) > (B) ? (A) : (B))
 #define Square(A) ((A)*(A))
 
+#define Pi 3.141592653589793238462643383279502884
+
 inline void *
 AllocClearedArray_(size_t ElementSize, size_t ArrayLen)
 {

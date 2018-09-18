@@ -162,7 +162,7 @@ AddINCANClassicModel(inca_model *Model)
 		if(RESULT(SoilTemperature) > 0.1)
 		{
 			infiltration = (maxInfiltrationRate / 86.4 )
-							* (1.0 - Exp( -( ( rain / 86.4) / ( maxInfiltrationRate / 86.4 ) ) ));
+							* (1.0 - std::exp( -( ( rain / 86.4) / ( maxInfiltrationRate / 86.4 ) ) ));
 		}
 		
 		return (rain / 86.4) - infiltration;
@@ -254,7 +254,7 @@ AddINCANClassicModel(inca_model *Model)
 		if(RESULT(SoilTemperature) > 0.1 )
 		{
 			infiltration = (PARAMETER(MaximumInfiltrationRate) / 86.4 )
-							* (1.0 - Exp( -( ( INPUT(HerInput) / 86.4 ) / (PARAMETER(MaximumInfiltrationRate) / 86.4)))); //Didn't we do this calculation already?
+							* (1.0 - std::exp( -( ( INPUT(HerInput) / 86.4 ) / (PARAMETER(MaximumInfiltrationRate) / 86.4)))); //Didn't we do this calculation already?
 		}
 		double ie = INPUT(HerInput) / 86.4 - infiltration;
 		double dr = PARAMETER(RainfallExcessProportion) * ie - RESULT(DirectRunoffFlow);
@@ -272,7 +272,7 @@ AddINCANClassicModel(inca_model *Model)
 		if(RESULT(SoilTemperature) > 0.1 )
 		{
 			infiltration = (PARAMETER(MaximumInfiltrationRate) / 86.4 )
-							* (1.0 - Exp( -( ( INPUT(HerInput) / 86.4 ) / (PARAMETER(MaximumInfiltrationRate) / 86.4)))); //Didn't we do this calculation already?
+							* (1.0 - std::exp( -( ( INPUT(HerInput) / 86.4 ) / (PARAMETER(MaximumInfiltrationRate) / 86.4)))); //Didn't we do this calculation already?
 		}
 		double ie = INPUT(HerInput) / 86.4 - infiltration;
 		double dr = PARAMETER(RainfallExcessProportion) * ie - RESULT(DirectRunoffFlow);

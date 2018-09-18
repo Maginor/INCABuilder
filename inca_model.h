@@ -12,6 +12,8 @@ Important TODOs:
 	- Give warning if not all input series received values?
 	- Maybe just use fscanf for reading numbers in inca_io, but it is actually a little complicated since we have to figure out the type in any case.
 	- Register units with inputs too? They are after all expected to be in a certain unit.
+	- Function to copy dataset
+	- More access(get/set) function for easy access of dataset values.
 	
 Bugs:
 	- Check the dependency system with maximumnitrogenuptake in incan-classic again.. I may have misread it, but there is a potential bug there.

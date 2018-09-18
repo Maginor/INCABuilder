@@ -61,7 +61,7 @@ AddIncaNModel(inca_model *Model)
 	auto NitrateWetDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate wet deposition", KgPerHectarePerDay, 20.0);
 	auto AmmoniumDryDeposition                   = RegisterParameterDouble(Model, Reaches, "Ammonium dry deposition", KgPerHectarePerDay, 20.0);
 	auto AmmoniumWetDeposition                   = RegisterParameterDouble(Model, Reaches, "Ammonium wet deposition", KgPerHectarePerDay, 20.0);
-    auto BaseFlowIndex                           = RegisterParameterDouble(Model, Reaches, "Base flow index", Dimensionless, 0.9);
+	auto BaseFlowIndex                           = RegisterParameterDouble(Model, Reaches, "Base flow index", Dimensionless, 0.9);
 	auto ReachDenitrificationRate                = RegisterParameterDouble(Model, Reaches, "Reach denitrification rate", PerDay, 20.0);
 	auto ReachNitrificationRate                  = RegisterParameterDouble(Model, Reaches, "Reach nitrification rate", PerDay, 20.0);
 	auto ReachEffluentNitrateConcentration       = RegisterParameterDouble(Model, Reaches, "Reach effluent nitrate concentration", MgPerL, 0.0);
@@ -176,7 +176,7 @@ AddIncaNModel(inca_model *Model)
 		return RESULT(RunoffToReach, Groundwater) * 1000.0 / 86400.0;
 	)
 
-    EQUATION(Model, DirectRunoffNitrateOutput,
+	EQUATION(Model, DirectRunoffNitrateOutput,
 		return RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
 	)
 
@@ -323,7 +323,7 @@ AddIncaNModel(inca_model *Model)
 		return RESULT(SoilwaterAmmonium) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(SoilwaterVolume);
 	)
 
-    EQUATION(Model, SoilwaterAmmoniumInput,
+	EQUATION(Model, SoilwaterAmmoniumInput,
 		double nitrateInput = 0.0;
 		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
 		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);

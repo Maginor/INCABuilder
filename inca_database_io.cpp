@@ -1,7 +1,7 @@
 
 
 
-//TODO: Everything in this file lacks error handling....
+//TODO: There is almost no error handling in this file..
 
 
 static void

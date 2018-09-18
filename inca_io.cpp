@@ -60,10 +60,15 @@ WriteParameterValues(FILE *File, handle_t ParameterHandle, parameter_type Type, 
 	}
 }
 
-//TODO: This does not check if all indexes are set or all parameter values are allocated...
 static void
 WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 {
+	if(!DataSet->ParameterData)
+	{
+		std::cout << "ERROR: Tried to write parameters to a file before parameter data was allocated." << std::endl;
+		exit(0);
+	}
+	
 	FILE *file = fopen(Filename, "w");
 	if(!file)
 	{	
@@ -246,7 +251,7 @@ MultiplyByTenAndAdd(u64 *Number, u64 Addendand)
 	return true;
 }
 
-//TODO: Return a token instead of having it as a i/o input.
+//TODO: Return a token instead of having it as an input.
 static void
 ReadToken(token_stream &Stream, io_file_token &Token)
 {
@@ -473,17 +478,17 @@ ReadToken(token_stream &Stream, io_file_token &Token)
 	
 	if(Token.Type == TokenType_UnquotedString)
 	{
-		if(!strcmp(TokenBuffer, "true"))
+		if(strcmp(TokenBuffer, "true") == 0)
 		{
 			Token.Type = TokenType_Bool;
 			Token.BoolValue = true;
 		}
-		else if(!strcmp(TokenBuffer, "false"))
+		else if(strcmp(TokenBuffer, "false") == 0)
 		{
 			Token.Type = TokenType_Bool;
 			Token.BoolValue = false;
 		}
-		else if(!strcmp(TokenBuffer, "NaN"))
+		else if(strcmp(TokenBuffer, "NaN") == 0)
 		{
 			Token.Type = TokenType_Numeric;
 			Token.IsNAN = true;
@@ -593,8 +598,6 @@ SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values,
 }
 
 
-//TODO: This function leaks all the Token.StringValue s. Clean that up. 
-//TODO: We need much better error handling!!
 static void
 ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 {
@@ -905,7 +908,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 	
 	if(Timesteps == 0)
 	{
-		std::cout << "ERROR: in input file " << Filename << ", did not find the codeword timesteps to say how many timesteps of inputs are provided." << std::endl;
+		std::cout << "ERROR: in input file " << Filename << ", did not find the codeword timesteps to declare how many timesteps of inputs are provided." << std::endl;
 		exit(0);
 	}
 	

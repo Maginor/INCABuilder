@@ -1,6 +1,5 @@
 
 
-
 static inca_data_set *
 GenerateDataSet(inca_model *Model)
 {
@@ -59,12 +58,12 @@ SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts,
 }
 
 //NOTE: The following access methods are very similar, but it would incur a performance penalty to try to merge them.
-//TODO: Document them properly!!!!!
 
+
+// NOTE: Returns the storage index of the first instance of a value corresponding to this Handle, i.e where all indexes that this handle depends on are the first index of their index set.
 inline size_t
 OffsetForHandle(storage_structure &Structure, handle_t Handle)
 {
-	//NOTE: returns an offset to the first instance for this handle.
 	size_t UnitIndex = Structure.UnitForHandle[Handle];
 	size_t OffsetForUnit = Structure.OffsetForUnit[UnitIndex];
 	size_t LocationOfHandleInUnit = Structure.LocationOfHandleInUnit[Handle];
@@ -72,6 +71,9 @@ OffsetForHandle(storage_structure &Structure, handle_t Handle)
 	return OffsetForUnit + LocationOfHandleInUnit;
 }
 
+// NOTE: Returns the storage index of a value corresponding to this Handle with the given index set indexes.
+// CurrentIndexes must be set up so that for any index set with handle IndexSetHandle, CurrentIndexes[IndexSetHandle] is the current index of that index set. (Typically ValueSet->CurrentIndexes)
+// IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
 static size_t
 OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, handle_t Handle)
 {
@@ -94,6 +96,13 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 	return OffsetForUnit + InstanceOffset * NumHandlesInUnitInstance + LocationOfHandleInUnit;
 }
 
+// NOTE: Returns the storage index of a value corresponding to this Handle with the given index set indexes.
+// Indexes must be set up so that Indexes[I] is the index of the I'th index set that the entity one wishes to look up depends on.
+// IndexesCount is the number of index sets the entity depends on (and so the length of the array Indexes).
+// IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
+//
+// WARNING: There is no error checking at all to see if IndexesCount is the same as the number of index set dependencies. If this is wrong, the program could crash, though this access function is mostly used by wrappers that do such error checks themselves.
+// TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
 static size_t
 OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t IndexesCount, const size_t *IndexCounts, handle_t Handle)
 {
@@ -119,7 +128,21 @@ OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t Ind
 	return OffsetForUnit + InstanceOffset * NumHandlesInUnitInstance + LocationOfHandleInUnit;
 }
 
-//NOTE: Same as above, but overrides the OverrideCount last indexes
+// NOTE: Returns the storage index of a value corresponding to this Handle with the given index set indexes.
+// CurrentIndexes must be set up so that for any index set with handle IndexSetHandle, CurrentIndexes[IndexSetHandle] is the current index of that index set. (Typically ValueSet->CurrentIndexes)
+// IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
+// OverrideCount  specifies how many of the last index sets one wants to override the indexes of
+// OverrideIndexes provides indexes for the overridden index sets.
+//
+// Example. If Handle is a parameter handle to a parameter depending on the index sets IndexSetA, IndexSetB, IndexSetC, IndexSetD in that order, then if
+//	CurrentIndexes[IndexSetA.Handle]=0, CurrentIndexes[IndexSetB.Handle]=1, CurrentIndexes[IndexSetC.Handle]=2, CurrentIndexes[IndexSetD.Handle]=3,
+//  OverrideCount = 2, OverrideIndexes = {5, 6},
+// then this function returns the storage index of the parameter value corresponding to this Handle, and with indexes [0, 1, 5, 6]
+//
+// This function is designed to be used by the system for explicit indexing of lookup values, such as when one uses access macros like "PARAMETER(MyParameter, Index1, Index2)" etc. inside equations.
+//
+// WARNING: There is no error checking at all to see if OverrideCount is not larger than the number of index set dependencies, and in that case the program could crash.
+// TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
 inline size_t
 OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, handle_t Handle)
 {
@@ -153,8 +176,20 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 	return OffsetForUnit + InstanceOffset * NumHandlesInUnitInstance + LocationOfHandleInUnit;
 }
 
-//NOTE: Similar to above, but instead overrides the index in a specific index set.
-
+//NOTE: Returns the storage index of a value corresponding to this Handle with the given index set indexes.
+// CurrentIndexes must be set up so that for any index set with handle IndexSetHandle, CurrentIndexes[IndexSetHandle] is the current index of that index set. (Typically ValueSet->CurrentIndexes)
+// IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
+// Skip           is an index set that one wants to be set to its first index.
+// SubsequentOffset is a second output value, which will contain the distance between each instance of this value if one were to change the index in Skip.
+//
+// Example: MyParameter depends on IndexSetA, IndexSetB
+// IndexCount[IndexSetA.Handle] = 3, IndexCount[IndexSetB.Handle] = 2. CurrentIndexes[IndexSetA.Handle] = 2, CurrentIndexes[IndexSetB.Handle] = 1.
+// size_t SubsequentOffset;
+// size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, IndexSetA, SubsequentOffset, MyParameter.Handle);
+// DataSet->ParameterData[Offset] is the value of MyParameter with indexes {0, 1};
+// DataSet->ParameterData[Offset] + Idx*SubsequentOffset is the value of MyParameter with indexes {Idx, 1};
+//
+// This function is designed to be used with the system that evaluates cumulation equations.
 static size_t
 OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *IndexCounts, index_set Skip, size_t& SubsequentOffset, handle_t Handle)
 {

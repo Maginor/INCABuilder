@@ -1,6 +1,7 @@
 # INCABuilder
 C++ Api for building catchment models. Optimized for speed of execution.
-loosely based on biogeochemistry/INCA/
+
+Loosely based on biogeochemistry/INCA/
 
 
 Documentation will eventually be added.

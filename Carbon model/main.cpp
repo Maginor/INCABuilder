@@ -5,10 +5,6 @@
 #define INCA_EQUATION_PROFILING 0
 
 #include "../inca.h"
-#include "../inca_data_set.cpp"
-#include "../inca.cpp"
-#include "../inca_io.cpp"
-#include "../inca_solvers.h"
 
 #include "SnowRoutine.h"
 #include "SoilMoistureRoutine.h"

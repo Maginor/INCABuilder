@@ -73,7 +73,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	EQUATION(Model, WaterInputToBox,
 		double fromPrecipitationOrSnow = RESULT(WaterInput);
 		double fromBoxAbove = RESULT(RunoffFromBox, PREVIOUS_INDEX(SoilBoxes));
-		if(IS_AT_BEGINNING(SoilBoxes)) return fromPrecipitationOrSnow;
+		if(CURRENT_INDEX(SoilBoxes) == 0) return fromPrecipitationOrSnow;
 		return fromBoxAbove;
 	)
 	

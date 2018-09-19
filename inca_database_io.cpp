@@ -655,7 +655,7 @@ WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructur
 		double Value = Data[Offset];
 		rc = sqlite3_bind_int64(Statement, 1, AtTime);
 		
-		if(isnan(Value))
+		if(std::isnan(Value))
 		{
 			rc = sqlite3_bind_null(Statement, 2);
 		}

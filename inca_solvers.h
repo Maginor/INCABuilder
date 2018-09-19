@@ -3,8 +3,6 @@
 
 #if !defined(INCA_SOLVERS_H)
 
-#include <math.h>
-
 
 INCA_SOLVER_FUNCTION(IncaEuler)
 {
@@ -26,6 +24,8 @@ INCA_SOLVER_FUNCTION(IncaEuler)
 
 INCA_SOLVER_FUNCTION(IncaDascru)
 {
+	//NOTE: This is the original solver from INCA based on the DASCRU Runge-Kutta 4 solver.
+	
 	double x, hmin, xs, hs, q, h3, r, e;
     int ib1, ib2, sw, i, j, ijk0, ijk1, ijk2, be, bh=1, br=1, bx=1;
 

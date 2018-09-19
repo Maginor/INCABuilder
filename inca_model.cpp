@@ -865,8 +865,6 @@ CallEquation(inca_model *Model, value_set_accessor *ValueSet, equation Equation)
 	return ResultValue;
 }
 
-static double &
-AccessResultValue(inca_data_set *DataSet, const index_t *CurIndexes, equation Equation, double *LookupBase);
 
 INNER_LOOP_BODY(RunInnerLoop)
 {

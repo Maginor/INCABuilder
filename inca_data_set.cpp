@@ -57,7 +57,8 @@ SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts,
 	}
 }
 
-//NOTE: The following access methods are very similar, but it would incur a performance penalty to try to merge them.
+//NOTE: The following functions are very similar, but it would incur a performance penalty to try to merge them.
+//NOTE: The OffsetForHandle functions are meant to be internal functions that can be used by other wrappers that do more error checking.
 
 
 // NOTE: Returns the storage index of the first instance of a value corresponding to this Handle, i.e where all indexes that this handle depends on are the first index of their index set.
@@ -531,7 +532,7 @@ AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 
 
 
-
+//NOTE: Returns the numeric index corresponding to an index name and an index_set.
 inline index_t
 GetIndex(inca_data_set *DataSet, index_set IndexSet, const char *IndexName)
 {
@@ -564,7 +565,6 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	
 	inca_model *Model = DataSet->Model;
 	handle_t ParameterHandle = GetParameterHandle(Model, Name);
-	if(!ParameterHandle) return;
 	
 	if(Model->ParameterSpecs[ParameterHandle].Type != Type)
 	{
@@ -575,12 +575,11 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	
 	size_t StorageUnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
 	std::vector<storage_unit_specifier> &Units = DataSet->ParameterStorageStructure.Units;
-	std::vector<index_set> &IndexSetStack = Units[StorageUnitIndex].IndexSets;
+	std::vector<index_set> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
 	
-	size_t StackSize = IndexSetStack.size();
-	if(Indexes.size() != StackSize)
+	if(Indexes.size() != IndexSetDependencies.size())
 	{
-		std::cout << "ERROR; Tried to set the value of the parameter " << Name << ", but an incorrect number of indexes were provided." << std::endl;
+		std::cout << "ERROR; Tried to set the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << Indexes.size() << ", expected " << IndexSetDependencies.size() << std::endl;
 		exit(0);
 	}
 
@@ -588,7 +587,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	index_t IndexValues[256];
 	for(size_t Level = 0; Level < Indexes.size(); ++Level)
 	{
-		IndexValues[Level] = GetIndex(DataSet, IndexSetStack[Level], Indexes[Level]);
+		IndexValues[Level] = GetIndex(DataSet, IndexSetDependencies[Level], Indexes[Level]);
 	}
 	
 	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, IndexValues, Indexes.size(), DataSet->IndexCounts, ParameterHandle);
@@ -627,9 +626,71 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	SetParameterValue(DataSet, Name, Indexes, Val, ParameterType_Time);
 }
 
+static parameter_value
+GetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes, parameter_type Type)
+{
+	if(DataSet->ParameterData == 0)
+	{
+		std::cout << "ERROR: Tried to get a parameter value before parameter storage was allocated." << std::endl;
+		exit(0);
+	}
+	
+	inca_model *Model = DataSet->Model;
+	handle_t ParameterHandle = GetParameterHandle(Model, Name);
+	
+	if(Model->ParameterSpecs[ParameterHandle].Type != Type)
+	{
+		std::cout << "WARNING: Tried to get the value of the parameter " << Name << " specifying the wrong type for the parameter. This can lead to undefined behaviour." << std::endl;
+	}
+	
+	size_t StorageUnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+	std::vector<storage_unit_specifier> &Units = DataSet->ParameterStorageStructure.Units;
+	std::vector<index_set> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
+	
+	if(Indexes.size() != IndexSetDependencies.size())
+	{
+		std::cout << "ERROR; Tried to get the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << Indexes.size() << ", expected " << IndexSetDependencies.size() << std::endl;
+		exit(0);
+	}
+
+	//TODO: This crashes if somebody have more than 256 index sets for a parameter, but that is highly unlikely. Still, this is not clean code...
+	index_t IndexValues[256];
+	for(size_t Level = 0; Level < Indexes.size(); ++Level)
+	{
+		IndexValues[Level] = GetIndex(DataSet, IndexSetDependencies[Level], Indexes[Level]);
+	}
+	
+	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, IndexValues, Indexes.size(), DataSet->IndexCounts, ParameterHandle);
+	return DataSet->ParameterData[Offset];
+}
+
+inline double
+GetParameterDouble(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes)
+{
+	return GetParameterValue(DataSet, Name, Indexes, ParameterType_Double).ValDouble;
+}
+
+inline u64
+GetParameterUInt(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes)
+{
+	return GetParameterValue(DataSet, Name, Indexes, ParameterType_UInt).ValUInt;
+}
+
+inline bool
+GetParameterBool(inca_data_set *DataSet, const char  *Name, const std::vector<const char *>& Indexes)
+{
+	return GetParameterValue(DataSet, Name, Indexes, ParameterType_Bool).ValBool;
+}
+
+//TODO: GetParameterTime? But what format should it use?
+
+
+//NOTE: Is used by cumulation equations when they evaluate.
 static double
 CumulateResult(inca_data_set *DataSet, equation Equation, index_set CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase)
 {
+	//NOTE: LookupBase should always be DataSet->ResultData + N*DataSet->ResultStorageStructure.TotalCount. I.e. it should point to the beginning of one timestep.
+	
 	double Total = 0.0;
 	
 	size_t SubsequentOffset;
@@ -646,43 +707,91 @@ CumulateResult(inca_data_set *DataSet, equation Equation, index_set CumulateOver
 }
 
 static void
+SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char *> &IndexNames, const double *InputSeries, size_t InputSeriesSize)
+{
+	if(!DataSet->InputData)
+	{
+		AllocateInputStorage(DataSet, InputSeriesSize);
+	}
+	
+	if(InputSeriesSize != DataSet->InputDataTimesteps)
+	{
+		std::cout << "WARNING: When setting input series for " << Name << ", the size of the provided input series did not match the amount of timesteps in the already allocated input data." << std::endl;
+	}
+	
+	size_t WriteSize = Min(InputSeriesSize, DataSet->InputDataTimesteps);
+	
+	inca_model *Model = DataSet->Model;
+	
+	input Input = GetInputHandle(Model, Name);
+	
+	size_t StorageUnitIndex = DataSet->InputStorageStructure.UnitForHandle[Input.Handle];
+	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
+	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
+	
+	if(IndexNames.size() != IndexSets.size())
+	{
+		std::cout << "ERROR: Got the wrong amount of indexes when setting the input series for " << GetName(Model, Input) << ". Got " << IndexNames.size() << ", expected " << IndexSets.size() << std::endl;
+		exit(0);
+	}
+	index_t Indexes[256];
+	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
+	{
+		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
+	}
+
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Input.Handle);
+	double *At = DataSet->InputData + Offset;
+	
+	for(size_t Idx = 0; Idx < WriteSize; ++Idx)
+	{
+		*At = InputSeries[Idx];
+		At += DataSet->ResultStorageStructure.TotalCount;
+	}
+}
+
+// NOTE: The caller of this function has to allocate the space that the result series should be written to themselves and pass a pointer to it as WriteTo.
+// Example:
+// std::vector<double> MyResults;
+// MyResults.resize(DataSet->TimestepsLastRun);
+// GetResultSeries(DataSet, "Percolation input", {"Reach 1", "Forest", "Groundwater"}, MyResult.data(), MyResult.size());
+static void
 GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
 {	
-	if(DataSet->HasBeenRun && DataSet->ResultData)
+	if(!DataSet->HasBeenRun || !DataSet->ResultData)
 	{
-		inca_model *Model = DataSet->Model;
-		
-		u64 NumToWrite = Min(WriteSize, DataSet->TimestepsLastRun);
-		
-		equation Equation = GetEquationHandle(Model, Name);
-		
-		size_t StorageUnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
-		std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
-		std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
-
-		if(IndexNames.size() != IndexSets.size())
-		{
-			std::cout << "WARNING: Got the wrong amount of indexes when getting the result series for " << GetName(Model, Equation) << std::endl;
-			return;
-		}
-		index_t Indexes[256];
-		for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
-		{
-			Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
-		}
-
-		size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Equation.Handle);
-		double *Lookup = DataSet->ResultData + Offset;
-		
-		for(size_t Idx = 0; Idx < NumToWrite; ++Idx)
-		{
-			Lookup += DataSet->ResultStorageStructure.TotalCount; //NOTE: We do one initial time advancement before the lookup since the first set of values are just the initial values, which we want to skip.
-			WriteTo[Idx] = *Lookup;
-		}
+		std::cout << "ERROR: Tried to extract result series before the model was run at least once." << std::endl;
+		exit(0);
 	}
-	else
+	
+	inca_model *Model = DataSet->Model;
+	
+	u64 NumToWrite = Min(WriteSize, DataSet->TimestepsLastRun);
+	
+	equation Equation = GetEquationHandle(Model, Name);
+	
+	size_t StorageUnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
+	std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
+	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
+
+	if(IndexNames.size() != IndexSets.size())
 	{
-		std::cout << "WARNING: Tried to extract result series before the model was run at least once." << std::endl;
+		std::cout << "ERROR: Got the wrong amount of indexes when getting the result series for " << GetName(Model, Equation) << ". Got " << IndexNames.size() << ", expected " << IndexSets.size() << std::endl;
+		exit(0);
+	}
+	index_t Indexes[256];
+	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
+	{
+		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
+	}
+
+	size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Equation.Handle);
+	double *Lookup = DataSet->ResultData + Offset;
+	
+	for(size_t Idx = 0; Idx < NumToWrite; ++Idx)
+	{
+		Lookup += DataSet->ResultStorageStructure.TotalCount; //NOTE: We do one initial time advancement before the lookup since the first set of values are just the initial values, which we want to skip.
+		WriteTo[Idx] = *Lookup;
 	}
 }
 

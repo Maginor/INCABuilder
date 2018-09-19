@@ -947,7 +947,7 @@ SetEquation(Model, ResultH, \
 
 
 //NOTE: These inline functions are used for type safety, which we don't get from macros.
-//NOTE: We don't provide direct access to Time parameters since their storage is implemetation dependent. Instead we have accessor macros like CURRENT_DAY_OF_YEAR.
+//NOTE: We don't provide direct access to Time parameters since we want to encapsulate their storage. Instead we have accessor macros like CURRENT_DAY_OF_YEAR.
 inline double
 GetCurrentParameter(value_set_accessor *ValueSet, parameter_double Parameter)
 {

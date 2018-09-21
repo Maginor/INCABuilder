@@ -206,7 +206,7 @@ struct storage_structure
 	size_t *TotalCountForUnit;
 	size_t *OffsetForUnit;
 	size_t *UnitForHandle;
-	size_t *LocationOfHandleInUnit;       // UnitForHandle[H].Handles[LocationOfHandleInUnit[H]] == H;
+	size_t *LocationOfHandleInUnit;       // Units[UnitForHandle[H]].Handles[LocationOfHandleInUnit[H]] == H;
 	size_t TotalCount;
 };
 
@@ -597,11 +597,12 @@ RequireIndex(inca_model *Model, index_set IndexSet, const char *IndexName)
 	{
 		//TODO: Get rid of this requirement? However that may lead to issues with index order in branched index sets later.
 		std::cout << "ERROR: We only allow requiring indexes for basic index sets, " << Spec.Name << " is of a different type." << std::endl;
+		exit(0);
 	}
 	auto Find = std::find(Spec.RequiredIndexes.begin(), Spec.RequiredIndexes.end(), IndexName);
 	if(Find != Spec.RequiredIndexes.end())
 	{
-		return (index_t)std::distance(Spec.RequiredIndexes.begin(), Find);
+		return (index_t)std::distance(Spec.RequiredIndexes.begin(), Find); //NOTE: This is its position in the vector.
 	}
 	else
 	{

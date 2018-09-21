@@ -13,13 +13,13 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 		break;
 		
 		case ParameterType_UInt:
-		fprintf(File, "%llu", Value.ValUInt); //TODO: check correctness
+		fprintf(File, "%llu", Value.ValUInt); //TODO: check correctness. May depend on sizeof(long long unsigned int)==8
 		break;
 		
 		case ParameterType_Time:
 		s32 Year, Month, Day;
 		YearMonthDay(Value.ValTime, &Year, &Month, &Day);
-		fprintf(File, "\"%d-%d-%d\"", Year, Month, Day); //TODO: Convert to string format instead.
+		fprintf(File, "\"%d-%d-%d\"", Year, Month, Day);
 		break;
 	}
 }

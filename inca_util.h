@@ -68,13 +68,22 @@ IsLeapYear(int Year)
 	return true;
 }
 
+inline int
+MonthOffset(int Year, int Month)
+{
+	int Offset[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}; //, 365};
+	int Days = Offset[Month];
+	if(Month >= 2 && IsLeapYear(Year)) Days += 1;
+	return Days;
+}
+
 //NOTE: Apparently the c++ standard library can not do this for us until c++20, so we have to do it ourselves... (could use boost::ptime, but it has to be compiled separately, and that is asking a lot of the user...)
 //NOTE: does not account for leap seconds, but that should not be a problem.
 inline s64
 ParseSecondsSinceEpoch(const char *DateString)
 {
 	int Day, Month, Year;
-	int MonthOffset[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}; //, 365};
+	
 	int Found = sscanf(DateString, "%d-%d-%d", &Year, &Month, &Day);
 	if(Found != 3)
 	{
@@ -97,7 +106,7 @@ ParseSecondsSinceEpoch(const char *DateString)
 		}
 	}
 	
-	Result += (MonthOffset[Month-1] + ((Month >= 3) && IsLeapYear(Year)))*24*60*60;
+	Result += MonthOffset(Year, Month-1)*24*60*60;
 	Result += (Day-1)*24*60*60;
 	return Result;
 }
@@ -150,16 +159,15 @@ DayOfYear(s64 SecondsSinceEpoch, s32* YearOut)
 inline void
 YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 {
-	u32 MonthOffset[12] = {31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 	u32 Day = DayOfYear(SecondsSinceEpoch, YearOut);
 
 	for(s32 Month = 0; Month < 12; ++Month)
 	{
-		if(Day <= MonthOffset[Month])
+		if(Day <= MonthOffset(*YearOut, Month))
 		{
 			*MonthOut = (Month+1);
 			if(Month == 0) *DayOut = Day;
-			else *DayOut = (s32)Day - (s32)MonthOffset[Month-1];
+			else *DayOut = (s32)Day - (s32)MonthOffset(*YearOut, Month-1);
 			break;
 		}
 	}

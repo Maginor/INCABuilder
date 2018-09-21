@@ -6,7 +6,7 @@ Idea based on biogeochemistry/INCA/
 Developed by Magnus Dahler Norling
 For NIVA (Norwegian institute for water research)
 
-Developed to work with the GUI INCAView.
+Developed to work standalone or together with the graphical user interface INCAView.
 
 Documentation will eventually be added.
 

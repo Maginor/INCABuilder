@@ -43,13 +43,13 @@ int main()
 		'\t'
 	);
 	
-	//NOTE: Check the first 100 migration sums just to see that they sum to 0 (up to some numerical error) and no giblets are destroyed or created by migration.
+	//NOTE: Check the first 100 migration sums just to see that they are 0 (up to some numerical error) and no giblets are destroyed or created by migration.
 	std::vector<double> NetMigration;
 	NetMigration.resize(100);
 	GetResultSeries(DataSet, "Net giblet migration", {}, NetMigration.data(), NetMigration.size());
 	for(double D : NetMigration)
 	{
-		if(std::abs(D) > 1e6)
+		if(std::abs(D) > 1e-6)
 		{
 			std::cout << "Something went wrong with the migration setup." << std::endl;
 			break;

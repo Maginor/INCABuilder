@@ -988,8 +988,6 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		double *WriteTo = DataSet->InputData + Offset;
 		
-		std::cout << "timesteps " << Timesteps << std::endl;
-		
 		for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 		{
 			ExpectToken(Stream, Token, TokenType_Numeric);

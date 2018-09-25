@@ -9,7 +9,7 @@ void AddTutorial2Model(inca_model *Model)
 	auto Dimensionless = RegisterUnit(Model);
 	auto Kg            = RegisterUnit(Model, "kg");
 	
-	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units"); //Domain is just a dummy name, ignore it.
+	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
 	
 	auto Land = RegisterParameterGroup(Model, "Land", LandscapeUnits);
 	

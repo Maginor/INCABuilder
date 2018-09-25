@@ -6,11 +6,12 @@
 
 #include "../inca.h"
 
+#include "PotentialEvapotranspiration.h"
 #include "SnowRoutine.h"
 #include "SoilMoistureRoutine.h"
 #include "GroundwaterResponseRoutine.h"
 
-#define READ_PARAMETER_FILE 1
+#define READ_PARAMETER_FILE 0
 
 int main()
 {
@@ -22,6 +23,7 @@ int main()
 	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
 	AddSnowRoutine(Model);
+	AddPotentialEvapotranspirationModuleV2(Model);
 	AddSoilMoistureRoutine(Model);
 	AddGroundwaterResponseRoutine(Model);
 	
@@ -32,29 +34,30 @@ int main()
 	inca_data_set *DataSet = GenerateDataSet(Model);
 
 #if READ_PARAMETER_FILE == 0
-	SetIndexes(DataSet, "Landscape units", {"Forest", "Arable", "Urban"});
-	SetIndexes(DataSet, "Soil boxes", {"Box 1", "Box 2"});
-	SetReachIndexes(DataSet, "Reaches", {{"First reach", {}}, {"Second reach", {"First reach"}}});
+	SetIndexes(DataSet, "Landscape units", {"Forest", "Peatland"});
+	SetIndexes(DataSet, "Soil boxes", {"First box", "Second box"});
+	SetBranchIndexes(DataSet, "Reaches", {{"R1", {}}, {"R2", {"R1"}}});
 	
-	SetParameterValue(DataSet, "%", {"First reach", "Forest"}, 100.0/3.0);
-	SetParameterValue(DataSet, "%", {"First reach", "Arable"}, 100.0/3.0);
-	SetParameterValue(DataSet, "%", {"First reach", "Urban"}, 100.0/3.0);
+	SetParameterValue(DataSet, "%", {"R1", "Forest"}, 50.0);
+	SetParameterValue(DataSet, "%", {"R1", "Peatland"}, 50.0);
 	
-	SetParameterValue(DataSet, "Evaporation constant", {"Forest", "Box 2"}, 0.0);
-	SetParameterValue(DataSet, "Evaporation constant", {"Arable", "Box 2"}, 0.0);
-	SetParameterValue(DataSet, "Evaporation constant", {"Urban", "Box 2"}, 0.0);
+	SetParameterValue(DataSet, "%", {"R2", "Forest"}, 50.0);
+	SetParameterValue(DataSet, "%", {"R2", "Peatland"}, 50.0);
 #else
 	ReadParametersFromFile(DataSet, "testparameters.dat");
 #endif
 	ReadInputsFromFile(DataSet, "testinput.dat");
 	
-	//PrintResultStructure(Model);
+	PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);
 	//PrintInputStorageStructure(DataSet);
 
 	RunModel(DataSet);
 	
 	WriteParametersToFile(DataSet, "testparameters.dat");
+	
+	PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "First box"}, 100);
+	PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Second box"}, 100);
 	
 	//PrintResultSeries(DataSet, "Snowfall", {"First reach", "Forest"}, 100);
 	//PrintResultSeries(DataSet, "Snowfall", {"Second reach", "Forest"}, 100);

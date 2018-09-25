@@ -107,7 +107,7 @@ inputs :
 0.17000000000000001
 0
 
-"Air temperature" {"First reach"}:
+"Air temperature" {"R1"}:
 2.98
 0.040000000000000001
 -0.82999999999999996
@@ -209,7 +209,7 @@ inputs :
 3.04
 3.8999999999999999
 
-"Air temperature" {"Second reach"}:
+"Air temperature" {"R2"}:
 8.5999999999999996
 8.0999999999999996
 8.3000000000000007

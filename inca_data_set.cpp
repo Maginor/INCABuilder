@@ -740,13 +740,13 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
 	}
 
-	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Input.Handle);
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexSets.size(), DataSet->IndexCounts, Input.Handle);
 	double *At = DataSet->InputData + Offset;
 	
 	for(size_t Idx = 0; Idx < WriteSize; ++Idx)
 	{
 		*At = InputSeries[Idx];
-		At += DataSet->ResultStorageStructure.TotalCount;
+		At += DataSet->InputStorageStructure.TotalCount;
 	}
 }
 
@@ -808,7 +808,7 @@ PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<co
 	{
 		std::cout << ResultSeries[Idx] << " ";
 	}
-	std::cout << std::endl;
+	std::cout << std::endl << std::endl;
 	
 	free(ResultSeries);
 }

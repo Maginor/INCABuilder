@@ -163,11 +163,11 @@ YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 
 	for(s32 Month = 0; Month < 12; ++Month)
 	{
-		if(Day <= MonthOffset(*YearOut, Month))
+		if(Day <= MonthOffset(*YearOut, Month+1))
 		{
 			*MonthOut = (Month+1);
 			if(Month == 0) *DayOut = Day;
-			else *DayOut = (s32)Day - (s32)MonthOffset(*YearOut, Month-1);
+			else *DayOut = (s32)Day - (s32)MonthOffset(*YearOut, Month);
 			break;
 		}
 	}

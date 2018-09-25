@@ -32,13 +32,12 @@ static void AddSnowRoutine(inca_model *Model)
 	auto WaterInSnow = RegisterEquation(Model, "Water in snow", Mm);
 	auto ExcessMelt  = RegisterEquation(Model, "Excess melt", Mm);
 	auto Refreeze    = RegisterEquation(Model, "Refreeze", Mm);
-	auto WaterInput  = RegisterEquation(Model, "Water input to soil", Mm);
+	auto WaterToSoil  = RegisterEquation(Model, "Water to soil", Mm);
 	
 	EQUATION(Model, Diff,
 		return INPUT(AirTemperature) - PARAMETER(SnowThresholdTemperature);
 	)
 	
-	//TODO: once we have index set dependencies for inputs, these may have to be rewritten:
 	EQUATION(Model, Snowfall,
 		double precip = INPUT(Precipitation);
 		return RESULT(Diff) <= 0.0 ? precip : 0.0;
@@ -98,7 +97,7 @@ static void AddSnowRoutine(inca_model *Model)
 		return refreeze;
 	)
 	
-	EQUATION(Model, WaterInput,
+	EQUATION(Model, WaterToSoil,
 		double rainfall = RESULT(Rainfall);
 		double excess   = RESULT(ExcessMelt);
 		if(RESULT(Snowpack) == 0.0) return rainfall;

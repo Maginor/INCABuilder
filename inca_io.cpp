@@ -815,9 +815,8 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 }
 
 
-//TODO: Make this one write the series in a similar format to the input format instead.
 static void
-WriteResultSeriesToFile(inca_data_set *DataSet, const char *Filename, std::vector<const char *> ResultNames, const std::vector<std::vector<const char *>> &Indexes)
+DlmWriteResultSeriesToFile(inca_data_set *DataSet, const char *Filename, std::vector<const char *> ResultNames, const std::vector<std::vector<const char *>> &Indexes, char Delimiter)
 {
 	size_t WriteSize = DataSet->TimestepsLastRun;
 	size_t NumSeries = ResultNames.size();
@@ -841,7 +840,7 @@ WriteResultSeriesToFile(inca_data_set *DataSet, const char *Filename, std::vecto
 			for(size_t Idx = 0; Idx < NumSeries; ++Idx)
 			{
 				fprintf(file, "%f", ResultSeries[Idx][Timestep]);
-				if(Idx < NumSeries-1) fprintf(file, " ");
+				if(Idx < NumSeries-1) fprintf(file, "%c", Delimiter);
 			}
 			
 			fprintf(file, "\n");
@@ -901,8 +900,8 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		else if(Token.Type == TokenType_EOF)
 		{
-			std::cout << "WARNING: Could not find the code word inputs to start reading the inputs in file " << Filename << std::endl;
-			return;
+			std::cout << "ERROR: Could not find the code word inputs to start reading the inputs in file " << Filename << std::endl;
+			exit(0);
 		}
 	}
 	
@@ -985,9 +984,11 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		else
 		{
-			Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Input.Handle);
+			Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexSets.size(), DataSet->IndexCounts, Input.Handle);
 		}
 		double *WriteTo = DataSet->InputData + Offset;
+		
+		std::cout << "timesteps " << Timesteps << std::endl;
 		
 		for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 		{

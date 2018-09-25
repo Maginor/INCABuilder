@@ -20,7 +20,7 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	
 	auto MaxBase = RegisterParameterUInt(Model, Groundwater, "Flow routing max base", Days, 5);
 	
-	auto TotalGroundwaterRecharge = GetEquationHandle(Model, "Total groundwater recharge"); //NOTE: From the soil moisture routine.
+	auto TotalGroundwaterRecharge = GetEquationHandle(Model, "Groundwater recharge"); //NOTE: From the soil moisture routine.
 	
 	auto GroundwaterSolver = RegisterSolver(Model, "Groundwater solver", 0.1, IncaDascru);
 	
@@ -36,7 +36,7 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto LowerStorage = RegisterEquationODE(Model, "Lower groundwater storage", Mm);
 	SetSolver(Model, LowerStorage, GroundwaterSolver);
 	//TODO: initial value
-	auto GroundwaterRunoffBeforeRouting = RegisterEquation(Model, "Groundwater runoff to reach before routing", MmPerDay);
+	auto GroundwaterDischargeBeforeRouting = RegisterEquation(Model, "Groundwater discharge to reach before routing", MmPerDay);
 	auto GroundwaterDischarge = RegisterEquation(Model, "Groundwater discharge to reach", MmPerDay);
 	
 	EQUATION(Model, UpperRunoff,
@@ -64,13 +64,13 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 		return RESULT(Percolation) - RESULT(LowerRunoff);
 	)
 	
-	EQUATION(Model, GroundwaterRunoffBeforeRouting,
+	EQUATION(Model, GroundwaterDischargeBeforeRouting,
 		return RESULT(UpperRunoff) + RESULT(LowerRunoff);
 	)
 	
 	//TODO: We have to test that these coefficients are correct:
 	EQUATION(Model, GroundwaterDischarge,
-		RESULT(GroundwaterRunoffBeforeRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
+		RESULT(GroundwaterDischargeBeforeRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
 	
 		u64 M = PARAMETER(MaxBase);		
 		double sum = 0.0;
@@ -100,7 +100,7 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 			{
 				coeff = a * (double)(2*M2 - I);
 			}
-			sum += coeff * EARLIER_RESULT(GroundwaterRunoffBeforeRouting, I-1);
+			sum += coeff * EARLIER_RESULT(GroundwaterDischargeBeforeRouting, I-1);
 		}
 			
 		return sum;

@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 	const char *Resultdb    = "results.db";
 	const char *Inputdb     = "inputs.db"; //NOTE: This is only for writing inputs TO so that they can be read by INCAView. Inputs are always read in from the provided .dat file.
 	
-	inca_model *Model = BeginModelDefinition();
+	inca_model *Model = BeginModelDefinition("INCA-N", "0.1");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
 	auto System       = RegisterParameterGroup(Model, "System");

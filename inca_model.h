@@ -239,6 +239,9 @@ typedef std::unordered_map<const char *, handle_t, hash_function, char_equals> c
 
 struct inca_model
 {
+	const char *Name;
+	const char *Version;
+	
 	handle_t FirstUnusedEquationHandle;
 	char_map EquationNameToHandle;
 	std::vector<inca_equation> Equations;

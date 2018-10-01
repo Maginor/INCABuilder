@@ -6,10 +6,8 @@
 
 #include "../inca.h"
 
-#include "PotentialEvapotranspiration.h"
-#include "SnowRoutine.h"
-#include "SoilMoistureRoutine.h"
-#include "GroundwaterResponseRoutine.h"
+#include "HBV.h"
+
 
 #define READ_PARAMETER_FILE 0
 

@@ -1,10 +1,13 @@
 
 static inca_model *
-BeginModelDefinition()
+BeginModelDefinition(const char *Name = "(unnamed)", const char *Version = "0.0")
 {
 	inca_model *Model = new inca_model {};
 	
 	Model->DefinitionTimer = BeginTimer();
+	
+	Model->Name = Name;
+	Model->Version = Version;
 	
 	//NOTE: Reserve Handle 0 as an error / unused value.
 	Model->FirstUnusedInputHandle = 1;
@@ -1159,11 +1162,11 @@ RunModel(inca_data_set *DataSet)
 		//TODO: We should probably also check that it actually is a uint, because otherwise we get the byte value of it as a uint, which is not the same as casting it to a uint!!
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, TimestepHandle);
 		Timesteps = DataSet->ParameterData[Offset].ValUInt;
-		std::cout << "Running model for " << Timesteps << " Timesteps" << std::endl;
+		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " Timesteps" << std::endl;
 	}
 	else
 	{
-		std::cout << "No parameter named \"Timesteps\" defined. Running model for default " << Timesteps << " Timesteps" << std::endl;
+		std::cout << "No parameter named \"Timesteps\" defined. Running model " << Model->Name << " V" << Model->Version << " for default " << Timesteps << " Timesteps" << std::endl;
 	}
 	
 	s64 ModelStartTime = 0;

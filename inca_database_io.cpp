@@ -274,7 +274,10 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname)
 	}
 
 	int ModelRgt = RunningLft;
-	WriteStructureEntryToDatabase(Db, 1, "Root", 0, ModelRgt, 0, 0, 0, false, false);
+	
+	char ModelIdentifier[1024];
+	sprintf(ModelIdentifier, "%s V%s", Model->Name, Model->Version);
+	WriteStructureEntryToDatabase(Db, 1, ModelIdentifier, 0, ModelRgt, 0, 0, 0, false, false);
 	
 	
 	

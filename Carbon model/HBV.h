@@ -7,6 +7,7 @@ static void AddSnowRoutine(inca_model *Model)
 	auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
 	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	auto Dimensionless     = RegisterUnit(Model);
+	auto Cm                = RegisterUnit(Model, "cm");
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
 	
@@ -17,12 +18,13 @@ static void AddSnowRoutine(inca_model *Model)
 	auto StorageFraction          = RegisterParameterDouble(Model, Land, "Storage fraction", Dimensionless, 0.1, 0.01, 0.2, "Proportion of meltwater that can be stored in the snowpack");
 	auto SnowThresholdTemperature = RegisterParameterDouble(Model, Land, "Snow threshold temperature", DegreesCelsius, 0.0, -3.0, 5.0, "Threshold temperature above which precipitation falls as rain");
 	auto InitialSnowDepth         = RegisterParameterDouble(Model, Land, "Initial snow depth", Mm, 0.0, 0.0, 9999.0, "The depth of snow, expressed as water equivalents, at the start of the simulation");
+	auto WaterEquivalentFactor	  = RegisterParameterDouble(Model, Land, "Water equivalent factor", Dimensionless, 0.3);
 	
 	auto AirTemperature = RegisterInput(Model, "Air temperature");
 	auto Precipitation  = RegisterInput(Model, "Precipitation");
 	
 	
-	auto Diff        = RegisterEquation(Model, "Diff", DegreesCelsius);
+	auto SnowmeltTemperatureDifference = RegisterEquation(Model, "Snowmelt temperature difference", DegreesCelsius);
 	auto Snowfall    = RegisterEquation(Model, "Snowfall", Mm);
 	auto Rainfall    = RegisterEquation(Model, "Rainfall", Mm);
 	auto Snowpack    = RegisterEquation(Model, "Snow pack", Mm);
@@ -32,26 +34,29 @@ static void AddSnowRoutine(inca_model *Model)
 	auto WaterInSnow = RegisterEquation(Model, "Water in snow", Mm);
 	auto ExcessMelt  = RegisterEquation(Model, "Excess melt", Mm);
 	auto Refreeze    = RegisterEquation(Model, "Refreeze", Mm);
-	auto WaterToSoil  = RegisterEquation(Model, "Water to soil", Mm);
+	auto WaterToSoil = RegisterEquation(Model, "Water to soil", Mm);
 	
-	EQUATION(Model, Diff,
+	//TODO: I don't know how good of an idea it is to have the snow depth equation in this module since it has nothing to do with the hydrology. It is only used in order to compute soil temperature.
+	auto SnowDepth   = RegisterEquation(Model, "Snow depth", Cm);
+	
+	EQUATION(Model, SnowmeltTemperatureDifference,
 		return INPUT(AirTemperature) - PARAMETER(SnowThresholdTemperature);
 	)
 	
 	EQUATION(Model, Snowfall,
 		double precip = INPUT(Precipitation);
-		return RESULT(Diff) <= 0.0 ? precip : 0.0;
+		return RESULT(SnowmeltTemperatureDifference) <= 0.0 ? precip : 0.0;
 	)
 	
 	EQUATION(Model, Rainfall,
 		double precip = INPUT(Precipitation);
-		return RESULT(Diff) > 0.0 ? precip : 0.0;
+		return RESULT(SnowmeltTemperatureDifference) > 0.0 ? precip : 0.0;
 	)
 	
 	EQUATION(Model, Snowpack,
 		double snowpack1 = RESULT(Snowfall) + RESULT(Refreeze);
 		double snowpack2 = LAST_RESULT(Snowpack) - RESULT(MeltWater);
-		return RESULT(Diff) <= 0.0 ? snowpack1 : snowpack2;
+		return RESULT(SnowmeltTemperatureDifference) <= 0.0 ? snowpack1 : snowpack2;
 	)
 	
 	EQUATION(Model, MaxStorage,
@@ -59,9 +64,9 @@ static void AddSnowRoutine(inca_model *Model)
 	)
 	
 	EQUATION(Model, MeltWater,
-		double potentialmelt = PARAMETER(DegreeDayFactor) * RESULT(Diff);
+		double potentialmelt = PARAMETER(DegreeDayFactor) * RESULT(SnowmeltTemperatureDifference);
 		double actualmelt = Min(potentialmelt, LAST_RESULT(Snowpack));
-		if(LAST_RESULT(Snowpack) <= 0.0 || RESULT(Diff) <= 0.0) actualmelt = 0.0;
+		if(LAST_RESULT(Snowpack) <= 0.0 || RESULT(SnowmeltTemperatureDifference) <= 0.0) actualmelt = 0.0;
 		return actualmelt;
 	)
 	
@@ -70,7 +75,7 @@ static void AddSnowRoutine(inca_model *Model)
 		double meltWater  = RESULT(MeltWater);
 		double refreeze   = RESULT(Refreeze);
 		if(LAST_RESULT(Snowpack) == 0.0) return 0.0;
-		if(RESULT(Diff) > 0.0)
+		if(RESULT(SnowmeltTemperatureDifference) > 0.0)
 		{
 			return Min(maxStorage, LAST_RESULT(WaterInSnow) + meltWater);
 		}
@@ -83,7 +88,7 @@ static void AddSnowRoutine(inca_model *Model)
 	EQUATION(Model, ExcessMelt,
 		double availableWater = RESULT(MeltWater) + RESULT(WaterInSnow);
 		double excess = 0.0;
-		if(RESULT(Diff) > 0.0 && availableWater > RESULT(MaxStorage))
+		if(RESULT(SnowmeltTemperatureDifference) > 0.0 && availableWater > RESULT(MaxStorage))
 		{
 			excess = availableWater - RESULT(MaxStorage);
 		}
@@ -91,9 +96,9 @@ static void AddSnowRoutine(inca_model *Model)
 	)
 	
 	EQUATION(Model, Refreeze,
-		double refreeze = PARAMETER(RefreezingCoefficient) * PARAMETER(DegreeDayFactor) * -RESULT(Diff);
+		double refreeze = PARAMETER(RefreezingCoefficient) * PARAMETER(DegreeDayFactor) * -RESULT(SnowmeltTemperatureDifference);
 		refreeze = Min(refreeze, LAST_RESULT(WaterInSnow));
-		if(LAST_RESULT(Snowpack) == 0.0 || RESULT(Diff) > 0.0 || LAST_RESULT(WaterInSnow) == 0.0) refreeze = 0.0;
+		if(LAST_RESULT(Snowpack) == 0.0 || RESULT(SnowmeltTemperatureDifference) > 0.0 || LAST_RESULT(WaterInSnow) == 0.0) refreeze = 0.0;
 		return refreeze;
 	)
 	
@@ -102,6 +107,11 @@ static void AddSnowRoutine(inca_model *Model)
 		double excess   = RESULT(ExcessMelt);
 		if(RESULT(Snowpack) == 0.0) return rainfall;
 		return excess;
+	)
+	
+	EQUATION(Model, SnowDepth,
+		return RESULT(WaterInSnow)
+					/ 10.0 / PARAMETER(WaterEquivalentFactor);
 	)
 }
 
@@ -114,12 +124,14 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto MmPerDay          = RegisterUnit(Model, "mm/day");
 	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	auto Dimensionless     = RegisterUnit(Model);
+	auto Km2               = RegisterUnit(Model, "km2");
 	
 	auto LandscapeUnits    = RegisterIndexSet(Model, "Landscape units");
 	auto SoilBoxes         = RegisterIndexSet(Model, "Soil boxes");
 	
-	auto FirstBox  = RequireIndex(Model, SoilBoxes, "First box");
-	auto SecondBox = RequireIndex(Model, SoilBoxes, "Second box");
+	//TODO: HBV itself should be agnostic to the number of soil boxes! Otherwise it is not reusable in other models.
+	auto UpperBox  = RequireIndex(Model, SoilBoxes, "Upper box");
+	auto LowerBox  = RequireIndex(Model, SoilBoxes, "Lower box");
 	
 	auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", LandscapeUnits);
 	auto Soils             = RegisterParameterGroup(Model, "Soils", SoilBoxes);
@@ -127,10 +139,12 @@ AddSoilMoistureRoutine(inca_model *Model)
 	
 	auto Reaches = RegisterIndexSetBranched(Model, "Reaches");
 	auto ReachParameters = RegisterParameterGroup(Model, "Reach parameters", Reaches);
+	auto CatchmentArea = RegisterParameterDouble(Model, ReachParameters, "Catchment area", Km2, 1.0);
+	
 	auto LandscapePercentages = RegisterParameterGroup(Model, "Landscape percentages", LandscapeUnits);
 	SetParentGroup(Model, LandscapePercentages, ReachParameters);
-	
 	auto Percent = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0);
+	
 	
 	//TODO: find good default (and min/max) values for these:
 	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Soils, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
@@ -159,7 +173,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	EQUATION(Model, EvapotranspirationFraction,
 		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(FieldCapacity);
 		double potentialetpfraction = Min(LAST_RESULT(SoilMoisture), smmax) / smmax;
-		if(CURRENT_INDEX(SoilBoxes) == FirstBox) return potentialetpfraction;
+		if(CURRENT_INDEX(SoilBoxes) == UpperBox) return potentialetpfraction;
 		return 0.0;
 	)
 	
@@ -173,8 +187,8 @@ AddSoilMoistureRoutine(inca_model *Model)
 	
 	EQUATION(Model, WaterInputToBox,
 		double fromPrecipitationOrSnow = RESULT(WaterToSoil);
-		double fromBoxAbove = RESULT(RunoffFromBox, FirstBox);
-		if(CURRENT_INDEX(SoilBoxes) == FirstBox) return fromPrecipitationOrSnow;
+		double fromBoxAbove = RESULT(RunoffFromBox, UpperBox);
+		if(CURRENT_INDEX(SoilBoxes) == UpperBox) return fromPrecipitationOrSnow;
 		return fromBoxAbove;
 	)
 	
@@ -192,7 +206,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	EQUATION(Model, GroundwaterRechargeFromLandscapeUnit,
 		RESULT(Dummy); //TODO: Without this the equation is misplaced in the run tree since it falls outside the current dependency system. We need to fix the dependency system!!
 		
-		return RESULT(RunoffFromBox, SecondBox) * PARAMETER(Percent) / 100.0;
+		return RESULT(RunoffFromBox, LowerBox) * PARAMETER(Percent) / 100.0;
 	)
 }
 
@@ -209,10 +223,10 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto Groundwater = RegisterParameterGroup(Model, "Groundwater", Reaches);
 	
 	//TODO: Find good values for parameters.
-	auto FirstUpperRecessionCoefficient  = RegisterParameterDouble(Model, Groundwater, "First recession coefficent for upper groundwater storage", PerDay, 0.1);
-	auto SecondUpperRecessionCoefficient = RegisterParameterDouble(Model, Groundwater, "First recession coefficent for upper groundwater storage", PerDay, 0.1);
-	auto LowerRecessionCoefficient       = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for lower groundwater storage", PerDay, 0.1);
-	auto UpperSecondRunoffThreshold   = RegisterParameterDouble(Model, Groundwater, "Threshold for second runoff in upper storage", Mm, 10.0);
+	auto FirstUpperRecessionCoefficient  = RegisterParameterDouble(Model, Groundwater, "First recession coefficent for upper groundwater storage (K1)", PerDay, 0.1);
+	auto SecondUpperRecessionCoefficient = RegisterParameterDouble(Model, Groundwater, "Second recession coefficent for upper groundwater storage (K0)", PerDay, 0.1);
+	auto LowerRecessionCoefficient       = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for lower groundwater storage (K2)", PerDay, 0.1);
+	auto UpperSecondRunoffThreshold   = RegisterParameterDouble(Model, Groundwater, "Threshold for second runoff in upper storage (UZL)", Mm, 10.0);
 	auto PercolationRate              = RegisterParameterDouble(Model, Groundwater, "Percolation rate from upper to lower groundwater storage", MmPerDay, 0.1);
 	
 	auto MaxBase = RegisterParameterUInt(Model, Groundwater, "Flow routing max base", Days, 5);
@@ -310,6 +324,8 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 static void
 AddPotentialEvapotranspirationModuleV1(inca_model *Model)
 {
+	//This one just loads potential evapotranspiration as an input.
+	
 	auto MmPerDay          = RegisterUnit(Model, "mm/day");
 	
 	auto PotentialEvapotranspirationIn = RegisterInput(Model, "Potential evapotranspiration");
@@ -361,6 +377,16 @@ AddPotentialEvapotranspirationModuleV3(inca_model *Model)
 		etp = etp < 0.0 ? 0.0 : etp;
 		return etp;
 	)
+}
+
+
+static void
+AddHBVModel(inca_model *Model)
+{
+	AddSnowRoutine(Model);
+	AddPotentialEvapotranspirationModuleV2(Model);
+	AddSoilMoistureRoutine(Model);
+	AddGroundwaterResponseRoutine(Model);
 }
 
 #define HBV_H

@@ -395,6 +395,8 @@ EndModelDefinition(inca_model *Model)
 		
 		if(IsValid(Spec.Solver))
 		{
+			//TODO: Instead of always pushing this at the end, could we try to insert it earlier if it is possible to place it next to another batch with the same index set dependencies?
+			
 			solver_spec &SolverSpec = Model->SolverSpecs[Spec.Solver.Handle];
 			//NOTE: There is only one stand-in equation for the whole solver in the EquationsToSort vector. We create a new batch containing all of the equations and put it at the end of the batch build list.
 			equation_batch_template &Batch = PushNewBatch(BatchBuild);

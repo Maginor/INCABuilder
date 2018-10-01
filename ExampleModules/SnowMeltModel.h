@@ -10,6 +10,7 @@ AddSnowMeltModel(inca_model *Model)
 	auto Dimensionless 				= RegisterUnit(Model);
 	auto DegreesCelsius 			= RegisterUnit(Model, "°C");
 	auto MmPerDay 					= RegisterUnit(Model, "mm/day");
+	auto Cm                         = RegisterUnit(Model, "cm");
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
 	auto Land = RegisterParameterGroup(Model, "Landscape units", LandscapeUnits);
@@ -22,6 +23,7 @@ AddSnowMeltModel(inca_model *Model)
 	auto RainfallCorrectionFactor = RegisterParameterDouble(Model, Land, "Rainfall correction factor",                        Dimensionless,            1.08);
 	auto TempAtWhichSnowMelts     = RegisterParameterDouble(Model, Land, "Temperature at which snow melts",                   DegreesCelsius,           0.5);
 	auto EvaporationFromSnow      = RegisterParameterDouble(Model, Land, "Evaporation from snow",                             MmPerDay,                 0.09);
+	auto WaterEquivalentFactor	  = RegisterParameterDouble(Model, Land, "Water equivalent factor", 					      Dimensionless, 			      0.3);
     
 	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation");
 	auto AirTemperature      = RegisterInput(Model, "Air temperature");
@@ -33,6 +35,7 @@ AddSnowMeltModel(inca_model *Model)
 	auto SnowPackWithMelt           = RegisterEquation(Model, "Snow pack with melt",           Mm);
 	auto SnowEvaporation            = RegisterEquation(Model, "Snow evaporation",              MmPerDay);
 	auto SnowAsWaterEquivalent      = RegisterEquation(Model, "Snow as water equivalent",      Mm);
+	auto SnowDepth                  = RegisterEquation(Model, "Snow depth",            Cm);
 	
 	EQUATION(Model, PrecipitationFallingAsSnow,
 		double Snow = 0.0;
@@ -80,6 +83,11 @@ AddSnowMeltModel(inca_model *Model)
 	EQUATION(Model, SnowAsWaterEquivalent,
 		return RESULT(SnowPackWithMelt)
             - RESULT(SnowEvaporation);
+	)
+
+	EQUATION(Model, SnowDepth,
+		return RESULT(SnowAsWaterEquivalent)
+					/ 10.0 / PARAMETER(WaterEquivalentFactor);
 	)
     
 }

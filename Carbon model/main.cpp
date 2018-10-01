@@ -1,29 +1,29 @@
 
 #define INCA_TIMESTEP_VERBOSITY 0
 //NOTE: the g++ compiler flag ffast-math will make it so that isnan does not work correctly, so don't use that flag.
-#define INCA_TEST_FOR_NAN 0
+#define INCA_TEST_FOR_NAN 1
 #define INCA_EQUATION_PROFILING 0
 
 #include "../inca.h"
 
 #include "HBV.h"
-
+#include "../ExampleModules/SoilTemperatureModel.h"
+#include "CarbonModel.h"
 
 #define READ_PARAMETER_FILE 0
 
 int main()
 {
-	inca_model *Model = BeginModelDefinition();
+	inca_model *Model = BeginModelDefinition("Carbon model", "0.0");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
 	auto System       = RegisterParameterGroup(Model, "System");
 	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
 	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
-	AddSnowRoutine(Model);
-	AddPotentialEvapotranspirationModuleV2(Model);
-	AddSoilMoistureRoutine(Model);
-	AddGroundwaterResponseRoutine(Model);
+	AddHBVModel(Model);
+	AddSoilTemperatureModel(Model);
+	AddCarbonInSoilModule(Model);
 	
 	ReadInputDependenciesFromFile(Model, "testinput.dat"); //NOTE: Unfortunately this has to happen here before EndModelDefinition
 	
@@ -33,7 +33,7 @@ int main()
 
 #if READ_PARAMETER_FILE == 0
 	SetIndexes(DataSet, "Landscape units", {"Forest", "Peatland"});
-	SetIndexes(DataSet, "Soil boxes", {"First box", "Second box"});
+	SetIndexes(DataSet, "Soil boxes", {"Upper box", "Lower box"});
 	SetBranchIndexes(DataSet, "Reaches", {{"R1", {}}, {"R2", {"R1"}}});
 	
 	SetParameterValue(DataSet, "%", {"R1", "Forest"}, 50.0);
@@ -54,8 +54,12 @@ int main()
 	
 	WriteParametersToFile(DataSet, "testparameters.dat");
 	
-	PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "First box"}, 100);
-	PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Second box"}, 100);
+	//PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Upper box"}, 100);
+	//PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Lower box"}, 100);
+	
+	PrintResultSeries(DataSet, "SOC in upper soil box", {"R1", "Forest"}, 100);
+	PrintResultSeries(DataSet, "DOC in upper soil box", {"R1", "Forest"}, 100);
+	PrintResultSeries(DataSet, "DIC in upper soil box", {"R1", "Forest"}, 100);
 	
 	//PrintResultSeries(DataSet, "Snowfall", {"First reach", "Forest"}, 100);
 	//PrintResultSeries(DataSet, "Snowfall", {"Second reach", "Forest"}, 100);

@@ -825,22 +825,27 @@ NaNTest(inca_model *Model, value_set_accessor *ValueSet, double ResultValue, equ
 		//TODO: We should be able to report the timestep here.
 		std::cout << "ERROR: Got a NaN or Inf value as the result of the equation " << GetName(Model, Equation) << " at timestep " << ValueSet->Timestep << std::endl;
 		equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
-		
+		std::cout << "Indexes:" << std::endl;
+		for(index_set IndexSet : Spec.IndexSetDependencies)
+		{
+			const char *IndexName = ValueSet->DataSet->IndexNames[IndexSet.Handle][ValueSet->CurrentIndexes[IndexSet.Handle]];
+			std::cout << GetName(Model, IndexSet) << ": " << IndexName << std::endl;
+		}
 		for(handle_t Par : Spec.ParameterDependencies )
 		{
 			//Ugh, it is cumbersome to print parameter values when we don't know the type a priori....
 			parameter_spec &ParSpec = Model->ParameterSpecs[Par];
 			if(ParSpec.Type == ParameterType_Double)
 			{
-				std::cout << "Current value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValDouble << std::endl;
+				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValDouble << std::endl;
 			}
 			else if(ParSpec.Type == ParameterType_UInt)
 			{
-				std::cout << "Current value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValUInt << std::endl;
+				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValUInt << std::endl;
 			}
 			else if(ParSpec.Type == ParameterType_Bool)
 			{
-				std::cout << "Current value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValBool << std::endl;
+				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValBool << std::endl;
 			}
 		}
 		for(equation Res : Spec.DirectResultDependencies )

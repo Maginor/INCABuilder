@@ -129,10 +129,6 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto LandscapeUnits    = RegisterIndexSet(Model, "Landscape units");
 	auto SoilBoxes         = RegisterIndexSet(Model, "Soil boxes");
 	
-	//TODO: HBV itself should be agnostic to the number of soil boxes! Otherwise it is not reusable in other models.
-	auto UpperBox  = RequireIndex(Model, SoilBoxes, "Upper box");
-	auto LowerBox  = RequireIndex(Model, SoilBoxes, "Lower box");
-	
 	auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", LandscapeUnits);
 	auto Soils             = RegisterParameterGroup(Model, "Soils", SoilBoxes);
 	SetParentGroup(Model, Soils, SoilsLand);
@@ -173,7 +169,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	EQUATION(Model, EvapotranspirationFraction,
 		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(FieldCapacity);
 		double potentialetpfraction = Min(LAST_RESULT(SoilMoisture), smmax) / smmax;
-		if(CURRENT_INDEX(SoilBoxes) == UpperBox) return potentialetpfraction;
+		if(CURRENT_INDEX(SoilBoxes) == 0) return potentialetpfraction;
 		return 0.0;
 	)
 	
@@ -187,8 +183,8 @@ AddSoilMoistureRoutine(inca_model *Model)
 	
 	EQUATION(Model, WaterInputToBox,
 		double fromPrecipitationOrSnow = RESULT(WaterToSoil);
-		double fromBoxAbove = RESULT(RunoffFromBox, UpperBox);
-		if(CURRENT_INDEX(SoilBoxes) == UpperBox) return fromPrecipitationOrSnow;
+		double fromBoxAbove = RESULT(RunoffFromBox, PREVIOUS_INDEX(SoilBoxes));
+		if(CURRENT_INDEX(SoilBoxes) == 0) return fromPrecipitationOrSnow;
 		return fromBoxAbove;
 	)
 	
@@ -206,18 +202,47 @@ AddSoilMoistureRoutine(inca_model *Model)
 	EQUATION(Model, GroundwaterRechargeFromLandscapeUnit,
 		RESULT(Dummy); //TODO: Without this the equation is misplaced in the run tree since it falls outside the current dependency system. We need to fix the dependency system!!
 		
-		return RESULT(RunoffFromBox, LowerBox) * PARAMETER(Percent) / 100.0;
+		return RESULT(RunoffFromBox, FINAL_INDEX(SoilBoxes)) * PARAMETER(Percent) / 100.0;
 	)
 }
 
+inline double
+RoutingCoefficient(u64 M, u64 I)
+{
+	double a;
+	u64 M2;
+	if((M % 2) == 0)
+	{
+		double Md = (double)M * 0.5;
+		a = 1.0 / (Md*(Md + 1.0));
+		M2 = M / 2;
+	}
+	else
+	{
+		double Md = floor((double)M * 0.5);
+		a = 2.0 / ((2.0 + 2.0*Md) * (Md + 1.0) + 1.0);
+		M2 = M / 2 + 1;
+	}
+	double coeff;
+	if(I <= M2)
+	{
+		coeff = a * (double)I;
+	}
+	else
+	{
+		coeff = a * (double)(2*M2 - I);
+	}
+	return coeff;
+}
 
-void
+static void
 AddGroundwaterResponseRoutine(inca_model *Model)
 {
 	auto Mm = RegisterUnit(Model, "mm");
 	auto Days = RegisterUnit(Model, "day");
 	auto PerDay = RegisterUnit(Model, "1/day");
 	auto MmPerDay = RegisterUnit(Model, "mm/day");
+	auto M3PerDay = RegisterUnit(Model, "m3/day");
 	
 	auto Reaches = RegisterIndexSetBranched(Model, "Reaches");
 	auto Groundwater = RegisterParameterGroup(Model, "Groundwater", Reaches);
@@ -229,7 +254,11 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto UpperSecondRunoffThreshold   = RegisterParameterDouble(Model, Groundwater, "Threshold for second runoff in upper storage (UZL)", Mm, 10.0);
 	auto PercolationRate              = RegisterParameterDouble(Model, Groundwater, "Percolation rate from upper to lower groundwater storage", MmPerDay, 0.1);
 	
+	auto InitialUpperStorage = RegisterParameterDouble(Model, Groundwater, "Initial upper groundwater storage", Mm, 50.0);
+	auto InitialLowerStorage = RegisterParameterDouble(Model, Groundwater, "Initial lower groundwater storage", Mm, 50.0);
+	
 	auto MaxBase = RegisterParameterUInt(Model, Groundwater, "Flow routing max base", Days, 5);
+	auto CatchmentArea = GetParameterDoubleHandle(Model, "Catchment area");
 	
 	auto TotalGroundwaterRecharge = GetEquationHandle(Model, "Groundwater recharge"); //NOTE: From the soil moisture routine.
 	
@@ -243,12 +272,12 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	SetSolver(Model, Percolation, GroundwaterSolver);
 	auto UpperStorage = RegisterEquationODE(Model, "Upper groundwater storage", Mm);
 	SetSolver(Model, UpperStorage, GroundwaterSolver);
-	//TODO: initial value
+	SetInitialValue(Model, UpperStorage, InitialUpperStorage);
 	auto LowerStorage = RegisterEquationODE(Model, "Lower groundwater storage", Mm);
 	SetSolver(Model, LowerStorage, GroundwaterSolver);
-	//TODO: initial value
+	SetInitialValue(Model, LowerStorage, InitialLowerStorage);
 	auto GroundwaterDischargeBeforeRouting = RegisterEquation(Model, "Groundwater discharge to reach before routing", MmPerDay);
-	auto GroundwaterDischarge = RegisterEquation(Model, "Groundwater discharge to reach", MmPerDay);
+	auto GroundwaterDischarge = RegisterEquation(Model, "Groundwater discharge to reach", M3PerDay);
 	
 	EQUATION(Model, UpperRunoff,
 		double K1 = PARAMETER(FirstUpperRecessionCoefficient);
@@ -288,30 +317,8 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 
 		for(u64 I = 1; I <= M; ++I)
 		{
-			double a;
-			u64 M2;
-			if((M % 2) == 0)
-			{
-				double Md = (double)M * 0.5;
-				a = 1.0 / (Md*(Md + 1.0));
-				M2 = M / 2;
-			}
-			else
-			{
-				double Md = floor((double)M * 0.5);
-				a = 2.0 / ((2.0 + 2.0*Md) * (Md + 1.0) + 1.0);
-				M2 = M / 2 + 1;
-			}
-			double coeff;
-			if(I <= M2)
-			{
-				coeff = a * (double)I;
-			}
-			else
-			{
-				coeff = a * (double)(2*M2 - I);
-			}
-			sum += coeff * EARLIER_RESULT(GroundwaterDischargeBeforeRouting, I-1);
+			double flowtoreach = (EARLIER_RESULT(GroundwaterDischargeBeforeRouting, I-1) / 1000.0) * (PARAMETER(CatchmentArea) * 1e6);
+			sum += RoutingCoefficient(M, I) * flowtoreach;
 		}
 			
 		return sum;
@@ -377,16 +384,6 @@ AddPotentialEvapotranspirationModuleV3(inca_model *Model)
 		etp = etp < 0.0 ? 0.0 : etp;
 		return etp;
 	)
-}
-
-
-static void
-AddHBVModel(inca_model *Model)
-{
-	AddSnowRoutine(Model);
-	AddPotentialEvapotranspirationModuleV2(Model);
-	AddSoilMoistureRoutine(Model);
-	AddGroundwaterResponseRoutine(Model);
 }
 
 #define HBV_H

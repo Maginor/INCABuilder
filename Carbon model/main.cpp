@@ -12,6 +12,22 @@
 
 #define READ_PARAMETER_FILE 0
 
+static void
+AddHBVModel(inca_model *Model)
+{
+	AddSnowRoutine(Model);
+	AddPotentialEvapotranspirationModuleV2(Model);
+	AddSoilMoistureRoutine(Model);
+	AddGroundwaterResponseRoutine(Model);
+}
+
+static void
+AddCarbonModel(inca_model *Model)
+{
+	AddCarbonInSoilModule(Model);
+	AddCarbonInGroundwaterModule(Model);
+}
+
 int main()
 {
 	inca_model *Model = BeginModelDefinition("Carbon model", "0.0");
@@ -23,7 +39,7 @@ int main()
 	
 	AddHBVModel(Model);
 	AddSoilTemperatureModel(Model);
-	AddCarbonInSoilModule(Model);
+	AddCarbonModel(Model);
 	
 	ReadInputDependenciesFromFile(Model, "testinput.dat"); //NOTE: Unfortunately this has to happen here before EndModelDefinition
 	
@@ -57,9 +73,12 @@ int main()
 	//PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Upper box"}, 100);
 	//PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Lower box"}, 100);
 	
-	PrintResultSeries(DataSet, "SOC in upper soil box", {"R1", "Forest"}, 100);
-	PrintResultSeries(DataSet, "DOC in upper soil box", {"R1", "Forest"}, 100);
-	PrintResultSeries(DataSet, "DIC in upper soil box", {"R1", "Forest"}, 100);
+	//PrintResultSeries(DataSet, "SOC in upper soil box", {"R1", "Forest"}, 100);
+	//PrintResultSeries(DataSet, "DOC in upper soil box", {"R1", "Forest"}, 100);
+	//PrintResultSeries(DataSet, "DIC in upper soil box", {"R1", "Forest"}, 100);
+	
+	PrintResultSeries(DataSet, "DOC from groundwater to reach", {"R1"}, 100);
+	PrintResultSeries(DataSet, "DIC from groundwater to reach", {"R1"}, 100);
 	
 	//PrintResultSeries(DataSet, "Snowfall", {"First reach", "Forest"}, 100);
 	//PrintResultSeries(DataSet, "Snowfall", {"Second reach", "Forest"}, 100);

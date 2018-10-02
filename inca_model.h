@@ -57,6 +57,7 @@ struct parameter_spec
 	parameter_value Default;
 	
 	unit Unit;
+	const char *Description;
 	
 	parameter_group Group;
 	std::vector<index_set> IndexSetDependencies;
@@ -671,6 +672,7 @@ RegisterParameterDouble(inca_model *Model, parameter_group Group, const char *Na
 	Spec.Max.ValDouble = Max;
 	Spec.Group = Group;
 	Spec.Unit = Unit;
+	Spec.Description = Description;
 	
 	Model->ParameterGroupSpecs[Group.Handle].Parameters.push_back(Parameter.Handle);
 
@@ -692,6 +694,7 @@ RegisterParameterUInt(inca_model *Model, parameter_group Group, const char *Name
 	Spec.Max.ValUInt = Max;
 	Spec.Group = Group;
 	Spec.Unit = Unit;
+	Spec.Description = Description;
 	
 	Model->ParameterGroupSpecs[Group.Handle].Parameters.push_back(Parameter.Handle);
 	
@@ -712,6 +715,7 @@ RegisterParameterBool(inca_model *Model, parameter_group Group, const char *Name
 	Spec.Min.ValBool = false;
 	Spec.Max.ValBool = true;
 	Spec.Group = Group;
+	Spec.Description = Description;
 	
 	Model->ParameterGroupSpecs[Group.Handle].Parameters.push_back(Parameter.Handle);
 	
@@ -732,6 +736,7 @@ RegisterParameterDate(inca_model *Model, parameter_group Group, const char *Name
 	Spec.Min.ValTime = ParseSecondsSinceEpoch(Min);
 	Spec.Max.ValTime = ParseSecondsSinceEpoch(Max);
 	Spec.Group = Group;
+	Spec.Description = Description;
 	
 	Model->ParameterGroupSpecs[Group.Handle].Parameters.push_back(Parameter.Handle);
 

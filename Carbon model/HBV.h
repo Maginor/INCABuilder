@@ -129,9 +129,10 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto LandscapeUnits    = RegisterIndexSet(Model, "Landscape units");
 	auto SoilBoxes         = RegisterIndexSet(Model, "Soil boxes");
 	
-	auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", LandscapeUnits);
+	auto Land              = GetParameterGroupHandle(Model, "Landscape units");
+	auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", SoilBoxes);
+	SetParentGroup(Model, SoilsLand, Land);	
 	auto Soils             = RegisterParameterGroup(Model, "Soils", SoilBoxes);
-	SetParentGroup(Model, Soils, SoilsLand);
 	
 	auto Reaches = RegisterIndexSetBranched(Model, "Reaches");
 	auto ReachParameters = RegisterParameterGroup(Model, "Reach parameters", Reaches);
@@ -139,14 +140,14 @@ AddSoilMoistureRoutine(inca_model *Model)
 	
 	auto LandscapePercentages = RegisterParameterGroup(Model, "Landscape percentages", LandscapeUnits);
 	SetParentGroup(Model, LandscapePercentages, ReachParameters);
-	auto Percent = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0);
+	auto Percent = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0, "How much of the catchment area that is covered by this type of landscape.");
 	
 	
 	//TODO: find good default (and min/max) values for these:
 	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Soils, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
-	auto FieldCapacity = RegisterParameterDouble(Model, Soils, "Field capacity", Mm, 150.0, 100.0, 300.0, "Maximum soil moisture storage");
-	auto RelativeRunoffExponent = RegisterParameterDouble(Model, Soils, "Relative runoff exponent", Dimensionless, 2.0, 1.0, 10.0, "Power parameter that determines the relative contribution to runoff");
-	auto InitialSoilMoisture = RegisterParameterDouble(Model, Soils, "Initial soil moisture", Mm, 70.0); //TODO: Have an equation for this instead?
+	auto FieldCapacity = RegisterParameterDouble(Model, SoilsLand, "Field capacity", Mm, 150.0, 100.0, 300.0, "Maximum soil moisture storage");
+	auto RelativeRunoffExponent = RegisterParameterDouble(Model, SoilsLand, "Relative runoff exponent", Dimensionless, 2.0, 1.0, 10.0, "Power parameter that determines the relative contribution to runoff");
+	auto InitialSoilMoisture = RegisterParameterDouble(Model, SoilsLand, "Initial soil moisture", Mm, 70.0); //TODO: Have an equation for this instead?
 	
 	auto AirTemperature = RegisterInput(Model, "Air temperature");
 	
@@ -209,6 +210,8 @@ AddSoilMoistureRoutine(inca_model *Model)
 inline double
 RoutingCoefficient(u64 M, u64 I)
 {
+	//TODO: Double check that this calculation is correct
+	
 	double a;
 	u64 M2;
 	if((M % 2) == 0)
@@ -240,24 +243,25 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 {
 	auto Mm = RegisterUnit(Model, "mm");
 	auto Days = RegisterUnit(Model, "day");
-	auto PerDay = RegisterUnit(Model, "1/day");
+	auto PerDay = RegisterUnit(Model, "/day");
 	auto MmPerDay = RegisterUnit(Model, "mm/day");
 	auto M3PerDay = RegisterUnit(Model, "m3/day");
 	
 	auto Reaches = RegisterIndexSetBranched(Model, "Reaches");
 	auto Groundwater = RegisterParameterGroup(Model, "Groundwater", Reaches);
+	auto System = GetParameterGroupHandle(Model, "System");
 	
 	//TODO: Find good values for parameters.
-	auto FirstUpperRecessionCoefficient  = RegisterParameterDouble(Model, Groundwater, "First recession coefficent for upper groundwater storage (K1)", PerDay, 0.1);
-	auto SecondUpperRecessionCoefficient = RegisterParameterDouble(Model, Groundwater, "Second recession coefficent for upper groundwater storage (K0)", PerDay, 0.1);
+	auto FirstUpperRecessionCoefficient  = RegisterParameterDouble(Model, Groundwater, "Recession coefficent for upper groundwater storage (K1)", PerDay, 0.1);
+	auto SecondUpperRecessionCoefficient = RegisterParameterDouble(Model, Groundwater, "Recession coefficent for upper groundwater storage (K0)", PerDay, 0.1);
 	auto LowerRecessionCoefficient       = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for lower groundwater storage (K2)", PerDay, 0.1);
 	auto UpperSecondRunoffThreshold   = RegisterParameterDouble(Model, Groundwater, "Threshold for second runoff in upper storage (UZL)", Mm, 10.0);
 	auto PercolationRate              = RegisterParameterDouble(Model, Groundwater, "Percolation rate from upper to lower groundwater storage", MmPerDay, 0.1);
 	
-	auto InitialUpperStorage = RegisterParameterDouble(Model, Groundwater, "Initial upper groundwater storage", Mm, 50.0);
-	auto InitialLowerStorage = RegisterParameterDouble(Model, Groundwater, "Initial lower groundwater storage", Mm, 50.0);
+	auto InitialUpperStorage = RegisterParameterDouble(Model, Groundwater, "Initial upper groundwater storage", Mm, 5.0);
+	auto InitialLowerStorage = RegisterParameterDouble(Model, Groundwater, "Initial lower groundwater storage", Mm, 5.0);
 	
-	auto MaxBase = RegisterParameterUInt(Model, Groundwater, "Flow routing max base", Days, 5);
+	auto MaxBase = RegisterParameterUInt(Model, System, "Flow routing max base", Days, 5, 1, 10, "Width of the convolution filter that smooths out the flow from the groundwater to the river over time");
 	auto CatchmentArea = GetParameterDoubleHandle(Model, "Catchment area");
 	
 	auto TotalGroundwaterRecharge = GetEquationHandle(Model, "Groundwater recharge"); //NOTE: From the soil moisture routine.
@@ -276,7 +280,7 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto LowerStorage = RegisterEquationODE(Model, "Lower groundwater storage", Mm);
 	SetSolver(Model, LowerStorage, GroundwaterSolver);
 	SetInitialValue(Model, LowerStorage, InitialLowerStorage);
-	auto GroundwaterDischargeBeforeRouting = RegisterEquation(Model, "Groundwater discharge to reach before routing", MmPerDay);
+	auto GroundwaterDischargeBeforeRouting = RegisterEquation(Model, "Groundwater discharge to reach before routing", M3PerDay);
 	auto GroundwaterDischarge = RegisterEquation(Model, "Groundwater discharge to reach", M3PerDay);
 	
 	EQUATION(Model, UpperRunoff,
@@ -305,10 +309,10 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	)
 	
 	EQUATION(Model, GroundwaterDischargeBeforeRouting,
-		return RESULT(UpperRunoff) + RESULT(LowerRunoff);
+		//NOTE: Convert mm/day to m3/day
+		return ((RESULT(UpperRunoff) + RESULT(LowerRunoff)) / 1000.0) * (PARAMETER(CatchmentArea) * 1e6);
 	)
 	
-	//TODO: We have to test that these coefficients are correct:
 	EQUATION(Model, GroundwaterDischarge,
 		RESULT(GroundwaterDischargeBeforeRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
 	
@@ -317,14 +321,11 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 
 		for(u64 I = 1; I <= M; ++I)
 		{
-			double flowtoreach = (EARLIER_RESULT(GroundwaterDischargeBeforeRouting, I-1) / 1000.0) * (PARAMETER(CatchmentArea) * 1e6);
-			sum += RoutingCoefficient(M, I) * flowtoreach;
+			sum += RoutingCoefficient(M, I) * EARLIER_RESULT(GroundwaterDischargeBeforeRouting, I-1);
 		}
 			
 		return sum;
 	)
-	
-	//TODO: Convert millimeter/day to flow for the reach routine.
 }
 
 

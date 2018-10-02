@@ -126,7 +126,20 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 		for(handle_t ParameterHandle: DataSet->ParameterStorageStructure.Units[UnitIndex].Handles)
 		{
 			parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
-			fprintf(file, "\"%s\" :\n", Spec.Name);
+			fprintf(file, "\"%s\" :", Spec.Name);
+			unit ParUnit = Spec.Unit;
+			bool PrintedHash = false;
+			if(IsValid(ParUnit))
+			{
+				fprintf(file, "     #(%s)", GetName(Model, ParUnit));
+				PrintedHash = true;
+			}
+			if(Spec.Description)
+			{
+				if(!PrintedHash) fprintf(file, " #");
+				fprintf(file, " %s", Spec.Description);
+			}
+			fprintf(file, "\n");
 			
 			size_t IndexSetCount = IndexSets.size();
 			index_t *CurrentIndexes = AllocClearedArray(index_t, IndexSetCount);

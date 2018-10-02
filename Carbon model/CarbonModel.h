@@ -26,15 +26,15 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto Land   = GetParameterGroupHandle(Model, "Landscape units");
 	auto InitialSOCInUpperSoil = RegisterParameterDouble(Model, Land, "Initial solid organic carbon in upper soil box", KgPerM2, 2.0);
 	auto InitialSOCInLowerSoil = RegisterParameterDouble(Model, Land, "Initial solid organic carbon in lower soil box", KgPerM2, 0.5);
-	auto LitterFall = RegisterParameterDouble(Model, Land, "Litter fall", KgPerM2, 2.0);
+	auto LitterFall = RegisterParameterDouble(Model, Land, "Litter fall", KgPerM2, 2.0, 0.0, 10.0, "Litter fall from the canopy to the upper soil layer");
 	
-	auto SoilsLand = GetParameterGroupHandle(Model, "Soils land");
-	auto SorptionRate = RegisterParameterDouble(Model, SoilsLand, "Sorption rate", PerDay, 0.1);
-	auto DesorptionRate = RegisterParameterDouble(Model, SoilsLand, "Desorption rate", PerDay, 0.01);
-	auto BaseMineralisationRate = RegisterParameterDouble(Model, SoilsLand, "Base mineralisation rate", PerDay, 0.1);
+	auto Soils        = GetParameterGroupHandle(Model, "Soils");
+	auto SorptionRate = RegisterParameterDouble(Model, Soils, "Sorption rate", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
+	auto DesorptionRate = RegisterParameterDouble(Model, Soils, "Desorption rate", PerDay, 0.01, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
+	auto BaseMineralisationRate = RegisterParameterDouble(Model, Soils, "Base mineralisation rate", PerDay, 0.1);
 	
 	auto System = GetParameterGroupHandle(Model, "System");
-	auto DegasVelocity = RegisterParameterDouble(Model, System, "Degas velocity", MetresPerDay, 15.0);
+	auto DegasVelocity = RegisterParameterDouble(Model, System, "Degas velocity", MetresPerDay, 15.0, 0.0, 100.0, "DIC mass transfer velocity from upper soil layer/river to the atmosphere");
 	auto DICConcentrationAtSaturation = RegisterParameterDouble(Model, System, "DIC concentration at saturation", KgPerM3, 0.018);
 	auto MineralisationResponseToTemperature = RegisterParameterDouble(Model, System, "Mineralisation response to soil temperature", Dimensionless, 1.3);
 	
@@ -57,7 +57,7 @@ AddCarbonInSoilModule(inca_model *Model)
 	
 	auto SOCInUpperSoilBox = RegisterEquationODE(Model, "SOC in upper soil box", Kg);
 	SetSolver(Model, SOCInUpperSoilBox, SoilSolver);
-	SetInitialValue(Model, SOCInUpperSoilBox, InitialSOCInUpperSoil);
+	SetInitialValue(Model, SOCInUpperSoilBox, InitialSOCInUpperSoil); //TODO: Has to be converted from kg/m2 to kg
 	auto DOCInUpperSoilBox = RegisterEquationODE(Model, "DOC in upper soil box", Kg);
 	SetSolver(Model, DOCInUpperSoilBox, SoilSolver);
 	auto DICInUpperSoilBox = RegisterEquationODE(Model, "DIC in upper soil box", Kg);
@@ -65,7 +65,7 @@ AddCarbonInSoilModule(inca_model *Model)
 	
 	auto SOCInLowerSoilBox = RegisterEquationODE(Model, "SOC in lower soil box", Kg);
 	SetSolver(Model, SOCInLowerSoilBox, SoilSolver);
-	SetInitialValue(Model, SOCInLowerSoilBox, InitialSOCInLowerSoil);
+	SetInitialValue(Model, SOCInLowerSoilBox, InitialSOCInLowerSoil); //TODO: Has to be converted from kg/m2 to kg
 	auto DOCInLowerSoilBox = RegisterEquationODE(Model, "DOC in lower soil box", Kg);
 	SetSolver(Model, DOCInLowerSoilBox, SoilSolver);
 	auto DICInLowerSoilBox = RegisterEquationODE(Model, "DIC in lower soil box", Kg);
@@ -90,7 +90,6 @@ AddCarbonInSoilModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DOCInUpperSoilBox,
-		
 		return 
 			PARAMETER(DesorptionRate, UpperBox) * RESULT(SOCInUpperSoilBox)           //Desorption
 		  - PARAMETER(SorptionRate, UpperBox) * RESULT(DOCInUpperSoilBox)             //Sorption

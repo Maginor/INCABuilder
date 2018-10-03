@@ -152,7 +152,7 @@ false false
 20 20
 
 "Minimum water temperature" :     #(°C)
-20 20
+0 0
 
 "Water temperature lag factor" :     #(dimensionless)
 3 3

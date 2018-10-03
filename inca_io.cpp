@@ -501,7 +501,7 @@ ReadToken(token_stream &Stream, io_file_token &Token)
 			Token.Type = TokenType_Bool;
 			Token.BoolValue = false;
 		}
-		else if(strcmp(TokenBuffer, "NaN") == 0)
+		else if(strcmp(TokenBuffer, "NaN") == 0 || strcmp(TokenBuffer, "nan") == 0 || strcmp(TokenBuffer, "Nan") == 0)
 		{
 			Token.Type = TokenType_Numeric;
 			Token.IsNAN = true;

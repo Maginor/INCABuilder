@@ -45,9 +45,6 @@ parameters:
 "Specific heat capacity due to freeze/thaw" :
 6.6 6.6 6.6 6.6
 
-"Water equivalent factor" :
-0.3 0.3 0.3 0.3
-
 "Snow depth / soil temperature factor" :
 -0.02 -0.02 -0.02 -0.02
 

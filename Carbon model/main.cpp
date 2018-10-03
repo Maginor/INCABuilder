@@ -8,9 +8,10 @@
 
 #include "HBV.h"
 #include "../ExampleModules/SoilTemperatureModel.h"
+#include "../ExampleModules/WaterTemperatureModel.h"
 #include "CarbonModel.h"
 
-#define READ_PARAMETER_FILE 0
+#define READ_PARAMETER_FILE 1
 
 static void
 AddHBVModel(inca_model *Model)
@@ -19,6 +20,8 @@ AddHBVModel(inca_model *Model)
 	AddPotentialEvapotranspirationModuleV2(Model);
 	AddSoilMoistureRoutine(Model);
 	AddGroundwaterResponseRoutine(Model);
+	AddWaterRoutingRoutine(Model);
+	AddReachFlowRoutine(Model);
 }
 
 static void
@@ -26,6 +29,8 @@ AddCarbonModel(inca_model *Model)
 {
 	AddCarbonInSoilModule(Model);
 	AddCarbonInGroundwaterModule(Model);
+	AddCarbonRoutingRoutine(Model);
+	AddCarbonInReachModule(Model);
 }
 
 int main()
@@ -39,6 +44,7 @@ int main()
 	
 	AddHBVModel(Model);
 	AddSoilTemperatureModel(Model);
+	AddWaterTemperatureModel(Model);
 	AddCarbonModel(Model);
 	
 	ReadInputDependenciesFromFile(Model, "testinput.dat"); //NOTE: Unfortunately this has to happen here before EndModelDefinition
@@ -68,7 +74,12 @@ int main()
 
 	RunModel(DataSet);
 	
-	WriteParametersToFile(DataSet, "testparameters.dat");
+	WriteParametersToFile(DataSet, "newparams.dat");
+	
+	//PrintResultSeries(DataSet, "DOC to routing", {"R2"}, 100);
+	
+	PrintResultSeries(DataSet, "DOC output from reach", {"R2"}, 100);
+	PrintResultSeries(DataSet, "DIC output from reach", {"R2"}, 100);
 	
 	//PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Upper box"}, 100);
 	//PrintResultSeries(DataSet, "Evapotranspiration", {"R1", "Forest", "Lower box"}, 100);
@@ -77,8 +88,16 @@ int main()
 	//PrintResultSeries(DataSet, "DOC in upper soil box", {"R1", "Forest"}, 100);
 	//PrintResultSeries(DataSet, "DIC in upper soil box", {"R1", "Forest"}, 100);
 	
-	PrintResultSeries(DataSet, "DOC from groundwater to reach", {"R1"}, 100);
-	PrintResultSeries(DataSet, "DIC from groundwater to reach", {"R1"}, 100);
+	//PrintResultSeries(DataSet, "Flow to routing routine", {"R1"}, 100);
+	//PrintResultSeries(DataSet, "Flow from routing routine to reach", {"R1"}, 100);
+	//PrintResultSeries(DataSet, "Reach flow input", {"R1"}, 100);
+	
+	//PrintResultSeries(DataSet, "Reach flow", {"R1"}, 100);
+	//PrintResultSeries(DataSet, "Reach volume", {"R1"}, 100);
+	//PrintResultSeries(DataSet, "Reach flow", {"R2"}, 100);
+	
+	//PrintResultSeries(DataSet, "DOC from groundwater to reach", {"R1"}, 100);
+	//PrintResultSeries(DataSet, "DIC from groundwater to reach", {"R1"}, 100);
 	
 	//PrintResultSeries(DataSet, "Snowfall", {"First reach", "Forest"}, 100);
 	//PrintResultSeries(DataSet, "Snowfall", {"Second reach", "Forest"}, 100);

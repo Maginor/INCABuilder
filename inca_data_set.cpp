@@ -803,6 +803,14 @@ PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<co
 	
 	std::cout << "Result series for " << Name << " ";
 	for(const char *Index : Indexes) std::cout << "[" << Index << "]";
+	
+	equation Equation = GetEquationHandle(DataSet->Model, Name);
+	equation_spec &Spec = DataSet->Model->EquationSpecs[Equation.Handle];
+	if(IsValid(Spec.Unit))
+	{
+		std::cout << " (" << GetName(DataSet->Model, Spec.Unit) << ")";
+	}
+	
 	std::cout << ":" << std::endl;
 	for(size_t Idx = 0; Idx < WriteSize; ++Idx)
 	{

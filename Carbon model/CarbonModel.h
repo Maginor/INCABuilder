@@ -24,19 +24,19 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto LowerBox  = RequireIndex(Model, SoilBoxes, "Lower box");
 	
 	auto Land   = GetParameterGroupHandle(Model, "Landscape units");
-	auto InitialSOCInUpperSoil = RegisterParameterDouble(Model, Land, "Initial solid organic carbon in upper soil box", KgPerM2, 2.0);
-	auto InitialSOCInLowerSoil = RegisterParameterDouble(Model, Land, "Initial solid organic carbon in lower soil box", KgPerM2, 0.5);
-	auto LitterFall = RegisterParameterDouble(Model, Land, "Litter fall", KgPerM2, 2.0, 0.0, 10.0, "Litter fall from the canopy to the upper soil layer");
+	auto SoilsLand  = GetParameterGroupHandle(Model, "Soils land");
+	auto InitialSOCInSoilPerArea = RegisterParameterDouble(Model, SoilsLand, "Initial SOC in soil box", KgPerM2, 2.0);
+	auto LitterFall = RegisterParameterDouble(Model, Land, "Litter fall", KgPerM2PerDay, 0.02, 0.0, 10.0, "Litter fall from the canopy to the upper soil layer");
 	
 	auto Soils        = GetParameterGroupHandle(Model, "Soils");
 	auto SorptionRate = RegisterParameterDouble(Model, Soils, "Sorption rate", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
-	auto DesorptionRate = RegisterParameterDouble(Model, Soils, "Desorption rate", PerDay, 0.01, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
-	auto BaseMineralisationRate = RegisterParameterDouble(Model, Soils, "Base mineralisation rate", PerDay, 0.1);
+	auto DesorptionRate = RegisterParameterDouble(Model, Soils, "Desorption rate", PerDay, 1e-4, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
+	auto BaseMineralisationRate = RegisterParameterDouble(Model, Soils, "Base mineralisation rate in soil", PerDay, 0.1);
 	
 	auto System = GetParameterGroupHandle(Model, "System");
 	auto DegasVelocity = RegisterParameterDouble(Model, System, "Degas velocity", MetresPerDay, 15.0, 0.0, 100.0, "DIC mass transfer velocity from upper soil layer/river to the atmosphere");
-	auto DICConcentrationAtSaturation = RegisterParameterDouble(Model, System, "DIC concentration at saturation", KgPerM3, 0.018);
-	auto MineralisationResponseToTemperature = RegisterParameterDouble(Model, System, "Mineralisation response to soil temperature", Dimensionless, 1.3);
+	auto DICConcentrationAtSaturation = RegisterParameterDouble(Model, System, "DIC concentration at saturation", KgPerM3, 0.018, 0.0, 0.1, "If DIC concentration is higher than this degas sets in");
+	auto MineralisationResponseToTemperature = RegisterParameterDouble(Model, System, "Mineralisation response to temperature", Dimensionless, 1.3);
 	
 	
 	auto SoilSolver = RegisterSolver(Model, "Soil solver", 0.1, IncaDascru);
@@ -45,15 +45,20 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto Percent       = GetParameterDoubleHandle(Model, "%");
 	auto FieldCapacity = GetParameterDoubleHandle(Model, "Field capacity");
 	
-	//auto SolarRadiation = RegisterInput(Model, "Solar radiation");
+	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
 	
 	auto SoilTemperature = GetEquationHandle(Model, "Soil temperature");
 	auto RunoffFromBox   = GetEquationHandle(Model, "Runoff from box");
+	auto PercolationFromBox = GetEquationHandle(Model, "Percolation from box");
+	auto SoilMoisture2   = GetEquationHandle(Model, "Soil moisture (partial calculation) 2");
 	auto SoilMoisture    = GetEquationHandle(Model, "Soil moisture");
 	auto WaterInputToBox = GetEquationHandle(Model, "Water input to box");
 	
 	auto MineralisationRateInUpperSoilBox = RegisterEquation(Model, "Mineralisation rate in upper soil box", PerDay);
 	auto MineralisationRateInLowerSoilBox = RegisterEquation(Model, "Mineralisation rate in lower soil box", PerDay);
+	
+	auto InitialSOCInUpperSoil = RegisterEquationInitialValue(Model, "Initial SOC in upper soil box", Kg);
+	auto InitialSOCInLowerSoil = RegisterEquationInitialValue(Model, "Initial SOC in lower soil box", Kg);
 	
 	auto SOCInUpperSoilBox = RegisterEquationODE(Model, "SOC in upper soil box", Kg);
 	SetSolver(Model, SOCInUpperSoilBox, SoilSolver);
@@ -74,12 +79,25 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto DOCFromLandscapeUnitToGroundwater = RegisterEquation(Model, "DOC from landscape unit to groundwater", KgPerDay);
 	auto DICFromLandscapeUnitToGroundwater = RegisterEquation(Model, "DIC from landscape unit to groundwater", KgPerDay);
 	
+	auto DOCFromRunoffInLandscapeUnit = RegisterEquation(Model, "DOC from runoff in landscape unit", KgPerDay);
+	auto DICFromRunoffInLandscapeUnit = RegisterEquation(Model, "DIC from runoff in landscape unit", KgPerDay);
+	
+	auto DOCFromRunoffToRouting = RegisterEquationCumulative(Model, "DOC from runoff to routing", DOCFromRunoffInLandscapeUnit, LandscapeUnits);
+	auto DICFromRunoffToRouting = RegisterEquationCumulative(Model, "DIC from runoff to routing", DICFromRunoffInLandscapeUnit, LandscapeUnits);
+	
+	EQUATION(Model, InitialSOCInUpperSoil,
+		return PARAMETER(InitialSOCInSoilPerArea, UpperBox) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
+	)
+	
+	EQUATION(Model, InitialSOCInLowerSoil,
+		return PARAMETER(InitialSOCInSoilPerArea, LowerBox) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
+	)
 	
 	EQUATION(Model, MineralisationRateInUpperSoilBox,
 		return 
 			PARAMETER(BaseMineralisationRate, UpperBox) 
 		  * pow(PARAMETER(MineralisationResponseToTemperature), RESULT(SoilTemperature))
-		  * (RESULT(SoilMoisture, UpperBox) / PARAMETER(FieldCapacity, UpperBox));
+		  * (RESULT(SoilMoisture, UpperBox) / PARAMETER(FieldCapacity, UpperBox));       //TODO: We should think about whether we want to use LAST_RESULT(SoilMoisture) here.
 	)
 	
 	EQUATION(Model, SOCInUpperSoilBox,
@@ -94,18 +112,18 @@ AddCarbonInSoilModule(inca_model *Model)
 			PARAMETER(DesorptionRate, UpperBox) * RESULT(SOCInUpperSoilBox)           //Desorption
 		  - PARAMETER(SorptionRate, UpperBox) * RESULT(DOCInUpperSoilBox)             //Sorption
 		  - RESULT(DOCInUpperSoilBox) * RESULT(MineralisationRateInUpperSoilBox);                          //Mineralisation  
-		  - RESULT(DOCInUpperSoilBox) * RESULT(RunoffFromBox, UpperBox) / RESULT(SoilMoisture, UpperBox);  // Outflow.
+		  - RESULT(DOCInUpperSoilBox) * RESULT(PercolationFromBox, UpperBox) / RESULT(SoilMoisture2, UpperBox);  // Outflow.
 	)
 	
 	EQUATION(Model, DICInUpperSoilBox,
-		double watervolumeinbox = (RESULT(SoilMoisture, UpperBox) / 1000.0) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
+		double watervolumeinbox = (RESULT(SoilMoisture, UpperBox) / 1000.0) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0); //TODO: We should think about whether we want to use LAST_RESULT(SoilMoisture) here.
 		double dicconcentration = RESULT(DICInUpperSoilBox) / watervolumeinbox;
 		double degas = PARAMETER(DegasVelocity) * (dicconcentration - PARAMETER(DICConcentrationAtSaturation));
-		if(degas < 0.0) degas = 0.0;
+		degas = Min(degas, RESULT(DICInUpperSoilBox));
 		return
 			RESULT(MineralisationRateInUpperSoilBox) * RESULT(DOCInUpperSoilBox)
 		  - degas;
-		  - RESULT(DICInUpperSoilBox) * RESULT(RunoffFromBox, UpperBox) / RESULT(SoilMoisture, UpperBox);  //Outflow	
+		  - RESULT(DICInUpperSoilBox) * RESULT(PercolationFromBox, UpperBox) / RESULT(SoilMoisture2, UpperBox);  //Outflow	
 	)
 	
 	EQUATION(Model, MineralisationRateInLowerSoilBox,
@@ -120,30 +138,36 @@ AddCarbonInSoilModule(inca_model *Model)
 			- PARAMETER(DesorptionRate, LowerBox) * RESULT(SOCInLowerSoilBox);
 	)
 	
+	EQUATION(Model, DOCFromLandscapeUnitToGroundwater,
+		return RESULT(DOCInLowerSoilBox) * RESULT(PercolationFromBox, LowerBox) / RESULT(SoilMoisture2, LowerBox);
+	)
+	
+	EQUATION(Model, DICFromLandscapeUnitToGroundwater,
+		return RESULT(DICInLowerSoilBox) * RESULT(PercolationFromBox, LowerBox) / RESULT(SoilMoisture2, LowerBox);
+	)
+	
 	EQUATION(Model, DOCInLowerSoilBox,
 		return
 			- PARAMETER(SorptionRate, LowerBox) * RESULT(DOCInLowerSoilBox) 
 			+ PARAMETER(DesorptionRate, LowerBox) * RESULT(SOCInLowerSoilBox)
 			- RESULT(MineralisationRateInLowerSoilBox) * RESULT(DOCInLowerSoilBox)
-			+ RESULT(DOCInUpperSoilBox) * RESULT(WaterInputToBox, LowerBox) / RESULT(SoilMoisture, UpperBox); //NOTE: Assumes all the input to the lower box comes from the upper box.
-			- RESULT(DOCInLowerSoilBox) * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture, LowerBox);
+			+ RESULT(DOCInUpperSoilBox) * (RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox)) / RESULT(SoilMoisture2, UpperBox); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
+			- RESULT(DOCFromLandscapeUnitToGroundwater);
 	)
 	
 	EQUATION(Model, DICInLowerSoilBox,
 		return
 			  RESULT(MineralisationRateInLowerSoilBox) * RESULT(DOCInLowerSoilBox)
-			+ RESULT(DICInUpperSoilBox) * RESULT(WaterInputToBox, LowerBox) / RESULT(SoilMoisture, UpperBox); //NOTE: Assumes all the input to the lower box comes from the upper box.
-			- RESULT(DICInLowerSoilBox) * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture, LowerBox);
+			+ RESULT(DICInUpperSoilBox) * (RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox)) / RESULT(SoilMoisture2, UpperBox); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
+			- RESULT(DICFromLandscapeUnitToGroundwater);
 	)
 	
-	EQUATION(Model, DOCFromLandscapeUnitToGroundwater,
-		//TODO: If some of this flow is diverted directly to the river we have to take that into account here
-		return RESULT(DOCInLowerSoilBox) * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture, LowerBox);
+	EQUATION(Model, DOCFromRunoffInLandscapeUnit,
+		return RESULT(DOCInUpperSoilBox) * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture2, UpperBox); //This is as intended. The runoff from the lower box is water that comes from the upper box but is diverted before entering the lower box.
 	)
 	
-	EQUATION(Model, DICFromLandscapeUnitToGroundwater,
-		//TODO: If some of this flow is diverted directly to the river we have to take that into account here
-		return RESULT(DICInLowerSoilBox) * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture, LowerBox);
+	EQUATION(Model, DICFromRunoffInLandscapeUnit,
+		return RESULT(DICInUpperSoilBox) * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture2, UpperBox); //This is as intended. The runoff from the lower box is water that comes from the upper box but is diverted before entering the lower box.
 	)
 }
 
@@ -180,11 +204,8 @@ AddCarbonInGroundwaterModule(inca_model *Model)
 	auto DICInLowerGroundwaterStorage = RegisterEquationODE(Model, "DIC in lower groundwater storage", Kg);
 	SetSolver(Model, DICInLowerGroundwaterStorage, GroundwaterSolver);
 	
-	auto DOCFromGroundwaterToReachBeforeRouting = RegisterEquation(Model, "DOC from groundwater to reach before routing", KgPerDay);
-	auto DICFromGroundwaterToReachBeforeRouting = RegisterEquation(Model, "DIC from groundwater to reach before routing", KgPerDay);
-	
-	auto DOCFromGroundwaterToReach = RegisterEquation(Model, "DOC from groundwater to reach", KgPerDay);
-	auto DICFromGroundwaterToReach = RegisterEquation(Model, "DIC from groundwater to reach", KgPerDay);
+	auto DOCFromGroundwaterToRouting = RegisterEquation(Model, "DOC from groundwater to routing routine", KgPerDay);
+	auto DICFromGroundwaterToRouting = RegisterEquation(Model, "DIC from groundwater to routing routine", KgPerDay);
 
 	
 	EQUATION(Model, DOCInUpperGroundwaterStorage,
@@ -211,46 +232,179 @@ AddCarbonInGroundwaterModule(inca_model *Model)
 			- RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
 	)
 	
-	EQUATION(Model, DOCFromGroundwaterToReachBeforeRouting,
+	EQUATION(Model, DOCFromGroundwaterToRouting,
 		return
 			  RESULT(DOCInUpperGroundwaterStorage) * RESULT(UpperRunoff) / RESULT(UpperStorage)
 			+ RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
 	)
 	
-	EQUATION(Model, DICFromGroundwaterToReachBeforeRouting,
+	EQUATION(Model, DICFromGroundwaterToRouting,
 		return
 			  RESULT(DICInUpperGroundwaterStorage) * RESULT(UpperRunoff) / RESULT(UpperStorage)
 			+ RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
+	)	
+}
+
+static void
+AddCarbonRoutingRoutine(inca_model *Model)
+{
+	auto KgPerDay = RegisterUnit(Model, "kg/day");
+	
+	auto DOCToRouting = RegisterEquation(Model, "DOC to routing", KgPerDay);
+	auto DICToRouting = RegisterEquation(Model, "DIC to routing", KgPerDay);
+	
+	auto DOCFromRoutingToReach = RegisterEquation(Model, "DOC from routing to reach", KgPerDay);
+	auto DICFromRoutingToReach = RegisterEquation(Model, "DIC from routing to reach", KgPerDay);
+	
+	
+	auto DOCFromGroundwaterToRouting = GetEquationHandle(Model, "DOC from groundwater to routing routine");
+	auto DICFromGroundwaterToRouting = GetEquationHandle(Model, "DIC from groundwater to routing routine");
+	auto DOCFromRunoffToRouting = GetEquationHandle(Model, "DOC from runoff to routing");
+	auto DICFromRunoffToRouting = GetEquationHandle(Model, "DIC from runoff to routing");
+	
+	auto MaxBase = GetParameterUIntHandle(Model, "Flow routing max base");
+	
+	EQUATION(Model, DOCToRouting,
+		return
+			  RESULT(DOCFromGroundwaterToRouting)
+			+ RESULT(DOCFromRunoffToRouting);
 	)
 	
-	EQUATION(Model, DOCFromGroundwaterToReach,
-		RESULT(DOCFromGroundwaterToReachBeforeRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
+	EQUATION(Model, DICToRouting,
+		return
+			  RESULT(DICFromGroundwaterToRouting)
+			+ RESULT(DICFromRunoffToRouting);
+	)
+	
+	EQUATION(Model, DOCFromRoutingToReach,
+		RESULT(DOCToRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
 	
 		u64 M = PARAMETER(MaxBase);		
 		double sum = 0.0;
 
 		for(u64 I = 1; I <= M; ++I)
 		{
-			sum += RoutingCoefficient(M, I) * EARLIER_RESULT(DOCFromGroundwaterToReachBeforeRouting, I-1);
+			sum += RoutingCoefficient(M, I) * EARLIER_RESULT(DOCToRouting, I-1);
 		}
 			
 		return sum;
 	)
 	
-	EQUATION(Model, DICFromGroundwaterToReach,
-		RESULT(DICFromGroundwaterToReachBeforeRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
+	EQUATION(Model, DICFromRoutingToReach,
+		RESULT(DICToRouting); //NOTE: To force a dependency since this is not automatic when we use EARLIER_RESULT;
 	
 		u64 M = PARAMETER(MaxBase);		
 		double sum = 0.0;
 
 		for(u64 I = 1; I <= M; ++I)
 		{
-			sum += RoutingCoefficient(M, I) * EARLIER_RESULT(DICFromGroundwaterToReachBeforeRouting, I-1);
+			sum += RoutingCoefficient(M, I) * EARLIER_RESULT(DICToRouting, I-1);
 		}
 			
 		return sum;
 	)
+}
+
+static void
+AddCarbonInReachModule(inca_model *Model)
+{
+	auto PerDay   = RegisterUnit(Model, "/day");
+	auto KgPerDay = RegisterUnit(Model, "kg/day");
+	auto Kg       = RegisterUnit(Model, "kg");
+	auto Dimensionless = RegisterUnit(Model);
 	
+	auto WaterTemperature = GetEquationHandle(Model, "Water temperature");
+	auto ReachVolume      = GetEquationHandle(Model, "Reach volume");
+	auto ReachFlow        = GetEquationHandle(Model, "Reach flow");
+	
+	auto MineralisationResponseToTemperature = GetParameterDoubleHandle(Model, "Mineralisation response to temperature");
+	auto DegasVelocity = GetParameterDoubleHandle(Model, "Degas velocity");
+	auto DICConcentrationAtSaturation = GetParameterDoubleHandle(Model, "DIC concentration at saturation");
+	
+	auto DOCFromRoutingToReach = GetEquationHandle(Model, "DOC from routing to reach");
+	auto DICFromRoutingToReach = GetEquationHandle(Model, "DIC from routing to reach");
+	
+	auto Reach           = GetIndexSetHandle(Model, "Reaches");
+	auto ReachParameters = GetParameterGroupHandle(Model, "Reach parameters");
+	
+	auto ReachSolver     = GetSolverHandle(Model, "Reach solver");
+	
+	auto BaseMineralisationRateInReach = RegisterParameterDouble(Model, ReachParameters, "Base mineralisation rate in reach", PerDay, 1e-5);
+	auto Sigma1                        = RegisterParameterDouble(Model, ReachParameters, "Sigma 1", Dimensionless, 1e-3, 1e-4, 1e-2, "Parameter used for determining the rate of photo-oxidation in reach");   //TODO: Figure out dimension later
+	auto Sigma2                        = RegisterParameterDouble(Model, ReachParameters, "Sigma 2", Dimensionless, 1e-4, 1e-5, 1e-3, "Parameter used for determining the rate of photo-oxidation in reach");   //TODO: Figure out dimension later
+	
+	auto SolarRadiation = RegisterInput(Model, "Solar radiation");
+	
+	auto MineralisationRateInReach = RegisterEquation(Model, "Mineralisation rate in reach", PerDay);
+	auto PhotoOxidationRateInReach = RegisterEquation(Model, "Photo-oxidation rate in reach", PerDay);
+	SetSolver(Model, PhotoOxidationRateInReach, ReachSolver);
+	auto DOCInputToReach           = RegisterEquation(Model, "DOC input to reach", KgPerDay);
+	auto DICInputToReach           = RegisterEquation(Model, "DIC input to reach", KgPerDay);
+	
+	auto DOCOutputFromReach        = RegisterEquation(Model, "DOC output from reach", KgPerDay);
+	SetSolver(Model, DOCOutputFromReach, ReachSolver);
+	auto DICOutputFromReach        = RegisterEquation(Model, "DIC output from reach", KgPerDay);
+	SetSolver(Model, DICOutputFromReach, ReachSolver);
+	
+	auto DOCInReach                = RegisterEquationODE(Model, "DOC in reach", Kg);
+	SetSolver(Model, DOCInReach, ReachSolver);
+	//TODO: Initial value?
+	auto DICInReach                = RegisterEquationODE(Model, "DIC in reach", Kg);
+	SetSolver(Model, DICInReach, ReachSolver);
+	//TODO: Initial value?
+	
+	EQUATION(Model, MineralisationRateInReach,
+		return 
+			  PARAMETER(BaseMineralisationRateInReach)
+			* pow(RESULT(WaterTemperature), PARAMETER(MineralisationResponseToTemperature));
+	)
+	
+	EQUATION(Model, PhotoOxidationRateInReach,
+		return (PARAMETER(Sigma1) * INPUT(SolarRadiation)) / (PARAMETER(Sigma2) + RESULT(DOCInReach)/RESULT(ReachVolume));
+	)
+	
+	EQUATION(Model, DOCInputToReach,
+		double docinput = RESULT(DOCFromRoutingToReach);
+		// TODO: Effluent input?
+		FOREACH_INPUT(Reach,
+			docinput += RESULT(DOCOutputFromReach, *Input);
+		)
+		
+		return docinput;
+	)
+	
+	EQUATION(Model, DICInputToReach,
+		double dicinput = RESULT(DICFromRoutingToReach);
+		// TODO: Effluent input?
+		FOREACH_INPUT(Reach,
+			dicinput += RESULT(DICOutputFromReach, *Input);
+		)
+		
+		return dicinput;
+	)
+	
+	EQUATION(Model, DOCOutputFromReach,
+		return RESULT(DOCInReach) * RESULT(ReachFlow) / RESULT(ReachVolume);
+	)
+	
+	EQUATION(Model, DICOutputFromReach,
+		return RESULT(DICInReach) * RESULT(ReachFlow) / RESULT(ReachVolume);
+	)
+	
+	EQUATION(Model, DOCInReach,
+		return
+			  RESULT(DOCInputToReach)
+			- RESULT(DOCOutputFromReach)
+			- RESULT(DOCInReach) * (RESULT(PhotoOxidationRateInReach) + RESULT(MineralisationRateInReach));
+	)
+	
+	EQUATION(Model, DICInReach,
+		return
+			  RESULT(DICInputToReach)
+			- RESULT(DICOutputFromReach)
+			+ RESULT(DOCInReach) * (RESULT(PhotoOxidationRateInReach) + RESULT(MineralisationRateInReach));
+			- PARAMETER(DegasVelocity) * (RESULT(DICInReach) / RESULT(ReachVolume) - PARAMETER(DICConcentrationAtSaturation));
+	)
 }
 
 #define CARBON_MODEL_H

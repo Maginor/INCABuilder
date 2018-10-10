@@ -9,7 +9,7 @@
 #include "HBV.h"
 #include "../ExampleModules/SoilTemperatureModel.h"
 #include "../ExampleModules/WaterTemperatureModel.h"
-#include "CarbonModel.h"
+#include "SimplyC.h"
 
 #define READ_PARAMETER_FILE 1
 
@@ -47,7 +47,7 @@ int main()
 	AddWaterTemperatureModel(Model);
 	AddCarbonModel(Model);
 	
-	ReadInputDependenciesFromFile(Model, "testinput.dat"); //NOTE: Unfortunately this has to happen here before EndModelDefinition
+	ReadInputDependenciesFromFile(Model, "langtjerninputs.dat"); //NOTE: Unfortunately this has to happen here before EndModelDefinition
 	
 	EndModelDefinition(Model);
 	
@@ -66,7 +66,7 @@ int main()
 #else
 	ReadParametersFromFile(DataSet, "testparameters.dat");
 #endif
-	ReadInputsFromFile(DataSet, "testinput.dat");
+	ReadInputsFromFile(DataSet, "langtjerninputs.dat");
 	
 	PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);

@@ -1,15 +1,15 @@
 index_sets:
 "Landscape units" : {"Forest" "Peatland"}
 "Soil boxes" : {"Upper box" "Lower box"}
-"Reaches" : {"R1" {"R2" "R1"}}
+"Reaches" : {"R1"}
 
 parameters:
 ###################### (no index sets) ######################
 "Timesteps" :     #(days)
-100
+10956
 
 "Start date" :
-"1999-1-1"
+"1986-1-1"
 
 "Flow routing max base" :     #(day) Width of the convolution filter that smooths out the flow from the groundwater to the river over time
 5
@@ -90,8 +90,8 @@ parameters:
 2 2
 
 ###################### "Soil boxes" ######################
-"Percolation fraction from soil box" :     #(/day)
-0.3 0.3
+"Percolation rate from soil box" :     #(mm/day)
+0.1 0.1
 
 "Sorption rate" :     #(/day) Rate coefficient for DOC sorption (DOC to SOC)
 0.1 0.01
@@ -104,70 +104,69 @@ parameters:
 
 ###################### "Reaches" ######################
 "Recession coefficent for upper groundwater storage (K1)" :     #(/day)
-0.1 0.1
+0.1
 
 "Recession coefficent for upper groundwater storage (K0)" :     #(/day)
-0.1 0.1
+0.1
 
 "Recession coefficient for lower groundwater storage (K2)" :     #(/day)
-0.1 0.1
+0.1
 
 "Threshold for second runoff in upper storage (UZL)" :     #(mm)
-10 10
+10
 
 "Percolation rate from upper to lower groundwater storage" :     #(mm/day)
-0.1 0.1
+0.1
 
 "Initial upper groundwater storage" :     #(mm)
-5 5
+5
 
 "Initial lower groundwater storage" :     #(mm)
-5 5
+5
 
 "Catchment area" :     #(km2)
-1 1
+1
 
 "Reach has effluent input" :
-false false
+false
 
 "Effluent flow" :     #(m3/day) The rate of liquid inputs to a reach from e.g. sewage treatment works
-0 0
+0
 
 "Reach length" :     #(m) The length of the main stem of the stream / reach in a subcatchment
-1000 1000
+1000
 
 "Reach width" :     #(m) The average width of the main stem of the stream / reach in a subcatchment
-10 10
+10
 
 "a" :     #(/m2) The flow velocity 'a' parameter V=aQ^b
-0.04 0.04
+0.04
 
 "b" :     #(dimensionless) The flow velocity 'b' parameter V=aQ^b
-0.67 0.67
+0.67
 
 "Initial reach flow" :     #(m3/day) The flow in the reach at the start of the simulation. This parameter is only used for reaches that don't have other reaches as inputs.
-1000 1000
+1000
 
 "Initial water temperature" :     #(°C)
-20 20
+20
 
 "Minimum water temperature" :     #(°C)
-0 0
+0
 
 "Water temperature lag factor" :     #(dimensionless)
-3 3
+3
 
 "Base mineralisation rate in reach" :     #(/day)
-1e-005 1e-005
+1e-005
 
-"Sigma 1" :     #(dimensionless) Parameter used for determining the rate of photo in reach
-0.001 0.001
+"Sigma 1" :     #(dimensionless) Parameter used for determining the rate of photo-oxidation in reach
+0.001
 
-"Sigma 2" :     #(dimensionless) Parameter used for determining the rate of photo in reach
-0.0001 0.0001
+"Sigma 2" :     #(dimensionless) Parameter used for determining the rate of photo-oxidation in reach
+0.0001
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(dimensionless) How much of the catchment area that is made up by this type of land cover.
-50 50
 50 50
 

@@ -205,7 +205,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetParentGroup(Model, LandscapePercentages, ReachParameters);
 	auto Percent = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0, "How much of the catchment area that is made up by this type of land cover.");
 	
-	auto PercolationFractionFromBox = RegisterParameterDouble(Model, Soils, "Percolation fraction from soil box", PerDay, 0.3);
+	auto PercolationRateFromBox = RegisterParameterDouble(Model, Soils, "Percolation rate from soil box", MmPerDay, 2);
 	
 	//TODO: find good default (and min/max) values for these:
 	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Land, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
@@ -275,7 +275,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	)
 	
 	EQUATION(Model, PercolationFromBox,
-		return RESULT(SoilMoisture2) * PARAMETER(PercolationFractionFromBox);
+		return Min(RESULT(SoilMoisture2), PARAMETER(PercolationRateFromBox));
 	)
 	
 	EQUATION(Model, SoilMoisture,

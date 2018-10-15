@@ -266,39 +266,40 @@ AddCarbonInGroundwaterModule(inca_model *Model)
 
 	
 	EQUATION(Model, DOCInUpperGroundwaterStorage,
+		
 		return
 			  RESULT(DOCToGroundwater)
-			- RESULT(DOCInUpperGroundwaterStorage) * (RESULT(Percolation) + RESULT(UpperRunoff)) / RESULT(UpperStorage);
+			- DivideIfNotZero(RESULT(DOCInUpperGroundwaterStorage) * (RESULT(Percolation) + RESULT(UpperRunoff)), RESULT(UpperStorage));
 	)
 	
 	EQUATION(Model, DICInUpperGroundwaterStorage,
 		return
 			  RESULT(DICToGroundwater)
-			- RESULT(DICInUpperGroundwaterStorage) * (RESULT(Percolation) + RESULT(UpperRunoff)) / RESULT(UpperStorage);
+			- DivideIfNotZero(RESULT(DICInUpperGroundwaterStorage) * (RESULT(Percolation) + RESULT(UpperRunoff)), RESULT(UpperStorage));
 	)
 	
 	EQUATION(Model, DOCInLowerGroundwaterStorage,
 		return
-			  RESULT(DOCInUpperGroundwaterStorage) * RESULT(Percolation) / RESULT(UpperStorage)
-			- RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
+			  DivideIfNotZero(RESULT(DOCInUpperGroundwaterStorage) * RESULT(Percolation), RESULT(UpperStorage))
+			- DivideIfNotZero(RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
 	)
 	
 	EQUATION(Model, DICInLowerGroundwaterStorage,
 		return
-			  RESULT(DICInUpperGroundwaterStorage) * RESULT(Percolation) / RESULT(UpperStorage)
-			- RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
+			  DivideIfNotZero(RESULT(DICInUpperGroundwaterStorage) * RESULT(Percolation), RESULT(UpperStorage))
+			- DivideIfNotZero(RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
 	)
 	
 	EQUATION(Model, DOCFromGroundwaterToRouting,
 		return
-			  RESULT(DOCInUpperGroundwaterStorage) * RESULT(UpperRunoff) / RESULT(UpperStorage)
-			+ RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
+			  DivideIfNotZero(RESULT(DOCInUpperGroundwaterStorage) * RESULT(UpperRunoff), RESULT(UpperStorage))
+			+ DivideIfNotZero(RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
 	)
 	
 	EQUATION(Model, DICFromGroundwaterToRouting,
 		return
-			  RESULT(DICInUpperGroundwaterStorage) * RESULT(UpperRunoff) / RESULT(UpperStorage)
-			+ RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff) / RESULT(LowerStorage);
+			  DivideIfNotZero(RESULT(DICInUpperGroundwaterStorage) * RESULT(UpperRunoff), RESULT(UpperStorage))
+			+ DivideIfNotZero(RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
 	)	
 }
 
@@ -412,7 +413,9 @@ AddCarbonInReachModule(inca_model *Model)
 	//TODO: Initial value?
 	
 	auto DOCConcentrationInReach = RegisterEquation(Model, "DOC concentration in reach", KgPerM3);
+	SetSolver(Model, DOCConcentrationInReach, ReachSolver);
 	auto DICConcentrationInReach = RegisterEquation(Model, "DIC concentration in reach", KgPerM3);
+	SetSolver(Model, DICConcentrationInReach, ReachSolver);
 	
 	EQUATION(Model, MineralisationRateInReach,
 		return 
@@ -421,7 +424,7 @@ AddCarbonInReachModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, PhotoOxidationRateInReach,
-		return (PARAMETER(Sigma1) * INPUT(SolarRadiation)) / (PARAMETER(Sigma2) + RESULT(DOCInReach)/RESULT(ReachVolume));
+		return (PARAMETER(Sigma1) * INPUT(SolarRadiation)) / (PARAMETER(Sigma2) + RESULT(DOCConcentrationInReach));
 	)
 	
 	EQUATION(Model, DOCInputToReach,
@@ -445,11 +448,11 @@ AddCarbonInReachModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DOCOutputFromReach,
-		return RESULT(DOCInReach) * RESULT(ReachFlow) / RESULT(ReachVolume);
+		return RESULT(DOCInReach) * DivideIfNotZero(RESULT(ReachFlow), RESULT(ReachVolume));
 	)
 	
 	EQUATION(Model, DICOutputFromReach,
-		return RESULT(DICInReach) * RESULT(ReachFlow) / RESULT(ReachVolume);
+		return RESULT(DICInReach) * DivideIfNotZero(RESULT(ReachFlow), RESULT(ReachVolume));
 	)
 	
 	EQUATION(Model, DOCInReach,
@@ -460,7 +463,7 @@ AddCarbonInReachModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DOCConcentrationInReach,
-		return RESULT(DOCInReach) / RESULT(ReachVolume);
+		return DivideIfNotZero(RESULT(DOCInReach), RESULT(ReachVolume));
 	)
 	
 	EQUATION(Model, DICInReach,
@@ -472,8 +475,17 @@ AddCarbonInReachModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DICConcentrationInReach,
-		return RESULT(DICInReach) / RESULT(ReachVolume);
+		return DivideIfNotZero(RESULT(DICInReach), RESULT(ReachVolume));
 	)
+}
+
+static void
+AddSimplyCModel(inca_model *Model)
+{
+	AddCarbonInSoilModule(Model);
+	AddCarbonInGroundwaterModule(Model);
+	AddCarbonRoutingRoutine(Model);
+	AddCarbonInReachModule(Model);
 }
 
 #define CARBON_MODEL_H

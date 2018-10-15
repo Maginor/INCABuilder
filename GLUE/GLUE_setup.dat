@@ -1,0 +1,35 @@
+
+
+
+num_runs :
+100
+
+
+
+
+
+parameter_calibration :
+
+# parameter calibration setup should be written with the following format
+# Parname {Index1 Index2 etc} Distribution Min Max
+
+"a" {"R1"}
+uniform 0.001 0.1
+
+"b" {"R1"}
+uniform 0.5   0.9
+
+"Recession coefficent for upper groundwater storage (K1)" {"R1"}
+uniform 0.01  1.0
+
+
+
+
+
+objectives :
+
+# objectives should be written with the following format
+# Modeled    {Indexes} Observed    {Indexes} PerformanceMeasure Threshold OptimalValue Maximize
+
+"Reach flow" {"R1"}    "Discharge" {}        mean_average_error 0.01      0.0          false
+"Reach flow" {"R1"}    "Discharge" {}        nash_sutcliffe     0.0       1.0          true

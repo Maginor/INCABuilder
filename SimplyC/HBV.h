@@ -430,6 +430,13 @@ AddWaterRoutingRoutine(inca_model *Model)
 	)
 }
 
+static double
+DivideIfNotZero(double Nominator, double Denominator)
+{
+	double Result = 0.0;
+	if(Denominator > 0.0) Result = Nominator / Denominator;
+	return Result;
+}
 
 static void
 AddReachFlowRoutine(inca_model *Model)
@@ -531,6 +538,18 @@ AddReachFlowRoutine(inca_model *Model)
 	EQUATION(Model, ReachDepth,
 		return RESULT(ReachFlow) / (RESULT(ReachVelocity) * PARAMETER(ReachWidth));
 	)
+}
+
+
+static void
+AddHBVModel(inca_model *Model)
+{
+	AddSnowRoutine(Model);
+	AddPotentialEvapotranspirationModuleV2(Model);
+	AddSoilMoistureRoutine(Model);
+	AddGroundwaterResponseRoutine(Model);
+	AddWaterRoutingRoutine(Model);
+	AddReachFlowRoutine(Model);
 }
 
 #define HBV_H

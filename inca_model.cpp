@@ -1138,8 +1138,10 @@ PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet);
 
 static void
 RunModel(inca_data_set *DataSet)
-{	
+{
+#if INCA_PRINT_TIMING_INFO
 	timer SetupTimer = BeginTimer();
+#endif
 
 	inca_model *Model = DataSet->Model;
 	
@@ -1169,11 +1171,15 @@ RunModel(inca_data_set *DataSet)
 		//TODO: We should probably also check that it actually is a uint, because otherwise we get the byte value of it as a uint, which is not the same as casting it to a uint!!
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, TimestepHandle);
 		Timesteps = DataSet->ParameterData[Offset].ValUInt;
+#if INCA_PRINT_TIMING_INFO
 		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " Timesteps" << std::endl;
+#endif
 	}
 	else
 	{
+#if INCA_PRINT_TIMING_INFO
 		std::cout << "No parameter named \"Timesteps\" defined. Running model " << Model->Name << " V" << Model->Version << " for default " << Timesteps << " Timesteps" << std::endl;
+#endif
 	}
 	
 	s64 ModelStartTime = 0;
@@ -1195,6 +1201,19 @@ RunModel(inca_data_set *DataSet)
 	{
 		std::cout << "ERROR: The input data provided has fewer timesteps than the number of timesteps the model is running for." << std::endl;
 		exit(0);
+	}
+	
+	if(DataSet->HasBeenRun)
+	{
+		//NOTE: This is in case somebody wants to re-run the same dataset after e.g. changing a few parameters.
+		free(DataSet->ResultData);
+		DataSet->ResultData = 0;
+		
+		DataSet->FastParameterLookup.clear();
+		//TODO: We may not need to clear the last ones, but in that case we should not rebuild them below.
+		DataSet->FastInputLookup.clear();
+		DataSet->FastResultLookup.clear();
+		DataSet->FastLastResultLookup.clear();
 	}
 	
 	AllocateResultStorage(DataSet, Timesteps);
@@ -1221,8 +1240,9 @@ RunModel(inca_data_set *DataSet)
 			}
 		}
 	}
-	DataSet->x0 = AllocClearedArray(double, MaxODECount);
-	DataSet->wk = AllocClearedArray(double, 4*MaxODECount); //TODO: This size is specifically for IncaDascru. Other solvers may have other needs for storage, so this 4 should not be hard coded.
+	if(!DataSet->x0) DataSet->x0 = AllocClearedArray(double, MaxODECount);
+	if(!DataSet->wk) DataSet->wk = AllocClearedArray(double, 4*MaxODECount); //TODO: This size is specifically for IncaDascru. Other solvers may have other needs for storage, so this 4 should not be hard coded.
+	
 	
 
 	//NOTE: System parameters (i.e. parameters that don't depend on index sets) are going to be the same during the entire run, so we just load them into CurParameters once and for all.
@@ -1250,9 +1270,11 @@ RunModel(inca_data_set *DataSet)
 	ValueSet.Timestep = -1;
 	ModelLoop(DataSet, &ValueSet, InitialValueSetupInnerLoop);
 	
+#if INCA_PRINT_TIMING_INFO
 	u64 SetupDuration = GetTimerMilliseconds(&SetupTimer);
 	timer RunTimer = BeginTimer();
 	u64 BeforeC = __rdtsc();
+#endif
 	
 	ValueSet.AllLastResultsBase = DataSet->ResultData;
 	ValueSet.AllCurResultsBase = DataSet->ResultData + DataSet->ResultStorageStructure.TotalCount;
@@ -1305,12 +1327,12 @@ RunModel(inca_data_set *DataSet)
 		}
 	}
 	
+#if INCA_PRINT_TIMING_INFO
 	u64 AfterC = __rdtsc();
 	
 	u64 RunDuration = GetTimerMilliseconds(&RunTimer);
 	u64 RunDurationCycles = AfterC - BeforeC;
-	
-#if INCA_PRINT_TIMING_INFO
+
 	std::cout << "Model execution setup time: " << SetupDuration << " milliseconds" << std::endl;
 	std::cout << "Model execution time: " << RunDuration << " milliseconds" << std::endl;
 	std::cout << "Model execution processor cycles: " << RunDurationCycles << std::endl;

@@ -209,6 +209,10 @@ struct storage_structure
 	size_t *UnitForHandle;
 	size_t *LocationOfHandleInUnit;       // Units[UnitForHandle[H]].Handles[LocationOfHandleInUnit[H]] == H;
 	size_t TotalCount;
+	
+	bool HasBeenSetUp = false;
+	
+	~storage_structure();
 };
 
 
@@ -314,8 +318,7 @@ struct inca_data_set
 	std::vector<char_map> IndexNamesToHandle;
 	bool AllIndexesHaveBeenSet;
 	
-	branch_inputs **BranchInputs;
-
+	branch_inputs **BranchInputs; //BranchInputs[ReachIndexSet][ReachIndex] ...
 	
 	std::vector<parameter_value> FastParameterLookup;
 	std::vector<size_t> FastInputLookup;
@@ -327,6 +330,9 @@ struct inca_data_set
 
 	bool HasBeenRun;
 	u64 TimestepsLastRun;
+	
+	
+	~inca_data_set();
 };
 
 struct value_set_accessor

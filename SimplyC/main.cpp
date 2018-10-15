@@ -13,26 +13,6 @@
 
 #define READ_PARAMETER_FILE 1
 
-static void
-AddHBVModel(inca_model *Model)
-{
-	AddSnowRoutine(Model);
-	AddPotentialEvapotranspirationModuleV2(Model);
-	AddSoilMoistureRoutine(Model);
-	AddGroundwaterResponseRoutine(Model);
-	AddWaterRoutingRoutine(Model);
-	AddReachFlowRoutine(Model);
-}
-
-static void
-AddCarbonModel(inca_model *Model)
-{
-	AddCarbonInSoilModule(Model);
-	AddCarbonInGroundwaterModule(Model);
-	AddCarbonRoutingRoutine(Model);
-	AddCarbonInReachModule(Model);
-}
-
 int main()
 {
 	inca_model *Model = BeginModelDefinition("Carbon model", "0.0");
@@ -45,7 +25,7 @@ int main()
 	AddHBVModel(Model);
 	AddSoilTemperatureModel(Model);
 	AddWaterTemperatureModel(Model);
-	AddCarbonModel(Model);
+	AddSimplyCModel(Model);
 	
 	ReadInputDependenciesFromFile(Model, "langtjerninputs.dat"); //NOTE: Unfortunately this has to happen here before EndModelDefinition
 	

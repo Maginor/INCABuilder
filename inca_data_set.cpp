@@ -8,7 +8,7 @@ GenerateDataSet(inca_model *Model)
 		std::cout << "ERROR: Attempted to generate a data set before the model was finalized using an EndModelDefinition call." << std::endl;
 		return 0;
 	}
-	inca_data_set *DataSet = new inca_data_set {};
+	inca_data_set *DataSet = new inca_data_set {};  //NOTE: The {} ensures that all pointers are set to 0. This is important.
 	
 	DataSet->Model = Model;
 	
@@ -20,6 +20,55 @@ GenerateDataSet(inca_model *Model)
 	DataSet->BranchInputs = AllocClearedArray(branch_inputs *, Model->FirstUnusedIndexSetHandle);
 	
 	return DataSet;
+}
+
+inca_data_set::~inca_data_set()
+{
+	//NOTE: This has not been properly tested yet..
+	
+	if(ParameterData) free(ParameterData);
+	if(InputData) free(InputData);
+	if(ResultData) free(ResultData);
+	
+	if(IndexCounts)
+	{
+		if(IndexNames)
+		{
+			for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+			{
+				if(IndexNames[IndexSetHandle])
+				{
+					for(index_t Index = 0; Index < IndexCounts[IndexSetHandle]; ++Index)
+					{
+						if(IndexNames[IndexSetHandle][Index]) free((void *)IndexNames[IndexSetHandle][Index]); //NOTE: We free this const char * because we know that it was set using SetIndexes(), which always allocates copies of the index names it receives.
+					}
+					free(IndexNames[IndexSetHandle]);
+				}
+			}
+			free(IndexNames);
+		}
+		
+		if(BranchInputs)
+		{
+			for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+			{
+				if(BranchInputs[IndexSetHandle])
+				{
+					for(index_t Index = 0; Index < IndexCounts[IndexSetHandle]; ++Index)
+					{
+						if(BranchInputs[IndexSetHandle][Index].Inputs) free(BranchInputs[IndexSetHandle][Index].Inputs);
+					}
+					free(BranchInputs[IndexSetHandle]);
+				}
+			}
+			free(BranchInputs);
+		}
+		
+		free(IndexCounts);
+	}
+	
+	if(x0) free(x0);
+	if(wk) free(wk);
 }
 
 static void
@@ -54,6 +103,19 @@ SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts,
 		OffsetForUnitSoFar += Structure.TotalCountForUnit[UnitIndex];
 		Structure.TotalCount += Structure.TotalCountForUnit[UnitIndex];
 		++UnitIndex;
+	}
+	
+	Structure.HasBeenSetUp = true;
+}
+
+storage_structure::~storage_structure()
+{
+	if(HasBeenSetUp)
+	{
+		free(TotalCountForUnit);
+		free(OffsetForUnit);
+		free(UnitForHandle);
+		free(LocationOfHandleInUnit);
 	}
 }
 
@@ -509,24 +571,27 @@ AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 	
 	//NOTE: We set up a storage structure for results that mirrors the equation batch group structure. This simplifies things a lot in other code.
 	
-	size_t ResultStorageUnitCount = Model->BatchGroups.size();
-	std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
-	Units.resize(ResultStorageUnitCount);
-	for(size_t UnitIndex = 0; UnitIndex < ResultStorageUnitCount; ++UnitIndex)
+	if(!DataSet->HasBeenRun) //If it was run once before we don't need to set up the storage structure again. //TODO: This should be a flag on the storage structure instead, and it should be the same for all AllocateXStorage functions.
 	{
-		equation_batch_group &BatchGroup = Model->BatchGroups[UnitIndex];
-		Units[UnitIndex].IndexSets = BatchGroup.IndexSets;
-		for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
+		size_t ResultStorageUnitCount = Model->BatchGroups.size();
+		std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
+		Units.resize(ResultStorageUnitCount);
+		for(size_t UnitIndex = 0; UnitIndex < ResultStorageUnitCount; ++UnitIndex)
 		{
-			equation_batch &Batch = Model->EquationBatches[BatchIdx];
-			FOR_ALL_BATCH_EQUATIONS(Batch,
-				Units[UnitIndex].Handles.push_back(Equation.Handle);
-			)
+			equation_batch_group &BatchGroup = Model->BatchGroups[UnitIndex];
+			Units[UnitIndex].IndexSets = BatchGroup.IndexSets;
+			for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
+			{
+				equation_batch &Batch = Model->EquationBatches[BatchIdx];
+				FOR_ALL_BATCH_EQUATIONS(Batch,
+					Units[UnitIndex].Handles.push_back(Equation.Handle);
+				)
+			}
 		}
+		
+		SetupStorageStructureSpecifer(DataSet->ResultStorageStructure, DataSet->IndexCounts, Model->FirstUnusedEquationHandle);
 	}
-	
-	SetupStorageStructureSpecifer(DataSet->ResultStorageStructure, DataSet->IndexCounts, Model->FirstUnusedEquationHandle);
-	
+
 	DataSet->ResultData = AllocClearedArray(double, DataSet->ResultStorageStructure.TotalCount * (Timesteps + 1)); //NOTE: We add one to timesteps since we also need space for the initial values.
 }
 
@@ -706,6 +771,9 @@ CumulateResult(inca_data_set *DataSet, equation Equation, index_set CumulateOver
 	return Total;
 }
 
+
+//TODO: There is so much code doubling between input / result access. Could it be merged?
+
 static void
 SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char *> &IndexNames, const double *InputSeries, size_t InputSeriesSize)
 {
@@ -766,6 +834,7 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<cons
 	
 	inca_model *Model = DataSet->Model;
 	
+	//TODO: If we ask for more values than we could get, should there not be an error?
 	u64 NumToWrite = Min(WriteSize, DataSet->TimestepsLastRun);
 	
 	equation Equation = GetEquationHandle(Model, Name);
@@ -796,6 +865,47 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<cons
 }
 
 static void
+GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
+{	
+	if(!DataSet->InputData)
+	{
+		std::cout << "ERROR: Tried to extract input series before input data was allocated." << std::endl;
+		exit(0);
+	}
+	
+	inca_model *Model = DataSet->Model;
+	
+	//TODO: If we ask for more values than we could get, should there not be an error?
+	u64 NumToWrite = Min(WriteSize, DataSet->InputDataTimesteps);
+	
+	input Input = GetInputHandle(Model, Name);
+	
+	size_t StorageUnitIndex = DataSet->InputStorageStructure.UnitForHandle[Input.Handle];
+	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
+	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
+
+	if(IndexNames.size() != IndexSets.size())
+	{
+		std::cout << "ERROR: Got the wrong amount of indexes when getting the input series for " << GetName(Model, Input) << ". Got " << IndexNames.size() << ", expected " << IndexSets.size() << std::endl;
+		exit(0);
+	}
+	index_t Indexes[256];
+	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
+	{
+		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
+	}
+
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Input.Handle);
+	double *Lookup = DataSet->InputData + Offset;
+	
+	for(size_t Idx = 0; Idx < NumToWrite; ++Idx)
+	{
+		WriteTo[Idx] = *Lookup;
+		Lookup += DataSet->InputStorageStructure.TotalCount;
+	}
+}
+
+static void
 PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &Indexes, size_t WriteSize)
 {
 	double *ResultSeries = AllocClearedArray(double, WriteSize);
@@ -819,6 +929,32 @@ PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<co
 	std::cout << std::endl << std::endl;
 	
 	free(ResultSeries);
+}
+
+static void
+PrintInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &Indexes, size_t WriteSize)
+{
+	double *InputSeries = AllocClearedArray(double, WriteSize);
+	GetInputSeries(DataSet, Name, Indexes, InputSeries, WriteSize);
+	
+	std::cout << "Input series for " << Name << " ";
+	for(const char *Index : Indexes) std::cout << "[" << Index << "]";
+	
+	input Input = GetInputHandle(DataSet->Model, Name);
+	input_spec &Spec = DataSet->Model->InputSpecs[Input.Handle];
+	if(IsValid(Spec.Unit))
+	{
+		std::cout << " (" << GetName(DataSet->Model, Spec.Unit) << ")";
+	}
+	
+	std::cout << ":" << std::endl;
+	for(size_t Idx = 0; Idx < WriteSize; ++Idx)
+	{
+		std::cout << InputSeries[Idx] << " ";
+	}
+	std::cout << std::endl << std::endl;
+	
+	free(InputSeries);
 }
 
 static void

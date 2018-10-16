@@ -83,7 +83,7 @@ parameters:
 5
 
 "Catchment area" :     #(km2)
-10
+1
 
 "Reach has effluent input" :
 false
@@ -95,7 +95,7 @@ false
 1000
 
 "Reach width" :     #(m) The average width of the main stem of the stream / reach in a subcatchment
-10
+1
 
 "a" :     #(/m2) The flow velocity 'a' parameter V=aQ^b
 0.04

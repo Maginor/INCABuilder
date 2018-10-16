@@ -110,16 +110,11 @@ AddCarbonInSoilModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DOCInUpperSoilBox,
-		double percout = 0.0;
-		if(RESULT(SoilMoisture2, UpperBox) > 0.0)
-		{
-			percout = RESULT(DOCInUpperSoilBox) * RESULT(PercolationFromBox, UpperBox) / RESULT(SoilMoisture2, UpperBox);
-		}
 		return 
 			PARAMETER(DesorptionRate, UpperBox) * RESULT(SOCInUpperSoilBox)           //Desorption
 		  - PARAMETER(SorptionRate, UpperBox) * RESULT(DOCInUpperSoilBox)             //Sorption
 		  - RESULT(DOCInUpperSoilBox) * RESULT(MineralisationRateInUpperSoilBox);                          //Mineralisation  
-		  - percout;
+		  - RESULT(DOCInUpperSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, UpperBox), RESULT(SoilMoisture2, UpperBox));
 	)
 	
 	EQUATION(Model, DICInUpperSoilBox,
@@ -132,17 +127,11 @@ AddCarbonInSoilModule(inca_model *Model)
 			double dicconcentration = RESULT(DICInUpperSoilBox) / watervolumeinbox;
 			degas = degasvelocity * (dicconcentration - dicconcentrationatsaturation);
 			degas = Min(degas, RESULT(DICInUpperSoilBox));
-		}
-		double percout = 0.0;
-		if(RESULT(SoilMoisture2, UpperBox) > 0.0)
-		{
-			percout = RESULT(DICInUpperSoilBox) * RESULT(PercolationFromBox, UpperBox) / RESULT(SoilMoisture2, UpperBox);
-		}
-		
+		}		
 		return
 			RESULT(MineralisationRateInUpperSoilBox) * RESULT(DOCInUpperSoilBox)
 		  - degas;
-		  - percout;
+		  - RESULT(DICInUpperSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, UpperBox), RESULT(SoilMoisture2, UpperBox));
 	)
 	
 	EQUATION(Model, MineralisationRateInLowerSoilBox,
@@ -158,73 +147,35 @@ AddCarbonInSoilModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DOCFromLandscapeUnitToGroundwater,
-		double percout = 0.0;
-		double docinlowerbox = RESULT(DOCInLowerSoilBox);
-		if(RESULT(SoilMoisture2, LowerBox) > 0.0)
-		{
-			percout = docinlowerbox * RESULT(PercolationFromBox, LowerBox) / RESULT(SoilMoisture2, LowerBox);
-		}
-		return percout;
+		return RESULT(DOCInLowerSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, LowerBox), RESULT(SoilMoisture2, LowerBox));
 	)
 	
 	EQUATION(Model, DICFromLandscapeUnitToGroundwater,
-		double percout = 0.0;
-		double dicinlowerbox = RESULT(DICInLowerSoilBox);
-		if(RESULT(SoilMoisture2, LowerBox) > 0.0)
-		{
-			percout = dicinlowerbox * RESULT(PercolationFromBox, LowerBox) / RESULT(SoilMoisture2, LowerBox);
-		}
-		return percout;
+		return RESULT(DICInLowerSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, LowerBox), RESULT(SoilMoisture2, LowerBox));
 	)
 	
 	EQUATION(Model, DOCInLowerSoilBox,
-		double percin = 0.0;
-		double docinupperbox = RESULT(DOCInUpperSoilBox);
-		if(RESULT(SoilMoisture2, UpperBox) > 0.0)
-		{
-			percin = docinupperbox * (RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox)) / RESULT(SoilMoisture2, UpperBox); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
-		}
-	
 		return
 			- PARAMETER(SorptionRate, LowerBox) * RESULT(DOCInLowerSoilBox) 
 			+ PARAMETER(DesorptionRate, LowerBox) * RESULT(SOCInLowerSoilBox)
 			- RESULT(MineralisationRateInLowerSoilBox) * RESULT(DOCInLowerSoilBox)
-			+ percin
+			+ RESULT(DOCInUpperSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox), RESULT(SoilMoisture2, UpperBox)); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
 			- RESULT(DOCFromLandscapeUnitToGroundwater);
 	)
 	
 	EQUATION(Model, DICInLowerSoilBox,
-		double percin = 0.0;
-		double dicinupperbox = RESULT(DICInUpperSoilBox);
-		if(RESULT(SoilMoisture2, UpperBox) > 0.0)
-		{
-			percin = dicinupperbox * (RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox)) / RESULT(SoilMoisture2, UpperBox); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
-		}
-		
 		return
 			  RESULT(MineralisationRateInLowerSoilBox) * RESULT(DOCInLowerSoilBox)
-			+ percin
+			+ + RESULT(DICInUpperSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox), RESULT(SoilMoisture2, UpperBox)); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
 			- RESULT(DICFromLandscapeUnitToGroundwater);
 	)
 	
 	EQUATION(Model, DOCFromRunoffInLandscapeUnit,
-		double runoff = 0.0;
-		double docinupperbox = RESULT(DOCInUpperSoilBox);
-		if(RESULT(SoilMoisture2, UpperBox) > 0.0)
-		{
-			runoff = docinupperbox * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture2, UpperBox); //This is as intended. The runoff from the lower box is water that comes from the upper box but is diverted before entering the lower box.
-		}
-		return runoff;
+		return RESULT(DOCInUpperSoilBox) * DivideIfNotZero(RESULT(RunoffFromBox, LowerBox), RESULT(SoilMoisture2, UpperBox)); //This is as intended. The runoff from the lower box is water that comes from the upper box but is diverted before entering the lower box.
 	)
 	
 	EQUATION(Model, DICFromRunoffInLandscapeUnit,
-		double runoff = 0.0;
-		double dicinupperbox = RESULT(DICInUpperSoilBox);
-		if(RESULT(SoilMoisture2, UpperBox) > 0.0)
-		{
-			runoff = dicinupperbox * RESULT(RunoffFromBox, LowerBox) / RESULT(SoilMoisture2, UpperBox); //This is as intended. The runoff from the lower box is water that comes from the upper box but is diverted before entering the lower box.
-		}
-		return runoff;
+		return RESULT(DICInUpperSoilBox) * DivideIfNotZero(RESULT(RunoffFromBox, LowerBox), RESULT(SoilMoisture2, UpperBox)); //This is as intended. The runoff from the lower box is water that comes from the upper box but is diverted before entering the lower box.
 	)
 }
 

@@ -430,14 +430,6 @@ AddWaterRoutingRoutine(inca_model *Model)
 	)
 }
 
-static double
-DivideIfNotZero(double Nominator, double Denominator)
-{
-	double Result = 0.0;
-	if(Denominator > 0.0) Result = Nominator / Denominator;
-	return Result;
-}
-
 static void
 AddReachFlowRoutine(inca_model *Model)
 {

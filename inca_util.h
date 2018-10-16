@@ -58,6 +58,14 @@ GetTimerMilliseconds(timer *Timer)
 	return u64;
 }
 
+static double
+DivideIfNotZero(double Nominator, double Denominator)
+{
+	double Result = 0.0;
+	if(Denominator > 0.0) Result = Nominator / Denominator;
+	return Result;
+}
+
 
 inline bool
 IsLeapYear(int Year)

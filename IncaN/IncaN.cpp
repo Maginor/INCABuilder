@@ -14,55 +14,12 @@
 #include "../sqlite3/sqlite3.h"
 #include "../inca_database_io.cpp"
 
+#include "../incaview_compatibility.h"
+
 int main(int argc, char **argv)
 {
-	int Mode = 0;
-	
-	const char *File;
-	
-	bool CorrectUse = true;
-	
-	if(argc == 3)
-	{
-		//NOTE: argv[0] is the exe name.
-		const char *Command = argv[1];
-		File    = argv[2];
-		
-		if(strcmp(Command, "create_parameter_database") == 0)
-		{
-			Mode = 0;
-		}
-		else if(strcmp(Command, "run") == 0)
-		{
-			Mode = 1;
-		}
-		else
-		{
-			CorrectUse = false;
-		}
-	}
-	else if(argc == 1)
-	{
-		Mode = 1;
-		File = "input3651.dat";
-	}
-	else
-	{
-		CorrectUse = false;
-	}
-	
-	if(!CorrectUse)
-	{
-		std::cout << "ERROR: unknown use of incan.exe: Proper use is one of:" << std::endl;
-		std::cout << "incan" << std::endl;
-		std::cout << "incan create_parameter_database <parameterfile.dat>" << std::endl;
-		std::cout << "incan run <inputfile.dat>" << std::endl;
-		exit(0);
-	}
-	
-	const char *Parameterdb = "parameters.db";
-	const char *Resultdb    = "results.db";
-	const char *Inputdb     = "inputs.db"; //NOTE: This is only for writing inputs TO so that they can be read by INCAView. Inputs are always read in from the provided .dat file.
+	incaview_commandline_arguments Args;
+	ParseIncaviewCommandline(argc, argv, &Args);
 	
 	inca_model *Model = BeginModelDefinition("INCA-N", "0.1");
 	
@@ -76,33 +33,12 @@ int main(int argc, char **argv)
 	AddWaterTemperatureModel(Model);
 	AddIncaNModel(Model);
 	
-	if(Mode == 1)
-	{
-		ReadInputDependenciesFromFile(Model, File);
-	}
+	EnsureModelComplianceWithIncaviewCommandline(Model, &Args);
 	
 	EndModelDefinition(Model);
 	
 	inca_data_set *DataSet = GenerateDataSet(Model);
 	
-	if(Mode == 0)
-	{
-		ReadParametersFromFile(DataSet, File);
-		//TODO: Delete existing database if it exists?
-		CreateParameterDatabase(DataSet, Parameterdb);
-	}
-	else if(Mode == 1)
-	{
-		ReadParametersFromDatabase(DataSet, Parameterdb);
-		ReadInputsFromFile(DataSet, File);
-		
-		RunModel(DataSet);
-		
-		std::cout << "Model run finished. Writing result data to database." << std::endl;
-		
-		//TODO: Delete existing databases if they exist?
-		WriteResultsToDatabase(DataSet, Resultdb);
-		WriteInputsToDatabase(DataSet, Inputdb);
-	}
+	RunDatasetAsSpecifiedByIncaviewCommandline(DataSet, &Args);
 	
 }

@@ -27,6 +27,22 @@ BeginModelDefinition(const char *Name = "(unnamed)", const char *Version = "0.0"
 }
 
 static void
+PrintPartialDependencyTrace(inca_model *Model, equation Equation, bool First = false)
+{
+	if(!First) std::cout << "<- ";
+	else       std::cout << "   ";
+	
+	equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
+	if(IsValid(Spec.Solver))
+	{
+		std::cout << "\"" << GetName(Model, Spec.Solver) << "\" (";
+	}
+	std::cout << "\"" << GetName(Model, Equation) << "\"";
+	if(IsValid(Spec.Solver)) std::cout << ")";
+	std::cout << std::endl;
+}
+
+static bool
 TopologicalSortEquationsVisit(inca_model *Model, equation Equation, std::vector<equation>& PushTo)
 {
 	equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
@@ -36,11 +52,12 @@ TopologicalSortEquationsVisit(inca_model *Model, equation Equation, std::vector<
 	bool &Visited = IsValid(Spec.Solver) ? SolverSpec.Visited : Spec.Visited;
 	bool &TempVisited = IsValid(Spec.Solver) ? SolverSpec.TempVisited : Spec.TempVisited;
 	
-	if(Visited) return;
+	if(Visited) return true;
 	if(TempVisited)
 	{
-		std::cout << "ERROR: The equation " << GetName(Model, Equation) << " has a direct or indirect dependency on the (current timestep) result value of itself. Try to use LAST_RESULT instead of RESULT for one of the dependencies." << std::endl;
-		exit(0);
+		std::cout << "ERROR: There is a circular dependency between the equations :" << std::endl;
+		PrintPartialDependencyTrace(Model, Equation, true);
+		return false;
 	}
 	TempVisited = true;
 	std::set<equation> &DirectResultDependencies = IsValid(Spec.Solver) ? SolverSpec.DirectResultDependencies : Spec.DirectResultDependencies;
@@ -48,35 +65,48 @@ TopologicalSortEquationsVisit(inca_model *Model, equation Equation, std::vector<
 	{
 		equation_spec &DepSpec = Model->EquationSpecs[Dependency.Handle];
 		if(IsValid(Spec.Solver) && IsValid(DepSpec.Solver) && Spec.Solver == DepSpec.Solver) continue; //NOTE: We ignore dependencies of the solver on itself for now.
-		TopologicalSortEquationsVisit(Model, Dependency, PushTo);
+		bool Success = TopologicalSortEquationsVisit(Model, Dependency, PushTo);
+		if(!Success)
+		{
+			PrintPartialDependencyTrace(Model, Equation);
+			return false;
+		}
 	}
 	Visited = true;
 	PushTo.push_back(Equation);
+	return true;
 }
 
-static void
+static bool
 TopologicalSortEquationsInSolverVisit(inca_model *Model, equation Equation, std::vector<equation>& PushTo)
 {
 	equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
 	
-	if(Spec.Visited) return;
+	if(Spec.Visited) return true;
 	if(Spec.TempVisited)
 	{
-		std::cout << "ERROR: The equation " << GetName(Model, Equation) << " has a direct or indirect dependency on the (current timestep) result value of itself. Try to use LAST_RESULT instead of RESULT for one of the dependencies." << std::endl;
-		exit(0);
+		std::cout << "ERROR: There is a circular dependency between the non-ode equations within a solver :" << std::endl;
+		PrintPartialDependencyTrace(Model, Equation, true);
+		return false;
 	}
 	Spec.TempVisited = true;
 	for(equation Dependency : Spec.DirectResultDependencies)
 	{
 		equation_spec &DepSpec = Model->EquationSpecs[Dependency.Handle];
 		if(DepSpec.Type == EquationType_ODE || DepSpec.Solver != Spec.Solver) continue; //NOTE: We are only interested sorting non-ode equations belonging to this solver.
-		TopologicalSortEquationsInSolverVisit(Model, Dependency, PushTo);
+		bool Success = TopologicalSortEquationsInSolverVisit(Model, Dependency, PushTo);
+		if(!Success)
+		{
+			PrintPartialDependencyTrace(Model, Equation);
+			return false;
+		}
 	}
 	Spec.Visited = true;
 	PushTo.push_back(Equation);
+	return true;
 }
 
-static void
+static bool
 TopologicalSortEquationsInitialValueVisit(inca_model *Model, equation Equation, std::vector<equation>& PushTo)
 {	
 	equation EquationToLookUp = Equation;
@@ -89,11 +119,12 @@ TopologicalSortEquationsInitialValueVisit(inca_model *Model, equation Equation, 
 	
 	equation_spec &Spec = Model->EquationSpecs[EquationToLookUp.Handle];
 	
-	if(Spec.Visited) return;
+	if(Spec.Visited) return true;
 	if(Spec.TempVisited)
 	{
-		std::cout << "ERROR: The initial value of the equation " << GetName(Model, Equation) << " has a direct or indirect dependency itself." << std::endl;
-		exit(0);
+		std::cout << "ERROR: There is a circular dependency between the initial value of the equations :" << std::endl;
+		PrintPartialDependencyTrace(Model, Equation, true);
+		return false;
 	}
 	Spec.TempVisited = true;
 	
@@ -103,15 +134,21 @@ TopologicalSortEquationsInitialValueVisit(inca_model *Model, equation Equation, 
 	{
 		for(equation Dependency : Spec.DirectResultDependencies)
 		{
-			TopologicalSortEquationsInitialValueVisit(Model, Dependency, PushTo);
+			bool Success = TopologicalSortEquationsInitialValueVisit(Model, Dependency, PushTo);
+			if(!Success)
+			{
+				PrintPartialDependencyTrace(Model, Equation);
+				return false;
+			}
 		}
 	}
 	
 	Spec.Visited = true;
 	PushTo.push_back(Equation);
+	return true;
 }
 
-typedef void topological_sort_equations_visit(inca_model *Model, equation Equation, std::vector<equation>& PushTo);
+typedef bool topological_sort_equations_visit(inca_model *Model, equation Equation, std::vector<equation>& PushTo);
 
 static void
 TopologicalSortEquations(inca_model *Model, std::vector<equation> &Equations, topological_sort_equations_visit *Visit)
@@ -120,7 +157,11 @@ TopologicalSortEquations(inca_model *Model, std::vector<equation> &Equations, to
 	Temporary.reserve(Equations.size());
 	for(equation Equation : Equations)
 	{
-		Visit(Model, Equation, Temporary);
+		bool Success = Visit(Model, Equation, Temporary);
+		if(!Success)
+		{
+			exit(0);
+		}
 	}
 	
 	for(size_t Idx = 0; Idx < Equations.size(); ++Idx)
@@ -770,6 +811,7 @@ ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_
 		if(BatchGroup.IndexSets.empty())
 		{
 			InnerLoopBody(DataSet, ValueSet, BatchGroup, BatchGroupIdx, -1);
+			BatchGroupIdx++;
 			continue;
 		}
 		
@@ -1095,9 +1137,9 @@ SetupInitialValue(inca_data_set *DataSet, value_set_accessor *ValueSet, equation
 		//NOTE: Equations without any type of initial value act as their own initial value equation
 		Initial = Model->Equations[Equation.Handle](ValueSet);
 	}
-	
-	
+ 	
 	size_t ResultStorageLocation = DataSet->ResultStorageStructure.LocationOfHandleInUnit[Equation.Handle];
+	
 	ValueSet->AtResult[ResultStorageLocation] = Initial;
 	ValueSet->CurResults[Equation.Handle] = Initial;
 	ValueSet->LastResults[Equation.Handle] = Initial;
@@ -1108,14 +1150,15 @@ INNER_LOOP_BODY(InitialValueSetupInnerLoop)
 	// TODO: IMPORTANT!! If an initial value equation depends on the result of an equation from a different batch than itself, that is not guaranteed to work correctly.
 	// TODO: Currently we don't report an error if that happens!
 	
-	if(CurrentLevel < 0) return;
-	
 	inca_model *Model = DataSet->Model;
 	
-	for(handle_t ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
+	if(CurrentLevel >= 0)
 	{
-		ValueSet->CurParameters[ParameterHandle] = *ValueSet->AtParameterLookup;
-		++ValueSet->AtParameterLookup;
+		for(handle_t ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
+		{
+			ValueSet->CurParameters[ParameterHandle] = *ValueSet->AtParameterLookup;
+			++ValueSet->AtParameterLookup;
+		}
 	}
 	
 	s32 BottomLevel = BatchGroup.IndexSets.size() - 1;
@@ -1129,6 +1172,7 @@ INNER_LOOP_BODY(InitialValueSetupInnerLoop)
 				SetupInitialValue(DataSet, ValueSet, Equation);
 			}
 		}
+		
 		ValueSet->AtResult += DataSet->ResultStorageStructure.Units[BatchGroupIdx].Handles.size(); //NOTE: This works because we set the storage structure up to mirror the batch group structure.
 	}
 }

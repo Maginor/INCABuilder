@@ -3,6 +3,7 @@
 
 //TODO: There is almost no error handling in this file..
 
+#include <chrono>
 
 static void
 WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, int Rgt, int Dpt, const char *Type, const char *Unit, bool IsIndexer, bool IsIndex)
@@ -168,7 +169,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, handle_t Param
 }
 
 static void
-CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname)
+CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *Exename = "")
 {
 	sqlite3 *Db;
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
@@ -257,9 +258,49 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname)
 	rc = sqlite3_step(Statement);
 	sqlite3_finalize(Statement);
 	
+	const char *CreateInfoTable =
+		"CREATE TABLE Info ("
+		"ModelName TEXT, "
+		"ModelVersion TEXT, "
+		"CreationDate TEXT, "
+		"Exename TEXT )";
+		
+	rc = sqlite3_prepare_v2(Db, CreateInfoTable, -1, &Statement, 0);
+	
+	rc = sqlite3_step(Statement);
+	sqlite3_finalize(Statement);
+	
 	inca_model *Model = DataSet->Model;
 	
 	sqlite3_exec(Db, "BEGIN TRANSACTION;", 0, 0, 0);
+	
+	const char *InsertModelInfo =
+		"INSERT INTO Info (ModelName, ModelVersion, CreationDate, Exename) "
+		"VALUES "
+		"(?, ?, ?, ?)";
+		
+	char *Datestr;
+	{
+		using namespace std::chrono;
+		system_clock::time_point P = system_clock::now();
+		std::time_t T = system_clock::to_time_t(P);
+		Datestr = std::ctime(&T);
+	}
+		
+	rc = sqlite3_prepare_v2(Db, InsertModelInfo, -1, &Statement, 0);
+	rc = sqlite3_bind_text(Statement, 1, Model->Name, -1, SQLITE_STATIC);
+	rc = sqlite3_bind_text(Statement, 2, Model->Version, -1, SQLITE_STATIC);
+	rc = sqlite3_bind_text(Statement, 3, Datestr, -1, SQLITE_STATIC);
+	rc = sqlite3_bind_text(Statement, 4, Exename, -1, SQLITE_STATIC);
+	
+	if(rc != SQLITE_OK)
+	{
+		std::cout << "ERROR: Inserting model info in database " << Dbname << ". Message: " << sqlite3_errmsg(Db) << std::endl;
+		exit(0);
+	}
+	
+	sqlite3_step(Statement);
+	sqlite3_finalize(Statement);
 	
 	int RunningID = 2;
 	int RunningLft = 1;
@@ -645,7 +686,7 @@ PrintStructureTreeRecursively(inca_model *Model, std::vector<database_structure_
 
 
 static void
-WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *Statement, int ID, handle_t Handle, index_t *Indexes, size_t IndexesCount, s64 StartDate, s64 Step)
+WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *Statement, int ID, handle_t Handle, index_t *Indexes, size_t IndexesCount, s64 StartDate, s64 Step, u64 Timesteps)
 {
 	size_t Offset = OffsetForHandle(StorageStructure, Indexes, IndexesCount, DataSet->IndexCounts, Handle);
 	
@@ -653,7 +694,7 @@ WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructur
 	
 	s64 AtTime = StartDate;
 	
-	for(u64 Timestep = 0; Timestep < DataSet->TimestepsLastRun; ++Timestep)
+	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{	
 		double Value = Data[Offset];
 		rc = sqlite3_bind_int64(Statement, 1, AtTime);
@@ -706,7 +747,7 @@ WriteStructureEntryToDatabase(sqlite3 *Db, sqlite3_stmt *Statement, int ID, cons
 }
 
 static void
-WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *InsertValueStatement, sqlite3_stmt *InsertStructureStatement, std::vector<database_structure_tree> &StructureTree, size_t CurrentLevel, int Dpt, int &RunningID, int &RunningLft, index_t *Indexes, s64 StartDate, s64 Step, int Mode)
+WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *InsertValueStatement, sqlite3_stmt *InsertStructureStatement, std::vector<database_structure_tree> &StructureTree, size_t CurrentLevel, int Dpt, int &RunningID, int &RunningLft, index_t *Indexes, s64 StartDate, s64 Step, u64 Timesteps, int Mode)
 {
 	inca_model *Model = DataSet->Model;
 	
@@ -744,10 +785,10 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 					}
 					
 					WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt + 2, Unit, false, false);
-					WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, CurrentLevel + 1, StartDate, Step);
+					WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, CurrentLevel + 1, StartDate, Step, Timesteps);
 				}
 				
-				WriteStructureToDatabaseRecursively(DataSet, StorageStructure, Data, Db, InsertValueStatement, InsertStructureStatement, Tree.Children, CurrentLevel + 1, Dpt + 2, RunningID, RunningLft, Indexes, StartDate, Step, Mode);
+				WriteStructureToDatabaseRecursively(DataSet, StorageStructure, Data, Db, InsertValueStatement, InsertStructureStatement, Tree.Children, CurrentLevel + 1, Dpt + 2, RunningID, RunningLft, Indexes, StartDate, Step, Timesteps, Mode);
 				
 				int RgtOfIndex = RunningLft++;
 				const char *IndexName = DataSet->IndexNames[IndexSet.Handle][Index];
@@ -778,7 +819,7 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				}
 				
 				WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt, Unit, false, false);
-				WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, 0, StartDate, Step);
+				WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, 0, StartDate, Step, Timesteps);
 			}
 		}
 	}
@@ -871,18 +912,25 @@ WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructu
 	index_t Indexes[256];
 	rc = sqlite3_exec(Db, "BEGIN TRANSACTION;", 0, 0, 0);
 	
+	s64 Step = 86400; //NOTE: The number of seconds in each timestep //TODO: Remember not to hard code this if we later allow for flexible time step.
 	
-	s64 StartDate = 0;
-	s64 Step = 86400; //TODO: Remember not to hard code this if we later allow for flexible time step.
-	auto Find = Model->ParameterNameToHandle.find("Start date");
-	if(Find != Model->ParameterNameToHandle.end())
+	s64 StartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
+	if(Mode == 1 && DataSet->InputDataHasSeparateStartDate)
 	{
-		handle_t StartDateHandle = Find->second;
-		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, StartDateHandle);
-		StartDate = DataSet->ParameterData[Offset].ValTime;
+		StartDate = DataSet->InputDataStartDate;
 	}
 	
-	WriteStructureToDatabaseRecursively(DataSet, StorageStructure, Data, Db, Statement, StructureStatement, StructureTree, 0, 0, RunningID, RunningLft, Indexes, StartDate, Step, Mode);
+	u64 Timesteps;
+	if(Mode == 0)
+	{
+		Timesteps = DataSet->TimestepsLastRun;
+	}
+	else if(Mode == 1)
+	{
+		Timesteps = DataSet->InputDataTimesteps;
+	}
+	
+	WriteStructureToDatabaseRecursively(DataSet, StorageStructure, Data, Db, Statement, StructureStatement, StructureTree, 0, 0, RunningID, RunningLft, Indexes, StartDate, Step, Timesteps, Mode);
 	
 	rc = sqlite3_exec(Db, "COMMIT;", 0, 0, 0);
 

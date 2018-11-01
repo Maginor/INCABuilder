@@ -898,16 +898,24 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 				AllocateInputStorage(DataSet, Timesteps);
 				FoundTimesteps = true;
 			}
+			else if(strcmp(Token.StringValue, "start_date") == 0)
+			{
+				ExpectToken(Stream, Token, TokenType_Colon);
+				ExpectToken(Stream, Token, TokenType_QuotedString);
+				s64 StartDate = ParseSecondsSinceEpoch(Token.StringValue);
+				DataSet->InputDataHasSeparateStartDate = true;
+				DataSet->InputDataStartDate = StartDate;
+			}
 			else if(strcmp(Token.StringValue, "inputs") == 0)
 			{
 				ExpectToken(Stream, Token, TokenType_Colon);
 				break;
 			}
-			else if(strcmp(Token.StringValue, "index_set_dependencies") != 0 && strcmp(Token.StringValue, "extra_inputs") != 0)
+			else if(strcmp(Token.StringValue, "index_set_dependencies") != 0 && strcmp(Token.StringValue, "additional_timeseries") != 0)
 			{
 				//NOTE: We don't actually read the dependencies here
 				PrintStreamErrorHeader(Stream);
-				std::cout << "Expected one of the code words timesteps, inputs, extra_inputs or index_set_dependencies" << std::endl;
+				std::cout << "Expected one of the code words timesteps, start_date, inputs, additional_timeseries or index_set_dependencies" << std::endl;
 				exit(0);
 			}
 		}
@@ -922,6 +930,11 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 	{
 		std::cout << "ERROR: in input file " << Filename << ", did not find the codeword timesteps to declare how many timesteps of inputs are provided." << std::endl;
 		exit(0);
+	}
+	
+	if(!DataSet->InputDataHasSeparateStartDate)
+	{
+		DataSet->InputDataStartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	}
 	
 	while(true)
@@ -1001,12 +1014,90 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		double *WriteTo = DataSet->InputData + Offset;
 		
-		for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
+		//NOTE: For the first timestep, try to figure out what format the data was provided in.
+		int FormatType = -1;
+		ReadToken(Stream, Token);
+		if(Token.Type == TokenType_Numeric)
 		{
-			ExpectToken(Stream, Token, TokenType_Numeric);
-			double Value = GetDoubleValue(Token);
-			*WriteTo = Value;
-			WriteTo += DataSet->InputStorageStructure.TotalCount;
+			FormatType = 0;
+		}
+		else if(Token.Type == TokenType_QuotedString)
+		{
+			FormatType = 1;
+			double *WriteNanTo = WriteTo;
+			//NOTE: For this format, the default value is NaN (signifying a missing value).
+			for(u64 Timestep = 0; Timestep < Timesteps; ++ Timestep)
+			{
+				*WriteNanTo = std::numeric_limits<double>::quiet_NaN();
+				WriteNanTo += DataSet->InputStorageStructure.TotalCount;
+			}
+		}
+		else
+		{
+			PrintStreamErrorHeader(Stream);
+			std::cout << "Inputs are to be provided either as a series of numbers or a series of dates together with numbers" << std::endl;
+			exit(0);
+		}
+		
+		if(FormatType == 0)
+		{
+			for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
+			{
+				if(Timestep != 0) ExpectToken(Stream, Token, TokenType_Numeric); //We already read the token for timestep 0. TODO: We really should have PeekToken function...
+				double Value = GetDoubleValue(Token);
+				*WriteTo = Value;
+				WriteTo += DataSet->InputStorageStructure.TotalCount;
+			}
+		}
+		else //FormatType == 1
+		{
+			bool Beginning = true;
+			
+			s64 StartDate = DataSet->InputDataStartDate;;
+			
+			while(true)
+			{
+				s64 CurTimestep;
+				
+				if(!Beginning) ReadToken(Stream, Token);
+				
+				Beginning = false;
+				if(Token.Type == TokenType_QuotedString)
+				{
+					s64 Date = ParseSecondsSinceEpoch(Token.StringValue);
+					
+					CurTimestep = DayOffset(StartDate, Date); //NOTE: Only one-day timesteps currently supported.
+					
+					if(CurTimestep < 0 || CurTimestep >= (s64)Timesteps)
+					{
+						PrintStreamErrorHeader(Stream);
+						std::cout << "The date " << Token.StringValue << " falls outside the time period that we have allocated input storage for." << std::endl;
+						exit(0);
+					}
+				}
+				else if(Token.Type == TokenType_UnquotedString)
+				{
+					if(strcmp(Token.StringValue, "end_timeseries") == 0)
+					{
+						break;
+					}
+					else
+					{
+						PrintStreamErrorHeader(Stream);
+						std::cout << "Unexpected command word: " << Token.StringValue << std::endl;
+						exit(0);
+					}
+				}
+				else
+				{
+					PrintStreamErrorHeader(Stream);
+					std::cout << "Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl;
+				}
+				
+				ExpectToken(Stream, Token, TokenType_Numeric);
+				double Value = GetDoubleValue(Token);
+				*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Value;
+			}
 		}
 	}
 }
@@ -1036,14 +1127,14 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 				Mode = 0;
 				ExpectToken(Stream, Token, TokenType_Colon);
 			}
-			else if(strcmp(Token.StringValue, "extra_inputs") == 0)
+			else if(strcmp(Token.StringValue, "additional_timeseries") == 0)
 			{
 				Mode = 1;
 				ExpectToken(Stream, Token, TokenType_Colon);
 			}
 			else if(strcmp(Token.StringValue, "inputs") == 0)
 			{
-				//NOTE: "index_set_dependencies" and "extra_inputs" are assumed to come before "inputs" in the file.
+				//NOTE: "index_set_dependencies" and "additional_timeseries" are assumed to come before "inputs" in the file.
 				break;
 			}
 		}

@@ -26,6 +26,22 @@ BeginModelDefinition(const char *Name = "(unnamed)", const char *Version = "0.0"
 	return Model;
 }
 
+static s64
+GetStartDate(inca_data_set *DataSet)
+{
+	inca_model *Model = DataSet->Model;
+	
+	auto FindTime = Model->ParameterNameToHandle.find("Start date");
+	if(FindTime != Model->ParameterNameToHandle.end())
+	{
+		handle_t StartTimeHandle = FindTime->second;
+		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, StartTimeHandle);
+		return DataSet->ParameterData[Offset].ValTime; //TODO: Check that it was actually registered with the correct type and so on.
+	}
+	
+	return 0;
+}
+
 static void
 PrintPartialDependencyTrace(inca_model *Model, equation Equation, bool First = false)
 {
@@ -207,7 +223,7 @@ bool IsTopIndexSetForThisDependency(std::vector<index_set> &IndexSetDependencies
 
 
 #if !defined(INCA_PRINT_TIMING_INFO)
-#define INCA_PRINT_TIMING_INFO 1
+#define INCA_PRINT_TIMING_INFO 0
 #endif
 
 static void
@@ -218,7 +234,6 @@ EndModelDefinition(inca_model *Model)
 		std::cout << "ERROR: Called EndModelDefinition twice on the same model." << std::endl;
 		exit(0);
 	}
-	
 	
 	///////////// Find out what index sets each parameter depends on /////////////
 	
@@ -1137,6 +1152,8 @@ SetupInitialValue(inca_data_set *DataSet, value_set_accessor *ValueSet, equation
 		//NOTE: Equations without any type of initial value act as their own initial value equation
 		Initial = Model->Equations[Equation.Handle](ValueSet);
 	}
+	
+	//std::cout << "Initial value of " << GetName(Model, Equation) << " is " << Initial << std::endl;
  	
 	size_t ResultStorageLocation = DataSet->ResultStorageStructure.LocationOfHandleInUnit[Equation.Handle];
 	
@@ -1226,14 +1243,7 @@ RunModel(inca_data_set *DataSet)
 #endif
 	}
 	
-	s64 ModelStartTime = 0;
-	auto FindTime = Model->ParameterNameToHandle.find("Start date");
-	if(FindTime != Model->ParameterNameToHandle.end())
-	{
-		handle_t StartTimeHandle = FindTime->second;
-		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, StartTimeHandle);
-		ModelStartTime = DataSet->ParameterData[Offset].ValTime; //TODO: Check that it was actually registered with the correct type and so on.
-	}
+	s64 ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	
 	//NOTE: Allocate input storage in case it was not allocated during setup.
 	if(!DataSet->InputData)
@@ -1241,11 +1251,25 @@ RunModel(inca_data_set *DataSet)
 		AllocateInputStorage(DataSet, Timesteps);
 		std::cout << "WARNING: No input values were specified, using input values of 0 only." << std::endl;
 	}
-	else if(DataSet->InputDataTimesteps < Timesteps)
+	
+	s64 InputDataStartOffsetTimesteps = 0;
+	if(DataSet->InputDataHasSeparateStartDate)
+	{
+		InputDataStartOffsetTimesteps = DayOffset(DataSet->InputDataStartDate, ModelStartTime); //NOTE: Only one-day timesteps currently supported.
+		if(InputDataStartOffsetTimesteps < 0)
+		{
+			std::cout << "ERROR: The input data starts at a later date than the model run." << std::endl;
+			exit(0);
+		}
+	}
+	
+	if(((s64)DataSet->InputDataTimesteps - InputDataStartOffsetTimesteps) < (s64)Timesteps)
 	{
 		std::cout << "ERROR: The input data provided has fewer timesteps than the number of timesteps the model is running for." << std::endl;
 		exit(0);
 	}
+	
+	//std::cout << "Input data start offset timesteps was " << InputDataStartOffsetTimesteps << std::endl;
 	
 	if(DataSet->HasBeenRun)
 	{
@@ -1322,7 +1346,7 @@ RunModel(inca_data_set *DataSet)
 	
 	ValueSet.AllLastResultsBase = DataSet->ResultData;
 	ValueSet.AllCurResultsBase = DataSet->ResultData + DataSet->ResultStorageStructure.TotalCount;
-	ValueSet.AllCurInputsBase = DataSet->InputData;
+	ValueSet.AllCurInputsBase = DataSet->InputData + ((size_t)InputDataStartOffsetTimesteps)*DataSet->InputStorageStructure.TotalCount;
 	
 #if INCA_EQUATION_PROFILING
 	ValueSet.EquationHits        = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);

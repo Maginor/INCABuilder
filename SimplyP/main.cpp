@@ -3,6 +3,7 @@
 //NOTE: the g++ compiler flag ffast-math will make it so that isnan does not work correctly, so don't use that flag.
 #define INCA_TEST_FOR_NAN 0
 #define INCA_EQUATION_PROFILING 0
+#define INCA_PRINT_TIMING_INFO 1
 
 #include "../inca.h"
 
@@ -50,10 +51,11 @@ int main()
 	//PrintResultSeries(DataSet, "Agricultural soil labile P mass", {"Tarland1"}, 1000);
 	//PrintResultSeries(DataSet, "Agricultural soil TDP mass", {"Tarland1"}, 1000);
 	
+	/*
 	DlmWriteResultSeriesToFile(DataSet, "results.dat",
 		{"Agricultural soil water volume", "Agricultural soil net P sorption", "Agricultural soil water EPC0", "Agricultural soil labile P mass", "Agricultural soil TDP mass"}, 
 		{{"Tarland1"},                     {"Tarland1"},                   {"Tarland1"},                      {"Tarland1"},                       {"Tarland1"}},
 		'\t'
 	);
-	
+	*/
 }

@@ -6,7 +6,7 @@ index_sets:
 parameters:
 ###################### (no index sets) ######################
 "Timesteps" :
-100
+3651
 
 "Start date" :
 "1983-1-1"

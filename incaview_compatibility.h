@@ -14,14 +14,26 @@ struct incaview_commandline_arguments
 	const char *InputFileName;
 	const char *ParameterDbFileName;
 	const char *ParameterTextFileName;
+	const char *Exename;
 };
 
 static void
 ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *Args)
 {
 	bool CorrectUse = false;
-	//NOTE: argv[0] is the exe name.
+	char *Exename = argv[0];
 	
+	//NOTE: Very rudimentary attempt to trim off any leading directories. In case somebody called the exe from another directory while creating the database.
+	int LastSlashPos = -1;
+	int Pos = 0;
+	for(char *C = Exename; *C != 0; ++C)
+	{
+		if(*C == '\\' || *C == '/') LastSlashPos = Pos;
+		++Pos;
+	}
+	Exename = Exename + (LastSlashPos + 1);
+	
+	Args->Exename = Exename;
 	if(argc == 4)
 	{
 		if(strcmp(argv[1], "run") == 0)
@@ -90,7 +102,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 	{
 		ReadParametersFromFile(DataSet, Args->ParameterTextFileName);
 		//TODO: Delete existing database if it exists? (right now it is handled by incaview, but it could be confusing if somebody runs the exe manually)
-		CreateParameterDatabase(DataSet, Args->ParameterDbFileName);
+		CreateParameterDatabase(DataSet, Args->ParameterDbFileName, Args->Exename);
 	}
 	else if(Args->Mode == IncaviewRunMode_ExportParameters)
 	{

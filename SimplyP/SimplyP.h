@@ -144,7 +144,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return (1.0 - PARAMETER(ProportionToQuickFlow)) * RESULT(HydrologicalInputToSoilBox);
 	)
 	
-	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.01, IncaDascru);
+	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
 	
 	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
 	
@@ -278,7 +278,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		// f_A = f_IG + f_Ar
 		// dVg_dt = beta*(f_A*QsA_i + f_S*QsS_i) - Qg_i
 		
-		return PARAMETER(BaseflowIndex) * RESULT(TotalSoilWaterFlow);
+		return PARAMETER(BaseflowIndex) * RESULT(TotalSoilWaterFlow)
 			- RESULT(GroundwaterFlow);
 	)
 	
@@ -358,7 +358,6 @@ AddSimplyPHydrologyModule(inca_model *Model)
 }
 
 
-
 static void
 AddSimplyPSedimentModule(inca_model *Model)
 {
@@ -368,6 +367,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	auto KgPerMm       = RegisterUnit(Model, "kg/mm");
 	auto JulianDay     = RegisterUnit(Model, "Julian day");
 	auto Degrees       = RegisterUnit(Model, "°");
+	auto MgPerL        = RegisterUnit(Model, "mg/l");
 	
 	
 	auto Reach          = GetIndexSetHandle(Model, "Reaches");
@@ -417,6 +417,8 @@ AddSimplyPSedimentModule(inca_model *Model)
 	auto SuspendedSedimentMass = RegisterEquationODE(Model, "Suspended sediment mass", Kg);
 	SetInitialValue(Model, SuspendedSedimentMass, 0.0);
 	SetSolver(Model, SuspendedSedimentMass, SimplyPSolver);
+	
+	auto SuspendedSedimentConcentration = RegisterEquation(Model, "Suspended sediment concentration", MgPerL);
 	
 	EQUATION(Model, TimeDependentVegetationCoverFactor,
 		
@@ -495,7 +497,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 				C_cov += C_season * coverproportion[Season];
 			}
 			
-			C_cover = C_cov;
+			return C_cov;
 		}
 
 		return C_cover;
@@ -524,6 +526,14 @@ AddSimplyPSedimentModule(inca_model *Model)
 		return RESULT(SuspendedSedimentMass) * RESULT(ReachFlow) / RESULT(ReachVolume);
 	)
 	
+	auto ReachSedimentExternalInput = RegisterEquation(Model, "Reach sediment external input", KgPerDay);
+	SetSolver(Model, ReachSedimentExternalInput, SimplyPSolver);
+	
+	EQUATION(Model, ReachSedimentExternalInput,
+		// Msus_in_i = Esus_i * Qr_i**k_M
+		return RESULT(TotalReachSedimentInputFromLand) * pow(RESULT(ReachFlow), PARAMETER(InstreamEntrainmentNonlinearCoefficient));
+	)
+	
 	EQUATION(Model, SuspendedSedimentMass,
 		//dMsus_dt = (f_Ar*Msus_in_i['A'] + f_IG*Msus_in_i['IG'] + f_S* Msus_in_i['S']  # External inputs (kg/day)
         //        + Msus_US_i                                                       # Inputs from upstream
@@ -534,10 +544,13 @@ AddSimplyPSedimentModule(inca_model *Model)
 			upstreamflux += RESULT(SuspendedSedimentFlux, *Input);
 		)
 		
-		// Msus_in_i = Esus_i * Qr_i**k_M
-		double externalinput = RESULT(TotalReachSedimentInputFromLand) * pow(RESULT(ReachFlow), PARAMETER(InstreamEntrainmentNonlinearCoefficient));
-		
-		return externalinput + upstreamflux - RESULT(SuspendedSedimentFlux);
+		return RESULT(ReachSedimentExternalInput) + upstreamflux - RESULT(SuspendedSedimentFlux);
+	)
+	
+	auto CatchmentArea = GetParameterDoubleHandle(Model, "Catchment area");
+	
+	EQUATION(Model, SuspendedSedimentConcentration,
+		return ConvertKgPerMmToMgPerL(RESULT(SuspendedSedimentMass) / RESULT(ReachVolume), PARAMETER(CatchmentArea));
 	)
 }
 
@@ -587,6 +600,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto SimplyPSolver               = GetSolverHandle(Model, "SimplyP solver");
 	auto CatchmentArea               = GetParameterDoubleHandle(Model, "Catchment area");
 	auto InstreamEntrainmentNonlinearCoefficient = GetParameterDoubleHandle(Model, "Instream entrainment non-linear coefficient");
+	auto LandUseProportionExcludingNC = GetParameterDoubleHandle(Model, "Land use proportion excluding newly-converted");
+	auto BaseflowIndex               = GetParameterDoubleHandle(Model, "Baseflow index");
 	auto AgriculturalSoilWaterVolume = GetEquationHandle(Model, "Agricultural soil water volume");
 	auto InfiltrationExcess          = GetEquationHandle(Model, "Infiltration excess");
 	auto AgriculturalSoilWaterFlow   = GetEquationHandle(Model, "Agricultural soil water flow");
@@ -660,8 +675,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	EQUATION(Model, AgriculturalSoilTDPFlux,
 		return
-			  RESULT(AgriculturalSoilTDPMass) * RESULT(AgriculturalSoilWaterFlow) / RESULT(AgriculturalSoilWaterVolume)
-			+ RESULT(AgriculturalSoilTDPMass) * RESULT(InfiltrationExcess) / RESULT(AgriculturalSoilWaterVolume);
+			  RESULT(AgriculturalSoilTDPMass) 
+			  * (RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess)) / RESULT(AgriculturalSoilWaterVolume);
 	)
 	
 	EQUATION(Model, AgriculturalSoilTDPMass,
@@ -775,9 +790,17 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		FOREACH_INPUT(Reach,
 			upstreamflux += RESULT(StreamTDPFlux, *Input);
 		)
+		
+		double f_A = PARAMETER(LandUseProportionExcludingNC, Arable) + PARAMETER(LandUseProportionExcludingNC, ImprovedGrassland);
+		
+		double fromAgriculturalSoil =
+			    f_A
+			  * (RESULT(AgriculturalSoilTDPMass)  / RESULT(AgriculturalSoilWaterVolume))
+			  * ((1.0-PARAMETER(BaseflowIndex)) * RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess));
+		
 		return
-			  RESULT(AgriculturalSoilTDPFlux)
-			// + RESULT(NewlyConvertedSoilTDPFlux)
+			  fromAgriculturalSoil
+			// + fromNewlyConvertedSoil
 			+ RESULT(GroundwaterFlow) * ConvertMgPerLToKgPerMm(PARAMETER(GroundwaterTDPConcentration), PARAMETER(CatchmentArea))
 			+ PARAMETER(EffluentTDP)
 			+ upstreamflux
@@ -821,5 +844,11 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 			  sedimentinput
 			+ upstreamflux
 			- RESULT(StreamPPFlux);
+	)
+	
+	auto TDPConcentration = RegisterEquation(Model, "TDP concentration", MgPerL);
+	
+	EQUATION(Model, TDPConcentration,
+		return ConvertKgPerMmToMgPerL(RESULT(StreamTDPMass) / RESULT(ReachVolume), PARAMETER(CatchmentArea));
 	)
 }

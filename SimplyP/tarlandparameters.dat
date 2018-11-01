@@ -103,10 +103,10 @@ true
 
 ###################### "Reaches" "Landscape units" ######################
 "Land use proportion excluding newly-converted" :     #(dimensionless)
-0.2 0.3 0.5
+0.2 0.5 0.3
 
 "Mean slope of land in the subcatchment" :     #(°)
-4 4 10
+4 10 4
 
 "Initial soil water EPC0" :     #(mg/l)
 0.1 0.0 0.0

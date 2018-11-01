@@ -121,20 +121,22 @@ struct equation_spec
 	bool HasExplicitInitialValue;
 	equation InitialValueEquation;
 	
-	std::set<index_set> IndexSetDependencies;
-	std::set<handle_t>  ParameterDependencies;
-	std::set<input>     InputDependencies;
-	std::set<equation>  DirectResultDependencies;
-	std::set<equation>  DirectLastResultDependencies;
-	bool EquationIsSet;
-	
-	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
-	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
+	bool EquationIsSet;              //NOTE: Whether or not the equation body has been provided.
 	
 	index_set CumulatesOverIndexSet; //NOTE: Only used for Type == EquationType_Cumulative.
 	equation Cumulates;              //NOTE: Only used for Type == EquationType_Cumulative.
 	
 	solver Solver;
+	
+	//NOTE: These are built during EndModelDefinition:
+	std::set<index_set> IndexSetDependencies;
+	std::set<handle_t>  ParameterDependencies;
+	std::set<input>     InputDependencies;
+	std::set<equation>  DirectResultDependencies;
+	std::set<equation>  DirectLastResultDependencies;
+	
+	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
+	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
 };
 
 struct solver_spec
@@ -308,6 +310,8 @@ struct inca_data_set
 	
 	double *InputData;
 	storage_structure InputStorageStructure;
+	s64 InputDataStartDate;
+	bool InputDataHasSeparateStartDate = false; //NOTE: Whether or not a start date was provided for the input data, which is potentially different from the start date of the model.
 	u64 InputDataTimesteps;
 	
 	double *ResultData;

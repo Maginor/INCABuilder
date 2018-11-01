@@ -181,7 +181,18 @@ YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 	}
 }
 
-
+inline s64
+DayOffset(s64 OffsetFrom, s64 Date)
+{
+	if(Date >= OffsetFrom)
+	{
+		return (Date - OffsetFrom) / 86400;
+	}
+	else
+	{
+		return (Date - OffsetFrom - 1) / 86400;
+	}
+}
 
 
 #define INCA_UTIL_H

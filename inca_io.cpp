@@ -69,8 +69,8 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 		exit(0);
 	}
 	
-	FILE *file = fopen(Filename, "w");
-	if(!file)
+	FILE *File = fopen(Filename, "w");
+	if(!File)
 	{	
 		std::cout << "Tried to open file " << Filename << ", but were not able to." << std::endl;
 		return;
@@ -78,80 +78,89 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	
 	inca_model *Model = DataSet->Model;
 	
-	fprintf(file, "index_sets:\n");
+	fprintf(File, "index_sets:\n");
 	for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{
 		index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
-		fprintf(file, "\"%s\" : {", Spec.Name);
+		fprintf(File, "\"%s\" : {", Spec.Name);
 		for(index_t IndexIndex = 0; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)
 		{
 			if(Spec.Type == IndexSetType_Basic)
 			{
-				if(IndexIndex != 0) fprintf(file, " ");
-				fprintf(file, "\"%s\"", DataSet->IndexNames[IndexSetHandle][IndexIndex]);
+				if(IndexIndex != 0) fprintf(File, " ");
+				fprintf(File, "\"%s\"", DataSet->IndexNames[IndexSetHandle][IndexIndex]);
 			}
 			else if(Spec.Type == IndexSetType_Branched)
 			{
-				if(IndexIndex != 0) fprintf(file, " ");
+				if(IndexIndex != 0) fprintf(File, " ");
 				size_t InputCount = DataSet->BranchInputs[IndexSetHandle][IndexIndex].Count;
-				if(InputCount > 0) fprintf(file, "{");
-				fprintf(file, "\"%s\"", DataSet->IndexNames[IndexSetHandle][IndexIndex]);
+				if(InputCount > 0) fprintf(File, "{");
+				fprintf(File, "\"%s\"", DataSet->IndexNames[IndexSetHandle][IndexIndex]);
 				for(size_t InputIdx = 0; InputIdx < InputCount; ++InputIdx)
 				{
 					index_t InputIndexIndex = DataSet->BranchInputs[IndexSetHandle][IndexIndex].Inputs[InputIdx];
-					fprintf(file, " \"%s\"", DataSet->IndexNames[IndexSetHandle][InputIndexIndex]);
+					fprintf(File, " \"%s\"", DataSet->IndexNames[IndexSetHandle][InputIndexIndex]);
 				}
-				if(InputCount > 0) fprintf(file, "}");
+				if(InputCount > 0) fprintf(File, "}");
 			}
 			else
 			{
 				assert(0);
 			}
 		}
-		fprintf(file, "}\n");
+		fprintf(File, "}\n");
 	}
 	
-	fprintf(file, "\nparameters:\n");
+	fprintf(File, "\nparameters:\n");
 	for(size_t UnitIndex = 0; UnitIndex < DataSet->ParameterStorageStructure.Units.size(); ++UnitIndex)
 	{
 		std::vector<index_set> &IndexSets = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
-		fprintf(file, "######################");
-		if(IndexSets.empty()) fprintf(file, " (no index sets)");
+		fprintf(File, "######################");
+		if(IndexSets.empty()) fprintf(File, " (no index sets)");
 		for(index_set IndexSet : IndexSets)
 		{
-			fprintf(file, " \"%s\"", GetName(Model, IndexSet));
+			fprintf(File, " \"%s\"", GetName(Model, IndexSet));
 		}
-		fprintf(file, " ######################\n");
+		fprintf(File, " ######################\n");
 		
 		for(handle_t ParameterHandle: DataSet->ParameterStorageStructure.Units[UnitIndex].Handles)
 		{
 			parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
-			fprintf(file, "\"%s\" :", Spec.Name);
-			unit ParUnit = Spec.Unit;
-			bool PrintedHash = false;
-			if(IsValid(ParUnit))
+			fprintf(File, "\"%s\" :", Spec.Name);
+			bool PrintedPnd = false;
+			if(IsValid(Spec.Unit))
 			{
-				fprintf(file, "     #(%s)", GetName(Model, ParUnit));
-				PrintedHash = true;
+				fprintf(File, "     #(%s)", GetName(Model, Spec.Unit));
+				PrintedPnd = true;
+			}
+			if(Spec.Type != ParameterType_Bool)
+			{
+				if(!PrintedPnd) fprintf(File, "     #");
+				PrintedPnd = true;
+				fprintf(File, " [");
+				WriteParameterValue(File, Spec.Min, Spec.Type);
+				fprintf(File, ", ");
+				WriteParameterValue(File, Spec.Max, Spec.Type);
+				fprintf(File, "]");
 			}
 			if(Spec.Description)
 			{
-				if(!PrintedHash) fprintf(file, " #");
-				fprintf(file, " %s", Spec.Description);
+				if(!PrintedPnd) fprintf(File, "     #");
+				fprintf(File, " %s", Spec.Description);
 			}
-			fprintf(file, "\n");
+			fprintf(File, "\n");
 			
 			size_t IndexSetCount = IndexSets.size();
 			index_t *CurrentIndexes = AllocClearedArray(index_t, IndexSetCount);
 			
-			WriteParameterValues(file, ParameterHandle, Spec.Type, DataSet, IndexSets.data(), CurrentIndexes, IndexSetCount, 0);
+			WriteParameterValues(File, ParameterHandle, Spec.Type, DataSet, IndexSets.data(), CurrentIndexes, IndexSetCount, 0);
 			
-			fprintf(file, "\n\n");
+			fprintf(File, "\n\n");
 			free(CurrentIndexes);
 		}
 	}
 	
-	fclose(file);
+	fclose(File);
 }
 
 enum io_file_token_type

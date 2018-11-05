@@ -4,123 +4,123 @@ index_sets:
 
 parameters:
 ###################### (no index sets) ######################
-"Timesteps" :     #(days)
+"Timesteps" :     #(days) [0, 18446744073709551615]
 10957
 
-"Start date" :
+"Start date" :     # ["1900-1-1", "2200-12-31"]
 "1981-1-1"
 
 "Dynamic erodibility" :
 true
 
-"Dynamic EPC0" : # Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it  varies with labile P content
+"Dynamic EPC0" :     # Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it varies with labile P content
 true
 
 ###################### "Reaches" ######################
-"Initial snow depth" :     #(mm)
+"Initial snow depth" :     #(mm) [0, 50000]
 0
 
-"Degree-day factor for snowmelt" :     #(mm/°C/day)
+"Degree-day factor for snowmelt" :     #(mm/°C/day) [0, 5]
 2.74
 
-"Proportion of precipitation that contributes to quick flow" :     #(dimensionless)
+"Proportion of precipitation that contributes to quick flow" :     #(dimensionless) [0, 1]
 0.02
 
-"PET reduction factor" :     #(dimensionless)
+"PET reduction factor" :     #(dimensionless) [0, 1]
 1
 
-"Soil field capacity" :     #(mm)
+"Soil field capacity" :     #(mm) [0, 5000]
 290
 
-"Baseflow index" :     #(dimensionless)
+"Baseflow index" :     #(dimensionless) [0, 1]
 0.7
 
-"Groundwater time constant" :     #(days)
+"Groundwater time constant" :     #(days) [0.5, 200]
 65
 
-"Minimum groundwater flow" :     #(mm/day)
+"Minimum groundwater flow" :     #(mm/day) [0, 10]
 0.4
 
-"Gradient of stream velocity-discharge relationship" :     #(/m3)
+"Gradient of stream velocity-discharge relationship" :     #(/m3) [1e-005, 0.99] The a in V = aQ^b
 0.5
 
-"Exponent of stream velocity-discharge relationship" :     #(dimensionless)
+"Exponent of stream velocity-discharge relationship" :     #(dimensionless) [0.1, 0.99] The b in V = aQ^b
 0.42
 
-"Catchment area" :     #(km2)
+"Catchment area" :     #(km2) [0, 10000]
 51.7
 
-"Reach length" :     #(m)
+"Reach length" :     #(m) [0, 10000000]
 10000
 
-"Initial in-stream flow" :     #(m3/s)
+"Initial in-stream flow" :     #(m3/s) [0, 1000000]
 1
 
-"Reach sediment input scaling factor" :     #(kg/mm)
+"Reach sediment input scaling factor" :     #(kg/mm) [0, 100000]
 1500
 
-"Instream entrainment non-linear coefficient" :     #(dimensionless)
+"Instream entrainment non-linear coefficient" :     #(dimensionless) [0.1, 5]
 2
 
-"Day of year when soil erodibility is at its max for spring-grown crops" :     #(Julian day)
+"Day of year when soil erodibility is at its max for spring-grown crops" :     #(Julian day) [30, 335]
 60
 
-"Day of year when soil erodibility is at its max for autumn-grown crops" :     #(Julian day)
+"Day of year when soil erodibility is at its max for autumn-grown crops" :     #(Julian day) [30, 335]
 304
 
-"Reach slope" :     #(°)
+"Reach slope" :     #(°) [0, 90]
 0.8
 
-"Proportion of spring grown crops" :     #(dimensionless) Proportion spring-sown crops to make total arable land area (assume rest is autumn-sown)
+"Proportion of spring grown crops" :     #(dimensionless) [0, 1] Proportion spring-sown crops to make total arable land area (assume rest is autumn-sown)
 0.65
 
-"Soil mass per m2" :     #(kg/m2)
+"Soil mass per m2" :     #(kg/m2) [0, 200]
 95
 
-"Phosphorous sorption coefficient" :     #(mm/kg) gradient of linear relationship between labile P and TDP concentration
+"Phosphorous sorption coefficient" :     #(mm/kg) [0, 0.1] gradient of linear relationship between labile P and TDP concentration
 0.000113
 
-"Net annual P input to agricultural soil" :     #(kg/ha/year)
+"Net annual P input to agricultural soil" :     #(kg/ha/year) [-100, 100]
 10
 
-"Net annual P input to newly-converted soil" :     #(kg/ha/year)
+"Net annual P input to newly-converted soil" :     #(kg/ha/year) [-100, 100]
 -5
 
-"Groundwater TDP concentration" :     #(mg/l)
+"Groundwater TDP concentration" :     #(mg/l) [0, 10]
 0.02
 
-"Particulate P enrichment factor" :     #(dimensionless) P content of eroded material compared to P content of bulk soils
+"Particulate P enrichment factor" :     #(dimensionless) [0.5, 2] P content of eroded material compared to P content of bulk soils
 1.6
 
-"Reach effluent TDP inputs" :     #(kg/day)
+"Reach effluent TDP inputs" :     #(kg/day) [0, 10]
 0.1
 
-"Land use proportions from newly-converted" :     #(dimensionless)
+"Land use proportions from newly-converted" :     #(dimensionless) [0, 1]
 0
 
-"Newly-converted type" :     #(dimensionless) 0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None
+"Newly-converted type" :     #(dimensionless) [0, 2] 0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None
 2
 
 ###################### "Reaches" "Landscape units" ######################
-"Land use proportion excluding newly-converted" :     #(dimensionless)
+"Land use proportion excluding newly-converted" :     #(dimensionless) [0, 1]
 0.2 0.5 0.3
 
-"Mean slope of land in the subcatchment" :     #(°)
+"Mean slope of land in the subcatchment" :     #(°) [0, 90]
 4 10 4
 
-"Initial soil water EPC0" :     #(mg/l)
-0.1 0.0 0.0
+"Initial soil water EPC0" :     #(mg/l) [0, 10]
+0.1 0 0
 
-"Initial total soil P content" :     #(mg/kg)
+"Initial total soil P content" :     #(mg/kg) [0, 10000]
 1458 873 0
 
 ###################### "Landscape units" ######################
-"Soil water time constant" :     #(days)
+"Soil water time constant" :     #(days) [0.05, 20]
 2 2 2
 
-"Vegetation cover factor" :     #(dimensionless) Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Sourced from (R)USLE literature.
+"Vegetation cover factor" :     #(dimensionless) [0, 1] Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Sourced from (R)USLE literature.
 0.2 0.021 0.09
 
-"Reduction of load in sediment" :     #(dimensionless) Reduction in load of sediment delivered to the stream due to management measures, e.g. buffer strips, filter fences, conservation tillage practices, etc.
+"Reduction of load in sediment" :     #(dimensionless) [0, 1] Reduction in load of sediment delivered to the stream due to management measures, e.g. buffer strips, filter fences, conservation tillage practices, etc.
 0 0 0
 

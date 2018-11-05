@@ -816,7 +816,12 @@ RegisterEquationCumulative(inca_model *Model, const char *Name, equation Cumulat
 {
 	REGISTRATION_BLOCK(Model)
 	
-	//TODO: Should we restrict what kind of equations we should be able to cumulate? For instance, should not be able to cumulate initialvalueequations?
+	equation_spec &CumulateSpec = Model->EquationSpecs[Cumulates.Handle];
+	if(CumulateSpec.Type == EquationType_InitialValue)
+	{
+		std::cout << "ERROR: The cumulation equation " << Name << " was set to cumulate an initial value equation (" << CumulateSpec.Name << "). This is not supported." << std::endl;
+		exit(0);
+	}
 	
 	unit Unit = Model->EquationSpecs[Cumulates.Handle].Unit;
 	equation Equation = RegisterEquation(Model, Name, Unit, EquationType_Cumulative);

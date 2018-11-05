@@ -9,7 +9,7 @@
 
 #include "SimplyP.h"
 
-#define READ_PARAMETER_FILE 1
+#define READ_PARAMETER_FILE 0
 
 int main()
 {
@@ -38,7 +38,6 @@ int main()
 	WriteParametersToFile(DataSet, "newparams.dat");
 #else
 	ReadParametersFromFile(DataSet, "tarlandparameters.dat");
-#endif
 
 	ReadInputsFromFile(DataSet, "tarlandinputs.dat");
 	
@@ -47,6 +46,9 @@ int main()
 	//PrintInputStorageStructure(DataSet);
 
 	RunModel(DataSet);
+#endif
+
+	
 	//PrintResultSeries(DataSet, "Agricultural soil water EPC0", {"Tarland1"}, 1000);
 	//PrintResultSeries(DataSet, "Agricultural soil labile P mass", {"Tarland1"}, 1000);
 	//PrintResultSeries(DataSet, "Agricultural soil TDP mass", {"Tarland1"}, 1000);

@@ -57,25 +57,25 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	auto Snow = RegisterParameterGroup(Model, "Snow", Reach);
 	
-	auto InitialSnowDepth        = RegisterParameterDouble(Model, Snow, "Initial snow depth", Mm, 0.0);
-	auto DegreeDayFactorSnowmelt = RegisterParameterDouble(Model, Snow, "Degree-day factor for snowmelt", MmPerDegreePerDay, 2.74);
+	auto InitialSnowDepth        = RegisterParameterDouble(Model, Snow, "Initial snow depth", Mm, 0.0, 0.0, 50000.0);
+	auto DegreeDayFactorSnowmelt = RegisterParameterDouble(Model, Snow, "Degree-day factor for snowmelt", MmPerDegreePerDay, 2.74, 0.0, 5.0);
 	
 	auto Hydrology = RegisterParameterGroup(Model, "Hydrology", Reach);
 	
-	auto ProportionToQuickFlow   = RegisterParameterDouble(Model, Hydrology, "Proportion of precipitation that contributes to quick flow", Dimensionless, 0.020);
-	auto PETReductionFactor      = RegisterParameterDouble(Model, Hydrology, "PET reduction factor", Dimensionless, 1.0);
-	auto SoilFieldCapacity       = RegisterParameterDouble(Model, Hydrology, "Soil field capacity", Mm, 290.0);
-	auto BaseflowIndex           = RegisterParameterDouble(Model, Hydrology, "Baseflow index", Dimensionless, 0.70);
-	auto GroundwaterTimeConstant = RegisterParameterDouble(Model, Hydrology, "Groundwater time constant", Days, 65.0);
-	auto MinimumGroundwaterFlow  = RegisterParameterDouble(Model, Hydrology, "Minimum groundwater flow", MmPerDay, 0.40);
-	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5);
-	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42);
+	auto ProportionToQuickFlow   = RegisterParameterDouble(Model, Hydrology, "Proportion of precipitation that contributes to quick flow", Dimensionless, 0.020, 0.0, 1.0);
+	auto PETReductionFactor      = RegisterParameterDouble(Model, Hydrology, "PET reduction factor", Dimensionless, 1.0, 0.0, 1.0);
+	auto SoilFieldCapacity       = RegisterParameterDouble(Model, Hydrology, "Soil field capacity", Mm, 290.0, 0.0, 5000.0);
+	auto BaseflowIndex           = RegisterParameterDouble(Model, Hydrology, "Baseflow index", Dimensionless, 0.70, 0.0, 1.0);
+	auto GroundwaterTimeConstant = RegisterParameterDouble(Model, Hydrology, "Groundwater time constant", Days, 65.0, 0.5, 200.0);
+	auto MinimumGroundwaterFlow  = RegisterParameterDouble(Model, Hydrology, "Minimum groundwater flow", MmPerDay, 0.40, 0.0, 10.0);
+	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
+	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
 	
 	auto Reaches = RegisterParameterGroup(Model, "Reaches", Reach);
 	
-	auto CatchmentArea           = RegisterParameterDouble(Model, Reaches, "Catchment area", Km2, 51.7);
-	auto ReachLength             = RegisterParameterDouble(Model, Reaches, "Reach length", M, 10000.0);
-	auto InitialInStreamFlow     = RegisterParameterDouble(Model, Reaches, "Initial in-stream flow", M3PerSecond, 1.0);
+	auto CatchmentArea           = RegisterParameterDouble(Model, Reaches, "Catchment area", Km2, 51.7, 0.0, 10000.0);
+	auto ReachLength             = RegisterParameterDouble(Model, Reaches, "Reach length", M, 10000.0, 0.0, 10000000.0);
+	auto InitialInStreamFlow     = RegisterParameterDouble(Model, Reaches, "Initial in-stream flow", M3PerSecond, 1.0, 0.0, 1000000.0);
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
 	
@@ -85,12 +85,12 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	auto HydrologyLand = RegisterParameterGroup(Model, "Hydrology land", LandscapeUnits);
 	
-	auto SoilWaterTimeConstant   = RegisterParameterDouble(Model, HydrologyLand, "Soil water time constant", Days, 2.0);
+	auto SoilWaterTimeConstant   = RegisterParameterDouble(Model, HydrologyLand, "Soil water time constant", Days, 2.0, 0.05, 20.0);
 	
 	auto LandUseSubcatchment = RegisterParameterGroup(Model, "Land use for subcatchment", LandscapeUnits);
 	SetParentGroup(Model, LandUseSubcatchment, Reaches);
 	
-	auto LandUseProportionExcludingNC  = RegisterParameterDouble(Model, LandUseSubcatchment, "Land use proportion excluding newly-converted", Dimensionless, 0.5);
+	auto LandUseProportionExcludingNC  = RegisterParameterDouble(Model, LandUseSubcatchment, "Land use proportion excluding newly-converted", Dimensionless, 0.5, 0.0, 1.0);
 	
 	auto Precipitation  = RegisterInput(Model, "Precipitation");
 	auto AirTemperature = RegisterInput(Model, "Air temperature");
@@ -104,13 +104,11 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto HydrologicalInputToSoilBox = RegisterEquation(Model, "Hydrological input to soil box", MmPerDay);
 	
 	EQUATION(Model, PrecipitationFallingAsSnow,
-		//CURRENT_INDEX(LandscapeUnits);
 		double precip = INPUT(Precipitation);
 		return (INPUT(AirTemperature) < 0) ? precip : 0.0;
 	)
 	
 	EQUATION(Model, PrecipitationFallingAsRain,
-		//CURRENT_INDEX(LandscapeUnits);
 		double precip = INPUT(Precipitation);
 		return (INPUT(AirTemperature) > 0) ? precip : 0.0;
 	)
@@ -186,12 +184,12 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, DAgriculturalSoilWaterFlowDV,
 		//dQsA_dV = ((((VsA_i - fc)*np.exp(fc - VsA_i))/(T_s['A']*((np.exp(fc-VsA_i) + 1)**2)))
                 //+(1/(T_s['A']*(np.exp(fc-VsA_i) + 1))))
-		double soilmoisturedeficiency = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
-		double expsmd = exp(soilmoisturedeficiency);
+		double soilmoisturedeficit = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
+		double expsmd = exp(soilmoisturedeficit);
 		double soilwatertimeconst = PARAMETER(SoilWaterTimeConstant, Arable);
 		//std::cout << soilwatertimeconst << std::endl;
 		return
-			-soilmoisturedeficiency * expsmd / (soilwatertimeconst * (expsmd+1.0)*(expsmd+1.0) )
+			-soilmoisturedeficit * expsmd / (soilwatertimeconst * (expsmd+1.0)*(expsmd+1.0) )
 			+ 1.0 / ( soilwatertimeconst * (expsmd + 1.0));
 	)
 	
@@ -378,17 +376,17 @@ AddSimplyPSedimentModule(inca_model *Model)
 	auto ImprovedGrassland  = RequireIndex(Model, LandscapeUnits, "Improved grassland");
 	
 	auto Sediment = RegisterParameterGroup(Model, "Sediment", Reach);
-	auto ReachSedimentInputScalingFactor         = RegisterParameterDouble(Model, Sediment, "Reach sediment input scaling factor", KgPerMm, 1500.0);
-	auto InstreamEntrainmentNonlinearCoefficient = RegisterParameterDouble(Model, Sediment, "Instream entrainment non-linear coefficient", Dimensionless, 2.0); 
+	auto ReachSedimentInputScalingFactor         = RegisterParameterDouble(Model, Sediment, "Reach sediment input scaling factor", KgPerMm, 1500.0, 0.0, 100000.0);
+	auto InstreamEntrainmentNonlinearCoefficient = RegisterParameterDouble(Model, Sediment, "Instream entrainment non-linear coefficient", Dimensionless, 2.0, 0.1, 5.0); 
 	auto DayOfYearWhenSoilErodibilityIsMaxSpring = RegisterParameterUInt(Model, Sediment, "Day of year when soil erodibility is at its max for spring-grown crops", JulianDay, 60, 30, 335);
 	auto DayOfYearWhenSoilErodibilityIsMaxAutumn = RegisterParameterUInt(Model, Sediment, "Day of year when soil erodibility is at its max for autumn-grown crops", JulianDay, 304, 30, 335);
 	
 	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
-	auto ReachSlope                              = RegisterParameterDouble(Model, Reaches, "Reach slope", Degrees, 0.8);
+	auto ReachSlope                              = RegisterParameterDouble(Model, Reaches, "Reach slope", Degrees, 0.8, 0.0, 90.0);
 	auto ProportionOfSpringGrownCrops            = RegisterParameterDouble(Model, Reaches, "Proportion of spring grown crops", Dimensionless, 0.65, 0.0, 1.0, "Proportion spring-sown crops to make total arable land area (assume rest is autumn-sown)");
 	
 	auto LandUseSubcatchment = GetParameterGroupHandle(Model, "Land use for subcatchment");
-	auto MeanSlopeOfLand                         = RegisterParameterDouble(Model, LandUseSubcatchment, "Mean slope of land in the subcatchment", Degrees, 4.0);
+	auto MeanSlopeOfLand                         = RegisterParameterDouble(Model, LandUseSubcatchment, "Mean slope of land in the subcatchment", Degrees, 4.0, 0.0, 90.0);
 	
 	auto SedimentLand = RegisterParameterGroup(Model, "Sediment land", LandscapeUnits);
 	auto VegetationCoverFactor                   = RegisterParameterDouble(Model, SedimentLand, "Vegetation cover factor", Dimensionless, 0.2, 0.0, 1.0, "Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Sourced from (R)USLE literature.");
@@ -489,8 +487,8 @@ AddSimplyPSedimentModule(inca_model *Model)
 				double C_season;
 				if(dayNo >= d_start && dayNo <= d_end)
 				{
-					if(dayNo < d_mid) C_season = C_cover + ((dayNo - d_start) / (d_mid - d_start))* (1.0 - C_cover);
-					else              C_season = 1.0     + ((dayNo - d_mid)   / (d_end - d_mid))  * (C_cover - 1.0);
+					if(dayNo < d_mid) C_season = C_cover + ((dayNo - d_start) / (d_mid - d_start)) * (1.0 - C_cover);
+					else              C_season = 1.0     + ((dayNo - d_mid)   / (d_end - d_mid))   * (C_cover - 1.0);
 				}
 				else C_season = C_cover - E_risk_period*(1.0 - C_cover)/(2.0*(DAYS_THIS_YEAR()-E_risk_period));
 				
@@ -576,24 +574,24 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	auto Phosphorous = RegisterParameterGroup(Model, "Phosphorous", Reach);
 	
-	auto MSoilPerM2                     = RegisterParameterDouble(Model, Phosphorous, "Soil mass per m2", KgPerM2, 95.0);
+	auto MSoilPerM2                     = RegisterParameterDouble(Model, Phosphorous, "Soil mass per m2", KgPerM2, 95.0, 0.0, 200.0);
 	auto PhosphorousSorptionCoefficient = RegisterParameterDouble(Model, Phosphorous, "Phosphorous sorption coefficient", MmPerKg, 1.13e-4, 0.0, 0.1, "gradient of linear relationship between labile P and TDP concentration");
-	auto NetAnnualPInputAgricultural    = RegisterParameterDouble(Model, Phosphorous, "Net annual P input to agricultural soil", KgPerHaPerYear, 10.0);
-	auto NetAnnualPInputNewlyConverted  = RegisterParameterDouble(Model, Phosphorous, "Net annual P input to newly-converted soil", KgPerHaPerYear, -5.0);
-	auto GroundwaterTDPConcentration    = RegisterParameterDouble(Model, Phosphorous, "Groundwater TDP concentration", MgPerL, 0.02);
+	auto NetAnnualPInputAgricultural    = RegisterParameterDouble(Model, Phosphorous, "Net annual P input to agricultural soil", KgPerHaPerYear, 10.0, -100.0, 100.0);
+	auto NetAnnualPInputNewlyConverted  = RegisterParameterDouble(Model, Phosphorous, "Net annual P input to newly-converted soil", KgPerHaPerYear, -5.0, -100.0, 100.0);
+	auto GroundwaterTDPConcentration    = RegisterParameterDouble(Model, Phosphorous, "Groundwater TDP concentration", MgPerL, 0.02, 0.0, 10.0);
 	auto PPEnrichmentFactor             = RegisterParameterDouble(Model, Phosphorous, "Particulate P enrichment factor", Dimensionless, 1.6, 0.5, 2.0, "P content of eroded material compared to P content of bulk soils"); //NOTE: min-max values are pulled from thin air. Should be set by somebody who know better.
-	auto EffluentTDP                    = RegisterParameterDouble(Model, Phosphorous, "Reach effluent TDP inputs", KgPerDay, 0.1);
+	auto EffluentTDP                    = RegisterParameterDouble(Model, Phosphorous, "Reach effluent TDP inputs", KgPerDay, 0.1, 0.0, 10.0);
 	
 	auto PhosphorousLand = RegisterParameterGroup(Model, "Phosphorous land", LandscapeUnits);
 	SetParentGroup(Model, PhosphorousLand, Phosphorous);
 	
-	auto InitialEPC0                    = RegisterParameterDouble(Model, PhosphorousLand, "Initial soil water EPC0",      MgPerL, 0.1);
-	auto InitialSoilPConcentration      = RegisterParameterDouble(Model, PhosphorousLand, "Initial total soil P content", MgPerKg, 1458);
+	auto InitialEPC0                    = RegisterParameterDouble(Model, PhosphorousLand, "Initial soil water EPC0",      MgPerL, 0.1, 0.0, 10.0);
+	auto InitialSoilPConcentration      = RegisterParameterDouble(Model, PhosphorousLand, "Initial total soil P content", MgPerKg, 1458, 0.0, 10000.0);
 	
 	auto DynamicOptions = GetParameterGroupHandle(Model, "Dynamic options");
-	auto DynamicEPC0                    = RegisterParameterBool(Model, DynamicOptions, "Dynamic EPC0", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it  varies with labile P content");
+	auto DynamicEPC0                    = RegisterParameterBool(Model, DynamicOptions, "Dynamic EPC0", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it varies with labile P content");
 	
-	auto LandUseProportionsNC           = RegisterParameterDouble(Model, Phosphorous, "Land use proportions from newly-converted", Dimensionless, 0.0);
+	auto LandUseProportionsNC           = RegisterParameterDouble(Model, Phosphorous, "Land use proportions from newly-converted", Dimensionless, 0.0, 0.0, 1.0);
 	auto NCType                         = RegisterParameterUInt(Model, Phosphorous, "Newly-converted type", Dimensionless, 2, 0, 2, "0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None");
 	
 	
@@ -757,11 +755,11 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	SetSolver(Model, StreamPPFlux, SimplyPSolver);
 	
 	auto StreamTDPMass = RegisterEquationODE(Model, "Stream TDP mass", Kg);
-	//SetInitialValue
+	SetInitialValue(Model, StreamTDPMass, 0.0);
 	SetSolver(Model, StreamTDPMass, SimplyPSolver);
 	
 	auto StreamPPMass  = RegisterEquationODE(Model, "Stream PP mass", Kg);
-	//SetInitialValue
+	SetInitialValue(Model, StreamPPMass, 0.0);
 	SetSolver(Model, StreamPPMass, SimplyPSolver);
 	
 	EQUATION(Model, StreamTDPFlux,
@@ -847,8 +845,13 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	)
 	
 	auto TDPConcentration = RegisterEquation(Model, "TDP concentration", MgPerL);
+	auto PPConcentration  = RegisterEquation(Model, "PP concentration", MgPerL);
 	
 	EQUATION(Model, TDPConcentration,
 		return ConvertKgPerMmToMgPerL(RESULT(StreamTDPMass) / RESULT(ReachVolume), PARAMETER(CatchmentArea));
+	)
+	
+	EQUATION(Model, PPConcentration,
+		return ConvertKgPerMmToMgPerL(RESULT(StreamPPMass) / RESULT(ReachVolume), PARAMETER(CatchmentArea));
 	)
 }

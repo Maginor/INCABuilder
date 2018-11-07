@@ -9,7 +9,7 @@
 
 #include "SimplyP.h"
 
-#define READ_PARAMETER_FILE 0
+#define READ_PARAMETER_FILE 1
 
 int main()
 {

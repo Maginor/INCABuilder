@@ -733,7 +733,7 @@ RegisterParameterBool(inca_model *Model, parameter_group Group, const char *Name
 }
 
 inline parameter_ptime
-RegisterParameterDate(inca_model *Model, parameter_group Group, const char *Name, const char *Default, const char *Min = "1900-1-1", const char *Max = "2200-12-31", const char *Description = 0)
+RegisterParameterDate(inca_model *Model, parameter_group Group, const char *Name, const char *Default, const char *Min = "1000-1-1", const char *Max = "3000-12-31", const char *Description = 0)
 {
 	REGISTRATION_BLOCK(Model)
 	

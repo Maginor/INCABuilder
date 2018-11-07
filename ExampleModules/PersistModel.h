@@ -87,12 +87,12 @@ AddPersistModel(inca_model *Model)
 	
 	SetParentGroup(Model, LandUsePercentages, Reaches);
 	
-    auto Streams = RegisterParameterGroup(Model, "Streams", Reach); //TODO: This should have a stream index set, not directly be tied to the reach index set.
+    auto Streams = RegisterParameterGroup(Model, "Streams", Reach);
 	
-	auto InitialStreamFlow = RegisterParameterDouble(Model, Streams, "Initial stream flow", CubicMetersPerSecond, 0.1, 0.0001, 9999.0, "The flow in the stream at the start of the simulation");
+	auto InitialStreamFlow = RegisterParameterDouble(Model, Streams, "Initial stream flow", CubicMetersPerSecond, 0.1, 0.0001, 9999.0, "The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.");
 
 
-	//TODO: Allow parameter groups to have multiple index sets so that the matrix does not have to be built in three group stages:
+	//TODO: Allow parameter groups to have multiple index sets so that the matrix does not have to be built in three group stages?
 	
 	auto MatrixCol = RegisterParameterGroup(Model, "Matrix column", SoilBoxes);
 	auto Item = RegisterParameterDouble(Model, MatrixCol, "item", Dimensionless, 0.05);

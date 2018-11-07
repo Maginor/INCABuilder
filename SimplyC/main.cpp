@@ -44,7 +44,7 @@ int main()
 	SetParameterValue(DataSet, "%", {"R2", "Forest"}, 50.0);
 	SetParameterValue(DataSet, "%", {"R2", "Peatland"}, 50.0);
 #else
-	ReadParametersFromFile(DataSet, "testparameters.dat");
+	ReadParametersFromFile(DataSet, "langtjernparameters.dat");
 #endif
 	ReadInputsFromFile(DataSet, "langtjerninputs.dat");
 	

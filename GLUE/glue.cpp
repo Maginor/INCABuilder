@@ -110,7 +110,7 @@ EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective)
 	else if(Objective.PerformanceMeasure == GLUE_PerformanceMeasure_NashSutcliffe)
 	{
 		accumulator_set<double, features<tag::variance>> ObsAccum;
-		accumulator_set<double, features<tag::sum>> ResAccum;
+		accumulator_set<double, features<tag::mean>> ResAccum;
 
 		for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 		{
@@ -119,7 +119,7 @@ EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective)
 			ResAccum(Res*Res);
 		}
 		
-		double SumSquaresResidual = sum(ResAccum);
+		double SumSquaresResidual = mean(ResAccum);
 		double ObservedVariance = variance(ObsAccum);
 		
 		Performance = 1.0 - SumSquaresResidual / ObservedVariance;

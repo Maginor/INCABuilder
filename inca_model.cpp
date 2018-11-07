@@ -1,6 +1,6 @@
 
 static inca_model *
-BeginModelDefinition(const char *Name = "(unnamed)", const char *Version = "0.0")
+BeginModelDefinition(const char *Name = "(unnamed model)", const char *Version = "0.0")
 {
 	inca_model *Model = new inca_model {};
 	
@@ -1410,6 +1410,8 @@ RunModel(inca_data_set *DataSet)
 
 #if INCA_EQUATION_PROFILING
 	PrintEquationProfiles(DataSet, &ValueSet);
+	free(ValueSet.EquationHits);
+	free(ValueSet.EquationTotalCycles);
 #endif
 	
 	DataSet->HasBeenRun = true;

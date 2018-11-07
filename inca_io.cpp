@@ -1103,6 +1103,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 				{
 					PrintStreamErrorHeader(Stream);
 					std::cout << "Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl;
+					exit(0);
 				}
 				
 				ExpectToken(Stream, Token, TokenType_Numeric);

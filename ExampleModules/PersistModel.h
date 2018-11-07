@@ -15,7 +15,7 @@ AddPersistModel(inca_model *Model)
 	
 	auto System = GetParameterGroupHandle(Model, "System");
 	
-	auto BaselineSMD = RegisterParameterDouble(Model, System, "Baseline SMD", Mm, 300.0);
+	auto BaselineSMD = RegisterParameterDouble(Model, System, "Baseline SMD", Mm, 300.0, 0.0, 100000.0);
 	
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
@@ -95,7 +95,7 @@ AddPersistModel(inca_model *Model)
 	//TODO: Allow parameter groups to have multiple index sets so that the matrix does not have to be built in three group stages?
 	
 	auto MatrixCol = RegisterParameterGroup(Model, "Matrix column", SoilBoxes);
-	auto Item = RegisterParameterDouble(Model, MatrixCol, "item", Dimensionless, 0.05);
+	auto Item = RegisterParameterDouble(Model, MatrixCol, "item", Dimensionless, 0.05, 0.0, 1.0);
 	
 	auto MatrixRow = RegisterParameterGroup(Model, "Matrix row", SoilBoxes);
 	SetParentGroup(Model, MatrixCol, MatrixRow);

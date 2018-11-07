@@ -78,6 +78,8 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	
 	inca_model *Model = DataSet->Model;
 	
+	fprintf(File, "# Parameter file generated for %s V%s\n\n", Model->Name, Model->Version);
+	
 	fprintf(File, "index_sets:\n");
 	for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{

@@ -86,7 +86,7 @@ MonthOffset(int Year, int Month)
 }
 
 //NOTE: Apparently the c++ standard library can not do this for us until c++20, so we have to do it ourselves... (could use boost::ptime, but it has to be compiled separately, and that is asking a lot of the user...)
-//NOTE: does not account for leap seconds, but that should not be a problem.
+//NOTE: Does not account for leap seconds, but that should not be a problem.
 inline s64
 ParseSecondsSinceEpoch(const char *DateString)
 {

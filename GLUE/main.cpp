@@ -6,7 +6,7 @@
 
 
 #define INCA_TIMESTEP_VERBOSITY 0
-#define INCA_TEST_FOR_NAN 1
+#define INCA_TEST_FOR_NAN 0
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 0
 
@@ -17,10 +17,9 @@
 //#include "../ExampleModules/WaterTemperatureModel.h"
 //#include "../SimplyC/SimplyC.h"
 
-#define GLUE_PRINT_DEBUG_INFO 1
+#define GLUE_PRINT_DEBUG_INFO 0
 
-#include "glue.cpp"
-#include "glue_io.cpp"
+#include "glue.h"
 
 int main()
 {
@@ -46,8 +45,15 @@ int main()
 	ReadInputsFromFile(DataSet, "langtjerninputs.dat");
 	
 	glue_setup Setup;
+	glue_results Results;
 	
 	ReadSetupFromFile(&Setup, "GLUE_setup.dat");
 	
-	RunGLUE(DataSet, &Setup);
+	timer RunGlueTimer = BeginTimer();
+	RunGLUE(DataSet, &Setup, &Results);
+	u64 Ms = GetTimerMilliseconds(&RunGlueTimer);
+	
+	std::cout << "GLUE finished. Running the model " << Setup.NumRuns << " times took " << Ms << " milliseconds." << std::endl;
+	
+	WriteGLUEResultsToDatabase("GLUE_results.db", &Setup, &Results, DataSet);
 }

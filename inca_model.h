@@ -347,7 +347,7 @@ struct value_set_accessor
 	
 	u64 DayOfYear;
 	u64 DaysThisYear;
-	s64 Timestep; //NOTE: We make this an s64 so that the initial value step can be recorded as timestep=-1. This is not a good way to do it though.
+	s64 Timestep; //NOTE: We make this a signed integer so that it can be set to -1 during the "initial value" step.
 
 	//NOTE: A trained eye probably recognize this class as one that should be inherited by two subclasses. The problem with doing that is that it would slow down model execution a lot if you can't do direct access of member data.
 	union

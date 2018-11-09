@@ -26,21 +26,6 @@ BeginModelDefinition(const char *Name = "(unnamed model)", const char *Version =
 	return Model;
 }
 
-static s64
-GetStartDate(inca_data_set *DataSet)
-{
-	inca_model *Model = DataSet->Model;
-	
-	auto FindTime = Model->ParameterNameToHandle.find("Start date");
-	if(FindTime != Model->ParameterNameToHandle.end())
-	{
-		handle_t StartTimeHandle = FindTime->second;
-		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, StartTimeHandle);
-		return DataSet->ParameterData[Offset].ValTime; //TODO: Check that it was actually registered with the correct type and so on.
-	}
-	
-	return 0;
-}
 
 static void
 PrintPartialDependencyTrace(inca_model *Model, equation Equation, bool First = false)
@@ -1223,25 +1208,11 @@ RunModel(inca_data_set *DataSet)
 		std::cout << "WARNING: No parameter values were specified, using default parameter values only." << std::endl;
 	}
 	
-	u64 Timesteps = 100;
-	auto FindTimesteps = Model->ParameterNameToHandle.find("Timesteps");
-	if(FindTimesteps != Model->ParameterNameToHandle.end())
-	{
-		handle_t TimestepHandle = FindTimesteps->second;
-		//NOTE: We hope that nobody put Timesteps in a parametergroup that has an index set (which would be stupid, but is technically possible).
-		//TODO: We should probably also check that it actually is a uint, because otherwise we get the byte value of it as a uint, which is not the same as casting it to a uint!!
-		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, TimestepHandle);
-		Timesteps = DataSet->ParameterData[Offset].ValUInt;
+	
+	u64 Timesteps      = GetTimesteps(DataSet);
 #if INCA_PRINT_TIMING_INFO
 		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " Timesteps" << std::endl;
 #endif
-	}
-	else
-	{
-#if INCA_PRINT_TIMING_INFO
-		std::cout << "No parameter named \"Timesteps\" defined. Running model " << Model->Name << " V" << Model->Version << " for default " << Timesteps << " Timesteps" << std::endl;
-#endif
-	}
 	
 	s64 ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	

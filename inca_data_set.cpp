@@ -288,6 +288,38 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 	return OffsetForUnit + InstanceOffset * NumHandlesInUnitInstance + LocationOfHandleInUnit;
 }
 
+static s64
+GetStartDate(inca_data_set *DataSet)
+{
+	inca_model *Model = DataSet->Model;
+	
+	auto FindTime = Model->ParameterNameToHandle.find("Start date");
+	if(FindTime != Model->ParameterNameToHandle.end())
+	{
+		handle_t StartTimeHandle = FindTime->second;
+		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, StartTimeHandle);
+		return DataSet->ParameterData[Offset].ValTime; //TODO: Check that it was actually registered with the correct type and that it does not have any index set dependencies.
+	}
+	
+	return 0; //I.e. 1970-1-1
+}
+
+static u64
+GetTimesteps(inca_data_set *DataSet)
+{
+	inca_model *Model = DataSet->Model;
+	
+	auto FindTimestep = Model->ParameterNameToHandle.find("Timesteps");
+	if(FindTimestep != Model->ParameterNameToHandle.end())
+	{
+		handle_t TimestepHandle = FindTimestep->second;
+		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, TimestepHandle);
+		return DataSet->ParameterData[Offset].ValUInt; //TODO: Check that it was actually registered with the correct type and that it does not have any index set dependencies.
+	}
+	
+	return 100;
+}
+
 
 static void
 SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<const char *>& IndexNames)
@@ -865,7 +897,7 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<cons
 }
 
 static void
-GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
+GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize, bool FromDataSetStart = false)
 {	
 	if(!DataSet->InputData)
 	{
@@ -897,6 +929,15 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 
 	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Input.Handle);
 	double *Lookup = DataSet->InputData + Offset;
+	
+	if(FromDataSetStart && DataSet->InputDataHasSeparateStartDate)
+	{
+		//NOTE: In case the user asked for a input timeseries that starts at the start of the modelrun rather than at the start of the input series.
+		s64 DataSetStartDate = GetStartDate(DataSet);
+		s64 InputStartDate   = DataSet->InputDataStartDate;
+		size_t TimestepOffset = DayOffset(InputStartDate, DataSetStartDate); //TODO: If we later allow for different lengths of timestep we have to update this!
+		Lookup += TimestepOffset * DataSet->InputStorageStructure.TotalCount;
+	}
 	
 	for(size_t Idx = 0; Idx < NumToWrite; ++Idx)
 	{

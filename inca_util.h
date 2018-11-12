@@ -26,6 +26,7 @@ CopyArray_(size_t ElementSize, size_t VecLen, void *Data)
 	memcpy(Result, Data, ElementSize * VecLen);
 	return Result;
 }
+#define CopyArray(Type, ArrayLen, Array) (Type *)CopyArray_(sizeof(Type), ArrayLen, Array)
 
 inline char *
 CopyString(const char *Str)

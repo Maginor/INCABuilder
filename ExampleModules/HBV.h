@@ -62,8 +62,9 @@ static void AddSnowRoutine(inca_model *Model)
 	)
 	
 	EQUATION(Model, Snowpack,
-		double snowpack1 = RESULT(Snowfall) + RESULT(Refreeze);
-		double snowpack2 = LAST_RESULT(Snowpack) - RESULT(MeltWater);
+                double old_snow = LAST_RESULT(Snowpack);
+		double snowpack1 = old_snow + RESULT(Snowfall) + RESULT(Refreeze);
+		double snowpack2 = old_snow - RESULT(MeltWater);
 		return RESULT(SnowmeltTemperatureDifference) <= 0.0 ? snowpack1 : snowpack2;
 	)
 	

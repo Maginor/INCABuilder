@@ -9,19 +9,19 @@ CND_DISTDIR=dist
 # Debug configuration
 CND_PLATFORM_Debug=GNU-Linux
 CND_ARTIFACT_DIR_Debug=dist/Debug/GNU-Linux
-CND_ARTIFACT_NAME_Debug=simplyc
-CND_ARTIFACT_PATH_Debug=dist/Debug/GNU-Linux/simplyc
+CND_ARTIFACT_NAME_Debug=hbv
+CND_ARTIFACT_PATH_Debug=dist/Debug/GNU-Linux/hbv
 CND_PACKAGE_DIR_Debug=dist/Debug/GNU-Linux/package
-CND_PACKAGE_NAME_Debug=simplyc.tar
-CND_PACKAGE_PATH_Debug=dist/Debug/GNU-Linux/package/simplyc.tar
+CND_PACKAGE_NAME_Debug=hbv.tar
+CND_PACKAGE_PATH_Debug=dist/Debug/GNU-Linux/package/hbv.tar
 # Release configuration
 CND_PLATFORM_Release=GNU-Linux
 CND_ARTIFACT_DIR_Release=dist/Release/GNU-Linux
-CND_ARTIFACT_NAME_Release=simplyc
-CND_ARTIFACT_PATH_Release=dist/Release/GNU-Linux/simplyc
+CND_ARTIFACT_NAME_Release=hbv
+CND_ARTIFACT_PATH_Release=dist/Release/GNU-Linux/hbv
 CND_PACKAGE_DIR_Release=dist/Release/GNU-Linux/package
-CND_PACKAGE_NAME_Release=simplyc.tar
-CND_PACKAGE_PATH_Release=dist/Release/GNU-Linux/package/simplyc.tar
+CND_PACKAGE_NAME_Release=hbv.tar
+CND_PACKAGE_PATH_Release=dist/Release/GNU-Linux/package/hbv.tar
 #
 # include compiler specific variables
 #

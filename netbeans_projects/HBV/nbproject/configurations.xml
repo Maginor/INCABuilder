@@ -12,7 +12,7 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
-      <itemPath>../../SimplyC/incaviewsimplyc.cpp</itemPath>
+      <itemPath>../../HBV/incaviewHBV.cpp</itemPath>
     </logicalFolder>
     <logicalFolder name="TestFiles"
                    displayName="Test Files"
@@ -45,7 +45,7 @@
           <commandLine>-pthread /home/jose-luis/Documents/sqlite/sqlite3.o -ldl</commandLine>
         </linkerTool>
       </compileType>
-      <item path="../../SimplyC/incaviewsimplyc.cpp" ex="false" tool="1" flavor2="0">
+      <item path="../../HBV/incaviewHBV.cpp" ex="false" tool="1" flavor2="0">
       </item>
     </conf>
     <conf name="Release" type="1">
@@ -73,7 +73,7 @@
           <commandLine>-pthread /home/jose-luis/Documents/sqlite/sqlite3.o -ldl</commandLine>
         </linkerTool>
       </compileType>
-      <item path="../../SimplyC/incaviewsimplyc.cpp" ex="false" tool="1" flavor2="0">
+      <item path="../../HBV/incaviewHBV.cpp" ex="false" tool="1" flavor2="0">
       </item>
     </conf>
   </confs>

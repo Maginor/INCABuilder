@@ -35,7 +35,7 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
-	${OBJECTDIR}/_ext/f4fd57d/incaviewsimplyc.o
+	${OBJECTDIR}/_ext/56247cfc/incaviewHBV.o
 
 
 # C Compiler Flags
@@ -56,16 +56,16 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/simplyc
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hbv
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/simplyc: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hbv: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/simplyc ${OBJECTFILES} ${LDLIBSOPTIONS} -pthread /home/jose-luis/Documents/sqlite/sqlite3.o -ldl
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hbv ${OBJECTFILES} ${LDLIBSOPTIONS} -pthread /home/jose-luis/Documents/sqlite/sqlite3.o -ldl
 
-${OBJECTDIR}/_ext/f4fd57d/incaviewsimplyc.o: ../../SimplyC/incaviewsimplyc.cpp
-	${MKDIR} -p ${OBJECTDIR}/_ext/f4fd57d
+${OBJECTDIR}/_ext/56247cfc/incaviewHBV.o: ../../HBV/incaviewHBV.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/56247cfc
 	${RM} "$@.d"
-	$(COMPILE.cc) -g -I../../SimplyC -std=c++11 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/f4fd57d/incaviewsimplyc.o ../../SimplyC/incaviewsimplyc.cpp
+	$(COMPILE.cc) -g -I../../SimplyC -std=c++11 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/56247cfc/incaviewHBV.o ../../HBV/incaviewHBV.cpp
 
 # Subprojects
 .build-subprojects:

@@ -13,7 +13,7 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 		break;
 		
 		case ParameterType_UInt:
-		fprintf(File, "%llu", uint64_t(Value.ValUInt)); //TODO: check correctness. May depend on sizeof(long long unsigned int)==8
+		fprintf(File, "%llu", (unsigned long long)(Value.ValUInt)); //TODO: check correctness. May depend on sizeof(long long unsigned int)==8
 		break;
 		
 		case ParameterType_Time:

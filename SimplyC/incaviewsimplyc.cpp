@@ -7,7 +7,7 @@
 
 #include "../inca.h"
 
-#include "HBV.h"
+#include "../ExampleModules/HBV.h"
 #include "../ExampleModules/SoilTemperatureModel.h"
 #include "../ExampleModules/WaterTemperatureModel.h"
 #include "SimplyC.h"

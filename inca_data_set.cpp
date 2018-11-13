@@ -72,6 +72,98 @@ inca_data_set::~inca_data_set()
 }
 
 static void
+CopyStorageStructure(storage_structure &Source, storage_structure &Dest, size_t FirstUnusedHandle)
+{
+	Dest.Units = Source.Units; //NOTE: Nested vector copy.
+	
+	size_t UnitCount = Dest.Units.size();
+	
+	//TODO: It may be ok to have these as std::vector<size_t> instead of size_t*, in which case we would not have to do all this work doing explicit copies.
+	if(Source.TotalCountForUnit) Dest.TotalCountForUnit = CopyArray(size_t, UnitCount, Source.TotalCountForUnit);
+	if(Source.OffsetForUnit)     Dest.OffsetForUnit     = CopyArray(size_t, UnitCount, Source.TotalCountForUnit);
+	if(Source.UnitForHandle)     Dest.UnitForHandle     = CopyArray(size_t, FirstUnusedHandle, Source.UnitForHandle);
+	if(Source.LocationOfHandleInUnit) Dest.LocationOfHandleInUnit = CopyArray(size_t, FirstUnusedHandle, Source.LocationOfHandleInUnit);
+	Dest.TotalCount = Source.TotalCount;
+	Dest.HasBeenSetUp = Source.HasBeenSetUp;
+}
+
+static inca_data_set *
+CopyDataSet(inca_data_set *DataSet)
+{
+	inca_model *Model = DataSet->Model;
+	
+	inca_data_set *Copy = new inca_data_set {};
+	
+	Copy->Model = Model;
+	
+	if(DataSet->ParameterData) Copy->ParameterData = CopyArray(parameter_value, DataSet->ParameterStorageStructure.TotalCount, DataSet->ParameterData);
+	CopyStorageStructure(DataSet->ParameterStorageStructure, Copy->ParameterStorageStructure, Model->FirstUnusedParameterHandle);
+	
+	if(DataSet->InputData) Copy->InputData = CopyArray(double, DataSet->InputStorageStructure.TotalCount * DataSet->InputDataTimesteps, DataSet->InputData);
+	CopyStorageStructure(DataSet->InputStorageStructure, Copy->InputStorageStructure, Model->FirstUnusedInputHandle);
+	Copy->InputDataStartDate = DataSet->InputDataStartDate;
+	Copy->InputDataHasSeparateStartDate = DataSet->InputDataHasSeparateStartDate;
+	Copy->InputDataTimesteps = DataSet->InputDataTimesteps;
+	
+	//NOTE: We probably don't want to copy result data. This is copy function is meant to be used for copying a index/parameter/input set.
+	//if(DataSet->ResultData) Copy->ResultData = CopyArray(double, DataSet->ResultStorageStructure.TotalCount * (DataSet->TimestepsLastRun + 1), DataSet->ResultData);
+	//CopyStorageStructure(DataSet->ResultStorageStructure, Copy->ResultStorageStructure, Model->FirstUnusedEquationHandle);
+	
+	if(DataSet->IndexCounts) Copy->IndexCounts = CopyArray(index_t, Model->FirstUnusedIndexSetHandle, DataSet->IndexCounts);
+	//const char ***IndexNames; //TODO: This could probably be a std::vector<std::vector<std::string>>
+	if(DataSet->IndexNames)
+	{
+		Copy->IndexNames = AllocClearedArray(const char **, Model->FirstUnusedIndexSetHandle);
+		for(handle_t IndexSetHandle = 0; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		{
+			if(DataSet->IndexNames[IndexSetHandle])
+			{
+				Copy->IndexNames[IndexSetHandle] = AllocClearedArray(const char *, DataSet->IndexCounts[IndexSetHandle]);
+				for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+				{
+					Copy->IndexNames[IndexSetHandle][Index] = CopyString(DataSet->IndexNames[IndexSetHandle][Index]);
+				}
+			}
+		}
+	}
+	Copy->IndexNamesToHandle = DataSet->IndexNamesToHandle;
+	Copy->AllIndexesHaveBeenSet = DataSet->AllIndexesHaveBeenSet;
+	
+	if(DataSet->BranchInputs)
+	{
+		Copy->BranchInputs = AllocClearedArray(branch_inputs *, Model->FirstUnusedIndexSetHandle);
+		for(handle_t IndexSetHandle = 0; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		{
+			if(DataSet->BranchInputs[IndexSetHandle])
+			{
+				Copy->BranchInputs[IndexSetHandle] = AllocClearedArray(branch_inputs, DataSet->IndexCounts[IndexSetHandle]);
+				for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+				{
+					//yeahh.. this could also be a std::vector
+					branch_inputs &Inputs = DataSet->BranchInputs[IndexSetHandle][Index];
+					size_t Count = Inputs.Count;
+					Copy->BranchInputs[IndexSetHandle][Index].Count = Count;
+					Copy->BranchInputs[IndexSetHandle][Index].Inputs = CopyArray(index_t, Count, Inputs.Inputs);
+				}
+			}
+		}
+	}
+	
+	//NOTE: We don't copy any of the following as they will be generated when you try to run the DataSet.
+	//std::vector<parameter_value> FastParameterLookup;
+	//std::vector<size_t> FastInputLookup;
+	//std::vector<size_t> FastResultLookup;
+	//std::vector<size_t> FastLastResultLookup;
+	//double *x0; //NOTE: Temporary storage for use by solvers
+	//double *wk; //NOTE: Temporary storage for use by solvers
+
+	Copy->HasBeenRun = false;
+	//u64 TimestepsLastRun;
+	
+	return Copy;
+}
+
+static void
 SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts, size_t FirstUnusedHandle)
 {
 	size_t UnitCount = Structure.Units.size();
@@ -850,7 +942,7 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 	}
 }
 
-// NOTE: The caller of this function has to allocate the space that the result series should be written to themselves and pass a pointer to it as WriteTo.
+// NOTE: The caller of this function has to allocate the space that the result series should be written to and pass a pointer to it as WriteTo.
 // Example:
 // std::vector<double> MyResults;
 // MyResults.resize(DataSet->TimestepsLastRun);

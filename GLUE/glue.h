@@ -43,6 +43,8 @@ struct glue_setup
 {
 	size_t NumRuns;
 	
+	size_t NumThreads;
+	
 	std::vector<glue_parameter_calibration> CalibrationSettings;
 	
 	std::vector<glue_objective> Objectives;

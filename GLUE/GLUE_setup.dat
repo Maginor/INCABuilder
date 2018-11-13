@@ -2,9 +2,10 @@
 
 
 num_runs :
-100
+4000
 
-
+num_threads :
+8
 
 
 

@@ -23,6 +23,7 @@ AddIncaNModel(inca_model *Model)
 	auto KgPerKm2PerDay     = RegisterUnit(Model, "kg/km2/day");
 	auto KgPerDay           = RegisterUnit(Model, "kg/day");
 	auto KgPerKm2           = RegisterUnit(Model, "kg/km2");
+	auto KgPerM3            = RegisterUnit(Model, "kg/m3");
 	
 	auto Land = GetParameterGroupHandle(Model, "Landscape units");
 	
@@ -569,6 +570,12 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, ReachAmmonium,
 		return RESULT(ReachTotalAmmoniumInput) - RESULT(ReachAmmoniumOutput) - RESULT(ReachNitrification); //-RESULT(ReachAmmoniumAbstraction);
+	)
+	
+	//NOTE: Added this for easier calibration - MDN
+	auto ReachNitrateConcentration = RegisterEquation(Model, "Reach nitrate concentration", KgPerM3);
+	EQUATION(Model, ReachNitrateConcentration,
+		return RESULT(ReachNitrate) / RESULT(ReachVolume);
 	)
 }
 

@@ -2,6 +2,7 @@
 
 #include <random>
 #include <thread>
+#include <mutex>
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
@@ -31,6 +32,15 @@ GetParameterRandomlyFromDistribution(glue_parameter_calibration &ParSetting, std
 }
 
 typedef boost::accumulators::accumulator_set<double, boost::accumulators::stats<boost::accumulators::tag::weighted_extended_p_square>, double> quantile_accumulator;
+
+
+#if !defined(GLUE_MULTITHREAD)
+#define GLUE_MULTITHREAD 1
+#endif
+
+#if GLUE_MULTITHREAD
+std::mutex AccumulatorLock;
+#endif
 
 static std::pair<double, double>
 EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective, std::vector<quantile_accumulator>& QuantileAccumulators)
@@ -100,6 +110,10 @@ EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective, std::vector
 		WeightedPerformance = (Objective.Threshold - Performance) / (Objective.Threshold - Objective.OptimalValue);
 	}
 	
+#if GLUE_MULTITHREAD
+	std::lock_guard<std::mutex> Lock(AccumulatorLock); //NOTE: I don't know if it is safe for several threads to write to the same accumulator without locking it, so I do this to be safe. If it is not a problem, just remove the mutex.
+#endif
+	
 	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{
 		QuantileAccumulators[Timestep](ModeledSeries[Timestep], weight = WeightedPerformance);
@@ -111,10 +125,6 @@ EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective, std::vector
 
 #if !defined(GLUE_PRINT_DEBUG_INFO)
 #define GLUE_PRINT_DEBUG_INFO 0
-#endif
-
-#if !defined(GLUE_MULTITHREAD)
-#define GLUE_MULTITHREAD 0
 #endif
 
 static void
@@ -179,7 +189,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	
 #if GLUE_MULTITHREAD
 	auto RunFunc =
-		[&] (size_t RunID)
+		[&] (size_t RunID, inca_data_set *DataSet)
 		{
 			for(size_t ParIdx = 0; ParIdx < Setup->CalibrationSettings.size(); ++ParIdx)
 			{
@@ -203,12 +213,20 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 			}
 		};
 	
-	size_t NumThreads = 2;
+	size_t NumThreads = Setup->NumThreads;
 	size_t RunsPerThread = Setup->NumRuns / NumThreads;
 	if(Setup->NumRuns % NumThreads != 0) RunsPerThread++;
 
 	std::vector<std::thread> Threads;
 	Threads.reserve(NumThreads);
+	
+	//NOTE: Each thread has to work on its own dataset (otherwise they would overwrite each others results).
+	std::vector<inca_data_set *> DataSets(NumThreads);
+	DataSets[0] = DataSet;
+	for(size_t ThreadId = 1; ThreadId < NumThreads; ++ThreadId)
+	{
+		DataSets[ThreadId] = CopyDataSet(DataSet);
+	}
 	
 	//TODO: This is an inefficient way to do it, instead we should have a batch system.
 	for(size_t Run = 0; Run < RunsPerThread; ++Run)
@@ -220,7 +238,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 			size_t RunID = RunIDBase + ThreadIdx;
 			if(RunID < Setup->NumRuns)
 			{
-				Threads.push_back(std::thread(RunFunc, RunID));
+				Threads.push_back(std::thread(RunFunc, RunID, DataSets[ThreadIdx]));
 			}
 		}
 		
@@ -230,6 +248,12 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 		}
 		
 		Threads.clear();
+	}
+	
+	//NOTE: We leave it up to the caller to delete the original dataset if they want to.
+	for(size_t ThreadId = 1; ThreadId < NumThreads; ++ThreadId)
+	{
+		delete DataSets[ThreadId];
 	}
 	
 #else

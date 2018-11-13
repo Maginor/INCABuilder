@@ -80,7 +80,7 @@ CopyStorageStructure(storage_structure &Source, storage_structure &Dest, size_t 
 	
 	//TODO: It may be ok to have these as std::vector<size_t> instead of size_t*, in which case we would not have to do all this work doing explicit copies.
 	if(Source.TotalCountForUnit) Dest.TotalCountForUnit = CopyArray(size_t, UnitCount, Source.TotalCountForUnit);
-	if(Source.OffsetForUnit)     Dest.OffsetForUnit     = CopyArray(size_t, UnitCount, Source.TotalCountForUnit);
+	if(Source.OffsetForUnit)     Dest.OffsetForUnit     = CopyArray(size_t, UnitCount, Source.OffsetForUnit);
 	if(Source.UnitForHandle)     Dest.UnitForHandle     = CopyArray(size_t, FirstUnusedHandle, Source.UnitForHandle);
 	if(Source.LocationOfHandleInUnit) Dest.LocationOfHandleInUnit = CopyArray(size_t, FirstUnusedHandle, Source.LocationOfHandleInUnit);
 	Dest.TotalCount = Source.TotalCount;
@@ -110,7 +110,7 @@ CopyDataSet(inca_data_set *DataSet)
 	//CopyStorageStructure(DataSet->ResultStorageStructure, Copy->ResultStorageStructure, Model->FirstUnusedEquationHandle);
 	
 	if(DataSet->IndexCounts) Copy->IndexCounts = CopyArray(index_t, Model->FirstUnusedIndexSetHandle, DataSet->IndexCounts);
-	//const char ***IndexNames; //TODO: This could probably be a std::vector<std::vector<std::string>>
+	//TODO: This could probably be a std::vector<std::vector<std::string>>
 	if(DataSet->IndexNames)
 	{
 		Copy->IndexNames = AllocClearedArray(const char **, Model->FirstUnusedIndexSetHandle);

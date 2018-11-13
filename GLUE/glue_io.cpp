@@ -36,6 +36,20 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 				}
 				Setup->NumRuns = NumRuns;
 			}
+			else if(strcmp(Token.StringValue, "num_threads") == 0)
+			{
+				ExpectToken(Stream, Token, TokenType_Colon);
+				ExpectToken(Stream, Token, TokenType_Numeric);
+				AssertUInt(Stream, Token);
+				size_t NumThreads = (size_t)Token.BeforeComma;
+				if(NumThreads == 0)
+				{
+					PrintStreamErrorHeader(Stream);
+					std::cout << "Expected at least 1 thread." << std::endl;
+					exit(0);
+				}
+				Setup->NumThreads = NumThreads;
+			}
 			else if(strcmp(Token.StringValue, "parameter_calibration") == 0)
 			{
 				ExpectToken(Stream, Token, TokenType_Colon);

@@ -12,12 +12,13 @@
 
 #include "../inca.h"
 
-#include "../SimplyC/HBV.h"
+#include "../ExampleModules/HBV.h"
 //#include "../ExampleModules/SoilTemperatureModel.h"
 //#include "../ExampleModules/WaterTemperatureModel.h"
 //#include "../SimplyC/SimplyC.h"
 
 #define GLUE_PRINT_DEBUG_INFO 0
+#define GLUE_MULTITHREAD 1
 
 #include "glue.h"
 
@@ -53,7 +54,7 @@ int main()
 	RunGLUE(DataSet, &Setup, &Results);
 	u64 Ms = GetTimerMilliseconds(&RunGlueTimer);
 	
-	std::cout << "GLUE finished. Running the model " << Setup.NumRuns << " times took " << Ms << " milliseconds." << std::endl;
+	std::cout << "GLUE finished. Running the model " << Setup.NumRuns << " times with " << Setup.NumThreads << " threads took " << Ms << " milliseconds." << std::endl;
 	
 	WriteGLUEResultsToDatabase("GLUE_results.db", &Setup, &Results, DataSet);
 }

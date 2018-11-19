@@ -18,8 +18,9 @@ AddIncaNModel(inca_model *Model)
 	auto Hectares           = RegisterUnit(Model, "Ha");
 	auto PerDay             = RegisterUnit(Model, "/day");
 	auto MgPerL             = RegisterUnit(Model, "mg/l");
-	auto M3                 = RegisterUnit(Model, "m3");
-	auto Cumecs             = RegisterUnit(Model, "m3/s");
+	auto M3PerKm2           = RegisterUnit(Model, "m3/km2");
+	auto CumecsPerKm2       = RegisterUnit(Model, "m3/km2/s");
+	auto Kg                 = RegisterUnit(Model, "kg");
 	auto KgPerKm2PerDay     = RegisterUnit(Model, "kg/km2/day");
 	auto KgPerDay           = RegisterUnit(Model, "kg/day");
 	auto KgPerKm2           = RegisterUnit(Model, "kg/km2");
@@ -28,10 +29,10 @@ AddIncaNModel(inca_model *Model)
 	auto Land = GetParameterGroupHandle(Model, "Landscape units");
 	
 	//TODO: In case one wants these to be initial concentrations instead one has to make an initial value equation that convert them..
-	auto DirectRunoffInitialNitrate      = RegisterParameterDouble(Model, Land, "Direct runoff initial nitrate", KgPerKm2, 10.0);
-	auto DirectRunoffInitialAmmonium     = RegisterParameterDouble(Model, Land, "Direct runoff initial ammonium", KgPerKm2, 10.0);
-	auto SoilwaterInitialNitrate         = RegisterParameterDouble(Model, Land, "Soil water initial nitrate", KgPerKm2, 10.0);
-	auto SoilwaterInitialAmmonium        = RegisterParameterDouble(Model, Land, "Soil water initial ammonium", KgPerKm2, 10.0);
+	auto DirectRunoffInitialNitrateConcentration      = RegisterParameterDouble(Model, Land, "Direct runoff initial nitrate concentration", MgPerL, 10.0);
+	auto DirectRunoffInitialAmmoniumConcentration     = RegisterParameterDouble(Model, Land, "Direct runoff initial ammonium concentration", MgPerL, 10.0);
+	auto SoilwaterInitialNitrateConcentration         = RegisterParameterDouble(Model, Land, "Soil water initial nitrate concentration", MgPerL, 10.0);
+	auto SoilwaterInitialAmmoniumConcentration        = RegisterParameterDouble(Model, Land, "Soil water initial ammonium concentration", MgPerL, 10.0);
 	
 	auto GrowthCurveOffset              = RegisterParameterDouble(Model, Land, "Growth curve offset", Dimensionless, 20.0);
 	auto GrowthCurveAmplitude           = RegisterParameterDouble(Model, Land, "Growth curve amplitude", Dimensionless, 20.0);
@@ -55,8 +56,8 @@ AddIncaNModel(inca_model *Model)
 
 	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
 	
-	auto GroundwaterInitialNitrate               = RegisterParameterDouble(Model, Reaches, "Groundwater initial nitrate", KgPerKm2, 10.0);
-	auto GroundwaterInitialAmmonium              = RegisterParameterDouble(Model, Reaches, "Groundwater initial ammonium", KgPerKm2, 0.0);
+	auto GroundwaterInitialNitrateConcentration  = RegisterParameterDouble(Model, Reaches, "Groundwater initial nitrate concentration", MgPerL, 10.0);
+	auto GroundwaterInitialAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Groundwater initial ammonium concentration", MgPerL, 0.0);
 	auto GroundwaterDenitrificationRate          = RegisterParameterDouble(Model, Reaches, "Groundwater denitrification rate", MetresPerDay, 20.0);
 	auto NitrateDryDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate dry deposition", KgPerHectarePerDay, 20.0);
 	auto NitrateWetDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate wet deposition", KgPerHectarePerDay, 20.0);
@@ -87,19 +88,21 @@ AddIncaNModel(inca_model *Model)
 	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
 	auto SoilTemperature = GetEquationHandle(Model, "Soil temperature");
 	
-	auto DirectRunoffVolume = RegisterEquation(Model, "Direct runoff volume", M3);
-	auto SoilwaterVolume    = RegisterEquation(Model, "Soil water volume", M3);
-	auto GroundwaterVolume  = RegisterEquation(Model, "Groundwater volume", M3);
-	auto DirectRunoffFlow   = RegisterEquation(Model, "Direct runoff flow", Cumecs);
-	auto SoilwaterFlow      = RegisterEquation(Model, "Soil water flow", Cumecs);
-	auto GroundwaterFlow    = RegisterEquation(Model, "Groundwater flow", Cumecs);
+	auto DirectRunoffVolume = RegisterEquation(Model, "Direct runoff volume", M3PerKm2);
+	auto SoilwaterVolume    = RegisterEquation(Model, "Soil water volume", M3PerKm2);
+	auto GroundwaterVolume  = RegisterEquation(Model, "Groundwater volume", M3PerKm2);
+	auto DirectRunoffFlow   = RegisterEquation(Model, "Direct runoff flow", CumecsPerKm2);
+	auto SoilwaterFlow      = RegisterEquation(Model, "Soil water flow", CumecsPerKm2);
+	auto GroundwaterFlow    = RegisterEquation(Model, "Groundwater flow", CumecsPerKm2);
 	auto DirectRunoffNitrateOutput  = RegisterEquation(Model, "Direct runoff nitrate output", KgPerKm2PerDay);
 	SetSolver(Model, DirectRunoffNitrateOutput, IncaSolver);
+	auto DirectRunoffInitialNitrate = RegisterEquationInitialValue(Model, "Direct runoff initial nitrate", KgPerKm2);
 	auto DirectRunoffNitrate        = RegisterEquationODE(Model, "Direct runoff nitrate", KgPerKm2);
 	SetSolver(Model, DirectRunoffNitrate, IncaSolver);
 	SetInitialValue(Model, DirectRunoffNitrate, DirectRunoffInitialNitrate);
 	auto DirectRunoffAmmoniumOutput = RegisterEquation(Model, "Direct runoff ammonium output", KgPerKm2PerDay);
 	SetSolver(Model, DirectRunoffAmmoniumOutput, IncaSolver);
+	auto DirectRunoffInitialAmmonium = RegisterEquationInitialValue(Model, "Direct runoff initial ammonium", KgPerKm2);
 	auto DirectRunoffAmmonium       = RegisterEquationODE(Model, "Direct runoff ammonium", KgPerKm2);
 	SetSolver(Model, DirectRunoffAmmonium, IncaSolver);
 	SetInitialValue(Model, DirectRunoffAmmonium, DirectRunoffInitialAmmonium);
@@ -119,6 +122,7 @@ AddIncaNModel(inca_model *Model)
 	auto SoilwaterNitrateOutput = RegisterEquation(Model, "Soil water nitrate output", KgPerKm2PerDay);
 	SetSolver(Model, SoilwaterNitrateOutput, IncaSolver);
 	auto SoilwaterNitrateInput = RegisterEquation(Model, "Soil water nitrate input", KgPerKm2PerDay);
+	auto SoilwaterInitialNitrate = RegisterEquationInitialValue(Model, "Soil water initial nitrate", KgPerKm2);
 	auto SoilwaterNitrate = RegisterEquationODE(Model, "Soil water nitrate", KgPerKm2);
 	SetSolver(Model, SoilwaterNitrate, IncaSolver);
 	SetInitialValue(Model, SoilwaterNitrate, SoilwaterInitialNitrate);
@@ -131,6 +135,7 @@ AddIncaNModel(inca_model *Model)
 	auto SoilwaterAmmoniumOutput = RegisterEquation(Model, "Soil water ammonium output", KgPerKm2PerDay);
 	SetSolver(Model, SoilwaterAmmoniumOutput, IncaSolver);
 	auto SoilwaterAmmoniumInput  = RegisterEquation(Model, "Soil water ammonium input", KgPerKm2PerDay);
+	auto SoilwaterInitialAmmonium = RegisterEquationInitialValue(Model, "Soil water initial ammmonium", KgPerKm2);
 	auto SoilwaterAmmonium = RegisterEquationODE(Model, "Soil water ammonium", KgPerKm2);
 	SetSolver(Model, SoilwaterAmmonium, IncaSolver);
 	SetInitialValue(Model, SoilwaterAmmonium, SoilwaterInitialAmmonium);
@@ -138,14 +143,42 @@ AddIncaNModel(inca_model *Model)
 	SetSolver(Model, GroundwaterDenitrification, IncaSolver);
 	auto GroundwaterNitrateOutput = RegisterEquation(Model, "Groundwater nitrate output", KgPerKm2PerDay);
 	SetSolver(Model, GroundwaterNitrateOutput, IncaSolver);
+	auto GroundwaterInitialNitrate = RegisterEquationInitialValue(Model, "GroundwaterInitialNitrate", KgPerKm2);
 	auto GroundwaterNitrate = RegisterEquationODE(Model, "Groundwater nitrate", KgPerKm2);
 	SetSolver(Model, GroundwaterNitrate, IncaSolver);
 	SetInitialValue(Model, GroundwaterNitrate, GroundwaterInitialNitrate);
 	auto GroundwaterAmmoniumOuput = RegisterEquation(Model, "Groundwater ammonium output", KgPerKm2PerDay);
 	SetSolver(Model, GroundwaterAmmoniumOuput, IncaSolver);
+	auto GroundwaterInitialAmmonium = RegisterEquationInitialValue(Model, "Groundwater initial ammmonium", KgPerKm2);
 	auto GroundwaterAmmonium = RegisterEquationODE(Model, "Groundwater ammonium", KgPerKm2);
 	SetSolver(Model, GroundwaterAmmonium, IncaSolver);
 	SetInitialValue(Model, GroundwaterAmmonium, GroundwaterInitialAmmonium);
+	
+	
+	EQUATION(Model, DirectRunoffInitialNitrate,
+		return PARAMETER(DirectRunoffInitialNitrateConcentration) * RESULT(DirectRunoffVolume) / 1000.0;
+	)
+	
+	EQUATION(Model, DirectRunoffInitialAmmonium,
+		return PARAMETER(DirectRunoffInitialAmmoniumConcentration)* RESULT(DirectRunoffVolume) / 1000.0;
+	)
+	
+	EQUATION(Model, SoilwaterInitialNitrate,
+		return PARAMETER(SoilwaterInitialNitrateConcentration)* RESULT(SoilwaterVolume) / 1000.0;
+	)
+	
+	EQUATION(Model, SoilwaterInitialAmmonium,
+		return PARAMETER(SoilwaterInitialAmmoniumConcentration) * RESULT(SoilwaterVolume) / 1000.0;
+	)
+	
+	EQUATION(Model, GroundwaterInitialNitrate,
+		return PARAMETER(GroundwaterInitialNitrateConcentration) * RESULT(GroundwaterVolume) / 1000.0;
+	)
+	
+	EQUATION(Model, GroundwaterInitialAmmonium,
+		return PARAMETER(GroundwaterInitialAmmoniumConcentration) * RESULT(GroundwaterVolume) / 1000.0;
+	)
+	
 	
 	EQUATION(Model, DirectRunoffVolume,
 		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
@@ -178,7 +211,9 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, DirectRunoffNitrateOutput,
-		return RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
+		double output = RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
+		if(RESULT(DirectRunoffVolume) == 0.0) return 0.0; //Hmm, we should perhaps have a tolerance check here instead..
+		return output;
 	)
 
 	EQUATION(Model, DirectRunoffNitrate,
@@ -186,7 +221,9 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DirectRunoffAmmoniumOutput,
-		return RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
+		double output = RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
+		if(RESULT(DirectRunoffVolume) == 0.0) return 0.0; //Hmm, we should perhaps have a tolerance check here instead..
+		return output;
 	)
 
 	EQUATION(Model, DirectRunoffAmmonium,
@@ -263,7 +300,9 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterNitrateOutput,
-		return RESULT(SoilwaterNitrate) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(WaterDepth, Soilwater);
+		double output = RESULT(SoilwaterNitrate) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(SoilwaterVolume);
+		if(RESULT(SoilwaterVolume) == 0.0) return 0.0; //Hmm, we should perhaps have a tolerance check here instead..
+		return output;
 	)
 
 	EQUATION(Model, SoilwaterNitrateInput,
@@ -321,7 +360,9 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterAmmoniumOutput,
-		return RESULT(SoilwaterAmmonium) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(SoilwaterVolume);
+		double output = RESULT(SoilwaterAmmonium) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(SoilwaterVolume);
+		if(RESULT(SoilwaterVolume) == 0.0) return 0.0; //Hmm, we should perhaps have a tolerance check here instead..
+		return output;
 	)
 
 	EQUATION(Model, SoilwaterAmmoniumInput,
@@ -354,7 +395,9 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, GroundwaterNitrateOutput,
-		return RESULT(GroundwaterNitrate) * RESULT(GroundwaterFlow) * 86400.0 / RESULT(GroundwaterVolume);
+		double output = RESULT(GroundwaterNitrate) * RESULT(GroundwaterFlow) * 86400.0 / RESULT(GroundwaterVolume);
+		if(RESULT(GroundwaterVolume) == 0.0) return 0.0; //Hmm, we should perhaps have a tolerance check here instead..
+		return output;
 	)
 	
 	EQUATION(Model, GroundwaterNitrate,
@@ -362,7 +405,9 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, GroundwaterAmmoniumOuput,
-		return RESULT(GroundwaterAmmonium) * RESULT(GroundwaterFlow) * 86400.0 / RESULT(GroundwaterVolume);
+		double output = RESULT(GroundwaterAmmonium) * RESULT(GroundwaterFlow) * 86400.0 / RESULT(GroundwaterVolume);
+		if(RESULT(GroundwaterVolume) == 0.0) return 0.0; //Hmm, we should perhaps have a tolerance check here instead..
+		return output;
 	)
 	
 	EQUATION(Model, GroundwaterAmmonium,
@@ -379,59 +424,19 @@ AddIncaNModel(inca_model *Model)
 	auto DiffuseAmmonium = RegisterEquation(Model, "Diffuse ammonium", KgPerDay);
 	auto TotalDiffuseAmmoniumOutput = RegisterEquationCumulative(Model, "Total diffuse ammonium output", DiffuseAmmonium, LandscapeUnits);
 	
-	EQUATION(Model, TotalNitrateToStream,
-		double nitrate = 0.0;
-		double soilwaternitrate = RESULT(SoilwaterNitrate);
-		double groundwaternitrate = RESULT(GroundwaterNitrate);
-		double directrunoffnitrate = RESULT(DirectRunoffNitrate);
-		
-		if(RESULT(SoilwaterFlow) > 0.0 && RESULT(SoilwaterVolume) > 0.0)
-		{
-			nitrate += ( RESULT(SoilwaterFlow) * soilwaternitrate * 86400.0 ) / RESULT(SoilwaterVolume);
-		}
-		
-		if(RESULT(GroundwaterFlow) > 0.0 && RESULT(GroundwaterVolume) > 0.0)
-		{
-			nitrate += ( RESULT(GroundwaterFlow) * groundwaternitrate * 86400.0 ) / RESULT(GroundwaterVolume);
-		}
-		
-		if(RESULT(DirectRunoffFlow) > 0.0 && RESULT(DirectRunoffVolume) > 0.0)
-		{
-			nitrate += ( RESULT(DirectRunoffFlow) * directrunoffnitrate * 86400.0 ) / RESULT(DirectRunoffVolume);
-		}
-		
-		return nitrate;
-	)
-	
 	auto TerrestrialCatchmentArea = GetParameterDoubleHandle(Model, "Terrestrial catchment area"); //NOTE: From persist
 	auto Percent                  = GetParameterDoubleHandle(Model, "%");                          //NOTE: From persist
+	
+	EQUATION(Model, TotalNitrateToStream,
+		return RESULT(SoilwaterNitrateOutput) + RESULT(GroundwaterNitrateOutput) + RESULT(DirectRunoffNitrateOutput);
+	)
 	
 	EQUATION(Model, DiffuseNitrate,
 		return RESULT(TotalNitrateToStream) * PARAMETER(TerrestrialCatchmentArea) * PARAMETER(Percent) / 100.0;
 	)
 	
 	EQUATION(Model, TotalAmmoniumToStream,
-		double ammonium = 0.0;
-		double soilwaterammonium = RESULT(SoilwaterAmmonium);
-		double groundwaterammonium = RESULT(GroundwaterAmmonium);
-		double directrunoffammonium = RESULT(DirectRunoffAmmonium);
-		
-		if(RESULT(SoilwaterFlow) > 0.0 && RESULT(SoilwaterVolume) > 0.0)
-		{
-			ammonium += ( RESULT(SoilwaterFlow) * soilwaterammonium * 86400.0 ) / RESULT(SoilwaterVolume);
-		}
-		
-		if(RESULT(GroundwaterFlow) > 0.0 && RESULT(GroundwaterVolume) > 0.0)
-		{
-			ammonium += ( RESULT(GroundwaterFlow) * groundwaterammonium * 86400.0 ) / RESULT(GroundwaterVolume);
-		}
-		
-		if(RESULT(DirectRunoffFlow) > 0.0 && RESULT(DirectRunoffVolume) > 0.0)
-		{
-			ammonium += ( RESULT(DirectRunoffFlow) * directrunoffammonium * 86400.0 ) / RESULT(DirectRunoffVolume);
-		}
-		
-		return ammonium;
+		return RESULT(SoilwaterAmmoniumOutput) + RESULT(GroundwaterAmmoniumOuput) + RESULT(DirectRunoffAmmoniumOutput);
 	)
 	
 	EQUATION(Model, DiffuseAmmonium,
@@ -458,8 +463,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachUpstreamNitrate = RegisterEquation(Model, "Reach upstream nitrate", KgPerDay);
 	auto ReachEffluentNitrate = RegisterEquation(Model, "Reach effluent nitrate", KgPerDay);
 	auto ReachTotalNitrateInput = RegisterEquation(Model, "Reach total nitrate input", KgPerDay);
-	auto ReachNitrateInitialValue = RegisterEquationInitialValue(Model, "Reach nitrate initial value", KgPerDay);
-	auto ReachNitrate = RegisterEquationODE(Model, "Reach nitrate", KgPerDay);
+	auto ReachNitrateInitialValue = RegisterEquationInitialValue(Model, "Reach nitrate initial value", Kg);
+	auto ReachNitrate = RegisterEquationODE(Model, "Reach nitrate", Kg);
 	SetSolver(Model, ReachNitrate, ReachSolver);
 	SetInitialValue(Model, ReachNitrate, ReachNitrateInitialValue);
 	auto ReachUpstreamAmmonium = RegisterEquation(Model, "Reach upstream ammonium", KgPerDay);
@@ -467,8 +472,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachTotalAmmoniumInput = RegisterEquation(Model, "Reach total ammonium input", KgPerDay);
 	auto ReachAmmoniumOutput = RegisterEquation(Model, "Reach ammonium output", KgPerDay);
 	SetSolver(Model, ReachAmmoniumOutput, ReachSolver);
-	auto ReachAmmoniumInitialValue = RegisterEquationInitialValue(Model, "Reach ammmonium initial value", KgPerDay);
-	auto ReachAmmonium = RegisterEquationODE(Model, "Reach ammonium", KgPerDay);
+	auto ReachAmmoniumInitialValue = RegisterEquationInitialValue(Model, "Reach ammmonium initial value", Kg);
+	auto ReachAmmonium = RegisterEquationODE(Model, "Reach ammonium", Kg);
 	SetSolver(Model, ReachAmmonium, ReachSolver);
 	SetInitialValue(Model, ReachAmmonium, ReachAmmoniumInitialValue);
 	

@@ -59,16 +59,16 @@ parameters:
 "Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
 20 20 20 20 20 20
 
-"Direct runoff initial nitrate" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Direct runoff initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 1 1 1 1 1 1
 
-"Direct runoff initial ammonium" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Direct runoff initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.05 0.05 0.05 0.05 0.05 0.05
 
-"Soil water initial nitrate" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Soil water initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.5 0.5 0.5 0.5 0.5 0.5
 
-"Soil water initial ammonium" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Soil water initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.01 0.01 0.01 0.01 0.01 0.01
 
 "Growth curve offset" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
@@ -193,7 +193,7 @@ false true false
 "Time constant" :     #(days) [0.1, 9999] The inverse of the rate at which water flows out of a box
 3 3 3 3 3 3
 6 6 6 6 6 6
-50 50 50 50 50 100
+50 50 50 50 50 50
 
 "Evapotranspiration adjustment" :     #(dimensionless) [0, 10] A factor to slow the rate of evapotranspiration when the depth of water in a box is below the retained water depth. Special  values include 0 (no slowing of evapotranspiration, 1 (slowing is proportional to the depth of water remaining in the bucket) and values above 10 (all evapotranspiration effectively stops when the depth of water is below the retained water depth)
 1 1 1 1 1 1
@@ -274,10 +274,10 @@ true true true true true
 "Water temperature lag factor" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 3 3 3 3 3
 
-"Groundwater initial nitrate" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Groundwater initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.3 0.3 0.3 0.3 0.3
 
-"Groundwater initial ammonium" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Groundwater initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.05 0.05 0.05 0.05 0.05
 
 "Groundwater denitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]

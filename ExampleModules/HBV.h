@@ -181,7 +181,7 @@ AddPotentialEvapotranspirationModuleV3(inca_model *Model)
 		return etp;
 	)
 }
-
+/*
 void
 AddSoilMoistureRoutine(inca_model *Model)
 {
@@ -293,6 +293,184 @@ AddSoilMoistureRoutine(inca_model *Model)
 		return RESULT(RunoffFromSoilInOneLandscapeUnit) * PARAMETER(Percent) / 100.0;
 	)
 }
+*/
+
+void
+AddSoilMoistureRoutine(inca_model *Model)
+{
+	auto Mm                = RegisterUnit(Model, "mm");
+	auto MmPerDay          = RegisterUnit(Model, "mm/day");
+	auto DegreesCelsius    = RegisterUnit(Model, "°C");
+	auto Dimensionless     = RegisterUnit(Model);
+	auto PerDay            = RegisterUnit(Model, "/day");
+	
+	auto LandscapeUnits    = RegisterIndexSet(Model, "Landscape units");
+	auto SoilBoxes         = RegisterIndexSet(Model, "Soil boxes");
+	
+	auto Land              = GetParameterGroupHandle(Model, "Landscape units");
+	auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", SoilBoxes);
+	
+        SetParentGroup(Model, SoilsLand, Land);	
+	
+        auto Soils                              = RegisterParameterGroup(Model, "Soils", SoilBoxes);
+	
+	auto Reaches                            = RegisterIndexSetBranched(Model, "Reaches");
+	auto ReachParameters                    = RegisterParameterGroup(Model, "Reach parameters", Reaches);
+	
+	auto LandscapePercentages               = RegisterParameterGroup(Model, "Landscape percentages", LandscapeUnits);
+	SetParentGroup(Model, LandscapePercentages, ReachParameters);
+	auto Percent                            = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0, "How much of the catchment area that is made up by this type of land cover.");
+	
+	auto RechargeRateFromBox                = RegisterParameterDouble(Model, Soils, "Percolation rate from soil box", MmPerDay, 2);
+	
+	//TODO: find good default (and min/max) values for these:
+	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Land, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
+	
+	auto FieldCapacity                      = RegisterParameterDouble(Model, SoilsLand, "Field capacity", Mm, 150.0, 10., 600., "Maximum soil moisture storage");
+	auto Beta                               = RegisterParameterDouble(Model, SoilsLand, "Beta recharge exponent", Dimensionless, 1., 1.0, 10., "Power parameter that determines the relative contribution to recharge");
+	auto InitialSoilMoisture                = RegisterParameterDouble(Model, SoilsLand, "Initial soil moisture", Mm, 100.0); //TODO: Have an equation for this instead?
+        auto SeepageRateFromBox                  = RegisterParameterDouble(Model, SoilsLand, "Seepage rate from box", Mm, 0.1, 0.0, 0.5); 
+        
+        
+	
+	auto AirTemperature = RegisterInput(Model, "Air temperature");
+	
+	auto WaterToSoil = GetEquationHandle(Model, "Water to soil"); //NOTE: from the snow model.
+	
+	auto PotentialEvapotranspiration = GetEquationHandle(Model, "Potential evapotranspiration"); //NOTE: from the potentialevapotranspiration module.
+
+        auto SoilSolver = RegisterSolver(Model, "Soil solver", 0.1, IncaDascru);	
+	
+        auto GroundwaterRecharge         = RegisterEquation(Model, "Direct groundwater recharge", MmPerDay);
+        auto SoilMoistureRecharge        = RegisterEquation(Model, "Direct soil moisture recharge", MmPerDay);
+        auto RechargeFraction            = RegisterEquation(Model, "Fraction of precipitation to groundwater", MmPerDay);
+        auto InitialWaterInBox           = RegisterEquation(Model, "Initial soil moisture in timestep",MmPerDay);
+        auto ExcessPrecipitation         = RegisterEquation(Model, "Excess precipitation", Dimensionless);
+        auto ExcessSoilMoisture          = RegisterEquation(Model, "Excess soil moisture", MmPerDay);
+	auto SeepageFromBox              = RegisterEquation(Model, "Seepage from box", MmPerDay);
+        auto EvapotranspirationFraction  = RegisterEquation(Model, "Evapotranspiration fraction", Dimensionless);
+	auto Evapotranspiration          = RegisterEquation(Model, "Evapotranspiration", MmPerDay);
+	auto SoilMoisture                = RegisterEquation(Model, "Soil moisture", Mm);
+	
+//        SetSolver(Model, WaterInputToBox, SoilSolver);
+//        SetSolver(Model, RunoffFraction, SoilSolver);
+//        SetSolver(Model, RechargeFromBox, SoilSolver);
+//        SetSolver(Model, Runoff, SoilSolver);
+//        SetSolver(Model, EvapotranspirationFraction, SoilSolver);
+//        SetSolver(Model, Evapotranspiration, SoilSolver);
+//        SetSolver(Model, Abstraction, SoilSolver);
+//        SetSolver(Model, SoilMoisture, SoilSolver);
+	
+        
+        SetInitialValue(Model, SoilMoisture, InitialSoilMoisture);
+	
+	auto GroundwaterRechargeFromLandscapeUnit = RegisterEquation(Model, "Groundwater recharge from landscape unit", MmPerDay);
+	auto GroundwaterRechargeCumulative        = RegisterEquationCumulative(Model, "Groundwater recharge", GroundwaterRechargeFromLandscapeUnit, LandscapeUnits);
+	
+	auto RunoffFromSoilInOneLandscapeUnit     = RegisterEquationCumulative(Model, "Runoff from soil in one landscape unit", ExcessSoilMoisture, SoilBoxes);
+	auto RunoffFromLandscapeUnit              = RegisterEquation(Model, "Runoff from landscape unit", MmPerDay); //NOTE: This one is just to multiply in a percentage. Maybe we should add an option to RegisterEquationCumulative to do that automatically since it seems like this is something we have to do often.
+	auto RunoffFromBox                        = RegisterEquationCumulative(Model, "Runoff from soil", RunoffFromLandscapeUnit, LandscapeUnits);
+	
+	auto Dummy                                = RegisterEquationCumulative(Model, "Dummy", SoilMoisture, SoilBoxes); //NOTE: stupid hack used to force GroundwaterRechargeFromUnit into the right place in the run tree.
+
+ 	
+        EQUATION(Model, RechargeFraction,
+                if (CURRENT_INDEX(SoilBoxes) == 0)
+                {
+                    double fraction = LAST_RESULT(SoilMoisture) / PARAMETER(FieldCapacity);
+                    fraction = std::pow(fraction, PARAMETER(Beta));   
+                    if (fraction > 1.0) fraction = 1.0;
+                    if (fraction < 0.) fraction = 0.;
+                    return fraction; 
+                }
+                else return 0.;
+        )      
+                        
+        EQUATION(Model, GroundwaterRecharge,
+                if (CURRENT_INDEX(SoilBoxes) == 0)
+                {                
+                double gwr =  RESULT(RechargeFraction) * RESULT(WaterToSoil);
+                return gwr;
+                }
+                else return 0.;
+        )
+        
+        EQUATION(Model, SoilMoistureRecharge,
+                double smr = RESULT(WaterToSoil) - RESULT(GroundwaterRecharge);
+                if (smr < 0.) smr = 0.;
+                if ( CURRENT_INDEX(SoilBoxes) == 0 ) return smr; else return 0.;
+        )
+	
+	EQUATION(Model, InitialWaterInBox,
+                double totalWater = 0.;
+                if(CURRENT_INDEX(SoilBoxes) == 0)
+                {
+                    totalWater = LAST_RESULT(SoilMoisture) + RESULT(SoilMoistureRecharge);
+                }
+                else 
+                {
+                    totalWater = LAST_RESULT(SoilMoisture) + RESULT(SeepageFromBox);
+                }
+                if ( totalWater > PARAMETER(FieldCapacity) ) return PARAMETER(FieldCapacity);
+                else return totalWater; 
+        )
+                        
+        EQUATION(Model, ExcessSoilMoisture,
+                double excessMoisture = 0.;
+                if(CURRENT_INDEX(SoilBoxes) == 0)
+                { 
+                    excessMoisture = LAST_RESULT(SoilMoisture) + RESULT(SoilMoistureRecharge) - PARAMETER(FieldCapacity);
+                }
+                else 
+                {
+                    excessMoisture = LAST_RESULT(SoilMoisture) + RESULT(SeepageFromBox) - PARAMETER(FieldCapacity);
+                }
+                if (excessMoisture < 0.) return 0.; else return excessMoisture;
+        )         
+                        
+        EQUATION(Model, SeepageFromBox,
+                double seepage = PARAMETER(SeepageRateFromBox) * RESULT(InitialWaterInBox);
+                return seepage;   
+                )               
+        
+                        
+	EQUATION(Model, ExcessPrecipitation,
+                double  initialWaterLevel = RESULT(InitialWaterInBox);
+                if (initialWaterLevel > PARAMETER(FieldCapacity)) return PARAMETER(FieldCapacity);
+                else return 0.;
+	)                       
+	
+        EQUATION(Model, EvapotranspirationFraction,
+		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(FieldCapacity);
+		double potentialetpfraction = Min(RESULT(InitialWaterInBox), smmax) / smmax;
+		if(CURRENT_INDEX(SoilBoxes) == 0) return potentialetpfraction;
+		return 0.0;
+	)
+
+	EQUATION(Model, Evapotranspiration,
+		return Min(RESULT(PotentialEvapotranspiration) * RESULT(EvapotranspirationFraction), RESULT(InitialWaterInBox));
+	)
+
+               
+	EQUATION(Model, SoilMoisture,
+		return RESULT(InitialWaterInBox) 
+                - RESULT(Evapotranspiration); 
+//                - RESULT(SeepageFromBox);
+	)
+	
+	EQUATION(Model, GroundwaterRechargeFromLandscapeUnit,
+		RESULT(Dummy); //NOTE: Without this the equation is misplaced in the run structure since it falls outside the current dependency system. We may want to make a smarter dependency system.
+		double totalRecharge = RESULT(GroundwaterRecharge);
+//                double seepageToGw = RESULT(SeepageFromBox, FINAL_INDEX(SoilBoxes));
+//		return (totalRecharge + seepageToGw) * PARAMETER(Percent) / 100.0;
+                return totalRecharge * PARAMETER(Percent) / 100.0;
+	)
+	
+	EQUATION(Model, RunoffFromLandscapeUnit,
+		return RESULT(ExcessSoilMoisture) * PARAMETER(Percent) / 100.0;
+	)
+}
+
 
 static void
 AddGroundwaterResponseRoutine(inca_model *Model)

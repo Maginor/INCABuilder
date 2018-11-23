@@ -15,7 +15,7 @@ AddPersistModel(inca_model *Model)
 	
 	auto System = GetParameterGroupHandle(Model, "System");
 	
-	auto BaselineSMD = RegisterParameterDouble(Model, System, "Baseline SMD", Mm, 300.0, 0.0, 100000.0);
+	//auto BaselineSMD = RegisterParameterDouble(Model, System, "Baseline SMD", Mm, 300.0, 0.0, 100000.0);
 	
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
@@ -53,7 +53,7 @@ AddPersistModel(inca_model *Model)
 	auto ThisIsAQuickBox = RegisterParameterBool(Model, Soils, "This is a quick box", true);
 	auto AllowInundation = RegisterParameterBool(Model, Soils, "Allow inundation", false);
 	auto AllowInfiltration = RegisterParameterBool(Model, Soils, "Allow infiltration", false);
-	auto UseThisBoxInSMDCalculation = RegisterParameterBool(Model, Soils, "Use this box in SMD calculation", true);
+	//auto UseThisBoxInSMDCalculation = RegisterParameterBool(Model, Soils, "Use this box in SMD calculation", true);
 	
     SetParentGroup(Model, SoilsLand, Soils);
 
@@ -251,7 +251,7 @@ AddPersistModel(inca_model *Model)
 		
 		for(index_t LocalIndex = CURRENT_INDEX(SoilBoxes) + 1; LocalIndex < INDEX_COUNT(SoilBoxes); ++LocalIndex)
 		{
-			double mpi = Min(PARAMETER(Infiltration, LocalIndex), (PARAMETER(MaximumCapacity, LocalIndex) - RESULT(WaterDepth3, LocalIndex))); //NOTE: RESULT(WaterDepth3, LocalIndex) has not been computed yet, and so will be 0. In fact, it depends on values computed in this equation (mainly (PercolationInput, LocalIndex), and so can not possibly be computed before this unless the model structure is rewritten.
+			double mpi = Min(PARAMETER(Infiltration, LocalIndex), (PARAMETER(MaximumCapacity, LocalIndex) - RESULT(WaterDepth3, LocalIndex))); //NOTE: RESULT(WaterDepth3, LocalIndex) has not been computed yet, and so will be 0. In fact, it depends on values computed in this equation (mainly RESULT(PercolationInput, LocalIndex), and so can not possibly be computed before this unless the model structure is rewritten.
 			double perc = Min(mpi * PARAMETER(RelativeAreaIndex, LocalIndex) / relativeareaindex,
 				PARAMETER(Item, LocalIndex) * totalrunoff);
 			perc = Min(perc, RESULT(WaterDepth3));

@@ -11,8 +11,8 @@ parameters:
 "Start date" :
 "1983-1-1"
 
-"Baseline SMD" :
-300.000000
+#"Baseline SMD" :
+#300.000000
 
 ###################### "Landscape units" ######################
 "Snow multiplier" :
@@ -75,8 +75,8 @@ false false false
 "Allow infiltration" :
 false false false
 
-"Use this box in SMD calculation" :
-false true false
+#"Use this box in SMD calculation" :
+#false true false
 
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :

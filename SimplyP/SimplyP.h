@@ -312,10 +312,15 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	SetInitialValue(Model, ReachFlow, InitialReachFlow);
 	SetSolver(Model, ReachFlow, SimplyPSolver);
 	
+	auto DailyMeanReachFlow = RegisterEquationODE(Model, "Daily mean reach flow", MmPerDay);
+	SetInitialValue(Model, DailyMeanReachFlow, 0.0);
+	SetSolver(Model, DailyMeanReachFlow, SimplyPSolver);
+	ResetEveryTimestep(Model, DailyMeanReachFlow);
+	
 	EQUATION(Model, ReachFlowInput,
 		double upstreamflow = 0.0;
 		FOREACH_INPUT(Reach,
-			upstreamflow += RESULT(ReachFlow, *Input) * PARAMETER(CatchmentArea, *Input) / PARAMETER(CatchmentArea);
+			upstreamflow += RESULT(DailyMeanReachFlow, *Input) * PARAMETER(CatchmentArea, *Input) / PARAMETER(CatchmentArea);
 		)
 		
 		return upstreamflow + RESULT(InfiltrationExcess) + (1.0 - PARAMETER(BaseflowIndex)) * RESULT(TotalSoilWaterFlow) + RESULT(GroundwaterFlow);
@@ -352,6 +357,11 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, ReachVolume,
 		//dVr_dt = Qq_i + (1-beta)*(f_A*QsA_i + f_S*QsS_i) + Qg_i + Qr_US_i - Qr_i
 		return RESULT(ReachFlowInput) - RESULT(ReachFlow);
+	)
+	
+	EQUATION(Model, DailyMeanReachFlow,
+		//NOTE: Since DailyMeanReachFlow is reset to start at 0 every timestep and since its derivative is the reach flow, its value becomes the integral of the reach flow over the timestep.
+		return RESULT(ReachFlow);
 	)
 }
 

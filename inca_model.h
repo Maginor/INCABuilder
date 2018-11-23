@@ -121,6 +121,8 @@ struct equation_spec
 	bool HasExplicitInitialValue;
 	equation InitialValueEquation;
 	
+	bool ResetEveryTimestep;         //NOTE: Only used for Type == EquationType_ODE.
+	
 	bool EquationIsSet;              //NOTE: Whether or not the equation body has been provided.
 	
 	index_set CumulatesOverIndexSet; //NOTE: Only used for Type == EquationType_Cumulative.
@@ -877,6 +879,22 @@ SetInitialValue(inca_model *Model, equation Equation, equation InitialValueEquat
 	{
 		std::cout << "WARNING: The equation " << GetName(Model, Equation) << " was registered with a different unit than its initial value equation " << GetName(Model, InitialValueEquation) << std::endl;
 	}
+}
+
+inline void
+ResetEveryTimestep(inca_model *Model, equation Equation)
+{
+	REGISTRATION_BLOCK(Model)
+	
+	equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
+	
+	if(Spec.Type != EquationType_ODE)
+	{
+		std::cout << "ERROR: Called ResetEveryTimestep on the equation " << Spec.Name << ", but this functionality is only available for ODE equations." << std::endl;
+		exit(0);
+	}
+	
+	Spec.ResetEveryTimestep = true;
 }
 
 static solver

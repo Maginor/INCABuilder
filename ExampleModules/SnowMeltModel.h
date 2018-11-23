@@ -23,7 +23,7 @@ AddSnowMeltModel(inca_model *Model)
 	auto RainfallCorrectionFactor = RegisterParameterDouble(Model, Land, "Rainfall correction factor",                        Dimensionless,            1.08);
 	auto TempAtWhichSnowMelts     = RegisterParameterDouble(Model, Land, "Temperature at which snow melts",                   DegreesCelsius,           0.5);
 	auto EvaporationFromSnow      = RegisterParameterDouble(Model, Land, "Evaporation from snow",                             MmPerDay,                 0.09);
-	auto WaterEquivalentFactor	  = RegisterParameterDouble(Model, Land, "Water equivalent factor", 					      Dimensionless, 			      0.3);
+	auto WaterEquivalentFactor	  = RegisterParameterDouble(Model, Land, "Water equivalent factor", 					      Dimensionless, 			0.3);
     
 	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation");
 	auto AirTemperature      = RegisterInput(Model, "Air temperature");
@@ -35,20 +35,21 @@ AddSnowMeltModel(inca_model *Model)
 	auto SnowPackWithMelt           = RegisterEquation(Model, "Snow pack with melt",           Mm);
 	auto SnowEvaporation            = RegisterEquation(Model, "Snow evaporation",              MmPerDay);
 	auto SnowAsWaterEquivalent      = RegisterEquation(Model, "Snow as water equivalent",      Mm);
-	auto SnowDepth                  = RegisterEquation(Model, "Snow depth",            Cm);
+	auto SnowDepth                  = RegisterEquation(Model, "Snow depth",                    Cm);
 	
 	EQUATION(Model, PrecipitationFallingAsSnow,
 		double Snow = 0.0;
 		double tempPrecipRain = PARAMETER(TempAboveAllPrecipRain);
 		double tempPrecipSnow = PARAMETER(TempBelowAllPrecipSnow);
+		double precip = INPUT(ActualPrecipitation);
 		
 		if ( INPUT(AirTemperature) < tempPrecipSnow )
 		{
-			Snow = INPUT(ActualPrecipitation);
+			Snow = precip
 		}
 		else if ( INPUT(AirTemperature) < tempPrecipRain )
 		{
-			Snow = INPUT(ActualPrecipitation)
+			Snow = precip
                 * ( tempPrecipRain - INPUT(AirTemperature) )
                 / ( tempPrecipRain - tempPrecipSnow );
 		}

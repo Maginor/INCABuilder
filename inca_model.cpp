@@ -1001,10 +1001,18 @@ INNER_LOOP_BODY(RunInnerLoop)
 				size_t EquationIdx = 0;
 				for(equation Equation : Batch.EquationsODE)
 				{
-					DataSet->x0[EquationIdx] = ValueSet->LastResults[Equation.Handle]; //NOTE: ValueSet.LastResult is set up above already.
+					//NOTE: Reading the EquationSpecs vector here may be slightly inefficient since each element of the vector is large. We could copy out an array of the ResetEveryTimestep bools instead beforehand.
+					if(Model->EquationSpecs[Equation.Handle].ResetEveryTimestep)
+					{
+						DataSet->x0[EquationIdx] = 0;
+					}
+					else
+					{
+						DataSet->x0[EquationIdx] = ValueSet->LastResults[Equation.Handle]; //NOTE: ValueSet.LastResult is set up above already.
+					}
 					++EquationIdx;
 				}
-				// NOTE: Do we need to clear DataSet->wk to 0? (Has not been needed in any of the current examples so far.)
+				// NOTE: Do we need to clear DataSet->wk to 0? (Has not been needed in the solvers we have used so far...)
 				
 				solver_spec &SolverSpec = Model->SolverSpecs[Batch.Solver.Handle];
 				

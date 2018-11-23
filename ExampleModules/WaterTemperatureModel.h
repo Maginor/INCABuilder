@@ -12,7 +12,7 @@ AddWaterTemperatureModel(inca_model *Model)
 	
 	
 	auto InitialWaterTemperature     = RegisterParameterDouble(Model, Streams, "Initial water temperature",    DegreesCelsius, 20.0);
-	auto MinimumWaterTemperature     = RegisterParameterDouble(Model, Streams, "Minimum water temperature",    DegreesCelsius, 20.0);
+	auto MinimumWaterTemperature     = RegisterParameterDouble(Model, Streams, "Minimum water temperature",    DegreesCelsius,  0.0);
 	auto WaterTemperatureLagFactor   = RegisterParameterDouble(Model, Streams, "Water temperature lag factor", Dimensionless,   3.0);
 	
 	auto AirTemperature = GetInputHandle(Model, "Air temperature"); //NOTE: Is registered in the snow melt model

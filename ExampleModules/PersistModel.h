@@ -6,6 +6,7 @@ static void
 AddPersistModel(inca_model *Model)
 {
 	auto Mm                = RegisterUnit(Model, "mm");
+	auto Cm                = RegisterUnit(Model, "cm");
 	auto MmPerDay          = RegisterUnit(Model, "mm/day");
 	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
@@ -24,7 +25,8 @@ AddPersistModel(inca_model *Model)
 	auto SnowMultiplier              = RegisterParameterDouble(Model, Land, "Snow multiplier",             Dimensionless,     1.0,  0.5,    1.5, "Adjustment factor used to account for bias in the relationship between snow measured in the gauge and effective snowfall amounts falling");
 	auto SnowMeltTemperature         = RegisterParameterDouble(Model, Land, "Snow melt temperature",       DegreesCelsius,    0.0, -4.0,    4.0, "The temperature at or above which snow can melt");
 	auto DegreeDayMeltFactor         = RegisterParameterDouble(Model, Land, "Degree day melt factor",      MmPerDegreePerDay, 3.0,  1.0,    4.0, "Describes the dependency of snow melt rates on temperature. The parameter represents the number of millimetres water melted per degree celcius above the snow melt temperature");
-    auto RainMultiplier              = RegisterParameterDouble(Model, Land, "Rain multiplier",             Dimensionless,     1.0,  0.5,    1.5, "Adjustment factor used to account for bias in the relationship between rain measured in the gauge and effective rainfall amounts falling");
+    auto WaterEquivalentFactor	     = RegisterParameterDouble(Model, Land, "Water equivalent factor", 	   Dimensionless, 	  0.3,  0.01,   1.0, "1mm of snow would produce this amount of water when melted");
+	auto RainMultiplier              = RegisterParameterDouble(Model, Land, "Rain multiplier",             Dimensionless,     1.0,  0.5,    1.5, "Adjustment factor used to account for bias in the relationship between rain measured in the gauge and effective rainfall amounts falling");
 	auto InitialSnowDepth            = RegisterParameterDouble(Model, Land, "Initial snow depth",          MmSWE,             0.0,  0.0, 9999.0, "The depth of snow, expressed as water equivalents, at the start of the simulation");
 	auto DegreeDayEvapotranspiration = RegisterParameterDouble(Model, Land, "Degree day evapotranspiration", MmPerDegreePerDay, 0.12, 0.05,   0.2, "Describes the baseline dependency of evapotranspiration on air temperature. The parameter represents the number of millimetres water evapotranspired per degree celcius above the growing degree threshold when evapotranspiration rates are not soil moisture limited");
 	auto GrowingDegreeThreshold      = RegisterParameterDouble(Model, Land, "Growing degree threshold",    DegreesCelsius,    0.0, -4.0,    4.0, "The temperature at or above which plant growth and hence evapotranspiration are assumed to occur");
@@ -95,7 +97,7 @@ AddPersistModel(inca_model *Model)
 	//TODO: Allow parameter groups to have multiple index sets so that the matrix does not have to be built in three group stages?
 	
 	auto MatrixCol = RegisterParameterGroup(Model, "Matrix column", SoilBoxes);
-	auto Item = RegisterParameterDouble(Model, MatrixCol, "item", Dimensionless, 0.05, 0.0, 1.0);
+	auto PercolationMatrix = RegisterParameterDouble(Model, MatrixCol, "Percolation matrix", Dimensionless, 0.05, 0.0, 1.0);
 	
 	auto MatrixRow = RegisterParameterGroup(Model, "Matrix row", SoilBoxes);
 	SetParentGroup(Model, MatrixCol, MatrixRow);
@@ -107,8 +109,9 @@ AddPersistModel(inca_model *Model)
 	auto SnowFall = RegisterEquation(Model, "Snow fall", MmPerDay);
 	auto SnowMelt = RegisterEquation(Model, "Snow melt", MmPerDay);
 	auto RainFall = RegisterEquation(Model, "Rainfall",  MmPerDay);
-	auto SnowDepth = RegisterEquation(Model, "Snow depth", MmSWE);
-	SetInitialValue(Model, SnowDepth, InitialSnowDepth);
+	auto SnowAsWaterEquivalent = RegisterEquation(Model, "Snow depth soil water equivalent", MmSWE);
+	SetInitialValue(Model, SnowAsWaterEquivalent, InitialSnowDepth);
+	auto SnowDepth = RegisterEquation(Model, "Snow depth", Cm);
 	
 	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation");
 	auto AirTemperature      = RegisterInput(Model, "Air temperature");
@@ -122,7 +125,7 @@ AddPersistModel(inca_model *Model)
 	
 	EQUATION(Model, SnowMelt,
 		double melt = (INPUT(AirTemperature) - PARAMETER(SnowMeltTemperature)) * PARAMETER(DegreeDayMeltFactor);
-		double snowmelt = Min(LAST_RESULT(SnowDepth), melt);
+		double snowmelt = Min(LAST_RESULT(SnowAsWaterEquivalent), melt);
 		if(INPUT(AirTemperature) < PARAMETER(SnowMeltTemperature)) snowmelt = 0.0;
 		return snowmelt;
 	)
@@ -133,8 +136,14 @@ AddPersistModel(inca_model *Model)
 		return rainfall;
 	)
 
+	EQUATION(Model, SnowAsWaterEquivalent,
+		return LAST_RESULT(SnowAsWaterEquivalent) + RESULT(SnowFall) - RESULT(SnowMelt);
+	)
+	
+	//NOTE: The snow (pack) depth in Cm was added in to be compatible with the soil temperature model -MDN 23.11.2018
 	EQUATION(Model, SnowDepth,
-		return LAST_RESULT(SnowDepth) + RESULT(SnowFall) - RESULT(SnowMelt);
+		return RESULT(SnowAsWaterEquivalent)
+					/ 10.0 / PARAMETER(WaterEquivalentFactor);
 	)
 
 	auto PercolationInput   = RegisterEquation(Model, "Percolation input", MmPerDay);
@@ -171,7 +180,7 @@ AddPersistModel(inca_model *Model)
 		for(index_t LocalIndex = 0; LocalIndex < INDEX_COUNT(SoilBoxes); ++LocalIndex)
 		{
 			sumSaturationExcessInput += LAST_RESULT(SaturationExcess, LocalIndex)
-							* PARAMETER(Item, LocalIndex, CURRENT_INDEX(SoilBoxes))
+							* PARAMETER(PercolationMatrix, LocalIndex, CURRENT_INDEX(SoilBoxes))
 							* PARAMETER(RelativeAreaIndex, LocalIndex)
 							/ relativeareaindex;
 		}
@@ -253,7 +262,7 @@ AddPersistModel(inca_model *Model)
 		{
 			double mpi = Min(PARAMETER(Infiltration, LocalIndex), (PARAMETER(MaximumCapacity, LocalIndex) - RESULT(WaterDepth3, LocalIndex))); //NOTE: RESULT(WaterDepth3, LocalIndex) has not been computed yet, and so will be 0. In fact, it depends on values computed in this equation (mainly RESULT(PercolationInput, LocalIndex), and so can not possibly be computed before this unless the model structure is rewritten.
 			double perc = Min(mpi * PARAMETER(RelativeAreaIndex, LocalIndex) / relativeareaindex,
-				PARAMETER(Item, LocalIndex) * totalrunoff);
+				PARAMETER(PercolationMatrix, LocalIndex) * totalrunoff);
 			perc = Min(perc, RESULT(WaterDepth3));
 			percolationOut += perc;
 			
@@ -273,7 +282,7 @@ AddPersistModel(inca_model *Model)
 		double runoff = Max(0.0, RESULT(TotalRunoff) - RESULT(PercolationOut));
 		if(!PARAMETER(ThisIsAQuickBox))
 		{
-			runoff = Min(runoff, PARAMETER(Item) * RESULT(TotalRunoff));
+			runoff = Min(runoff, PARAMETER(PercolationMatrix) * RESULT(TotalRunoff));
 		}
 		return runoff;
 	)

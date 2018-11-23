@@ -7,6 +7,9 @@ AddIncaNModel(inca_model *Model)
 	//NOTE: Uses Persist, SoilTemperature, WaterTemperature
 	
 	
+	//TODO: Important! The Snow Depth that is calculated in Persist is in mm snow water equivalent, while the Soil temperature model expects cm actual snow depth. So they are currently not correctly plugged together...
+	
+	
 	//TODO: General todo for this model: If the water depth in some soil compartments become 0, we get a lot of division by 0 errors. We should prevent against that.
 	
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
@@ -228,7 +231,7 @@ AddIncaNModel(inca_model *Model)
 
 	EQUATION(Model, SoilwaterToDirectRunoffNitrate,
 		return 
-			  RESULT(SaturationExcessInput, DirectRunoff) * RESULT(SoilwaterNitrate) / RESULT(WaterDepth, Soilwater) //NOTE: We assume that groundwater will not contribute to saturation excess, so it can only come from soil water (MEMO: ensure that people actually use very high max storage for groundwater so that this does not become an issue..)
+			  RESULT(SaturationExcessInput, DirectRunoff) * RESULT(SoilwaterNitrate) / RESULT(WaterDepth, Soilwater) //NOTE: We assume that groundwater will not contribute to saturation excess, so it can only come from soil water.
 			- RESULT(PercolationInput, Soilwater) * RESULT(DirectRunoffNitrate) / RESULT(WaterDepth, DirectRunoff);  //NOTE: Perc in to soilwater can only come from direct runoff
 	)
 	

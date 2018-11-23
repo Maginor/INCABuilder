@@ -13,9 +13,6 @@ parameters:
 "Start date" :     # ["1000-1-1", "3000-12-31"]
 "1996-1-1"
 
-#"Baseline SMD" :     #(mm) [0, 100000]
-#180
-
 ###################### "Landscape units" ######################
 "Snow multiplier" :     #(dimensionless) [0.5, 1.5] Adjustment factor used to account for bias in the relationship between snow measured in the gauge and effective snowfall amounts falling
 1 1 1 1 1 1
@@ -25,6 +22,9 @@ parameters:
 
 "Degree day melt factor" :     #(mm/°C/day) [1, 4] Describes the dependency of snow melt rates on temperature. The parameter represents the number of millimetres water melted per degree celcius above the snow melt temperature
 3 3 3 3 3 3
+
+"Water equivalent factor" :     #(dimensionless) [0.01, 1] 1mm of snow would produce this amount of water when melted
+0.3 0.3 0.3 0.3 0.3 0.3
 
 "Rain multiplier" :     #(dimensionless) [0.5, 1.5] Adjustment factor used to account for bias in the relationship between rain measured in the gauge and effective rainfall amounts falling
 1 1 1 1 1 1
@@ -44,10 +44,10 @@ parameters:
 "Thermal conductivity of soil" :     #(W/m/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.7 0.7 0.7 0.7 0.7 0.7
 
-"Specific heat capacity due to freeze/thaw" :     #(MJ/m3/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Specific heat capacity due to freeze/thaw" :     #(MJ/m3/°C) [1, 200] Controls the energy released when water is frozen and energy consumed under melting
 6.6 6.6 6.6 6.6 6.6 6.6
 
-"Snow depth / soil temperature factor" :     #(/cm) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Snow depth / soil temperature factor" :     #(/cm) [-0.03, -0.02] Defines an empirical relationship between snow pack depth and its insulating effect on soils
 -0.025 -0.025 -0.025 -0.003 -0.003 -0.025
 
 "Specific heat capacity of soil" :     #(MJ/m3/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
@@ -59,10 +59,10 @@ parameters:
 "Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
 20 20 20 20 20 20
 
-"Direct runoff initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Direct runoff initial nitrate concentration" :     #(mg/l) [0, 10]
 1 1 1 1 1 1
 
-"Direct runoff initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Direct runoff initial ammonium concentration" :     #(mg/l) [0, 2]
 0.05 0.05 0.05 0.05 0.05 0.05
 
 "Soil water initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
@@ -77,13 +77,13 @@ parameters:
 "Growth curve amplitude" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.34 0.34 0.34 0.34 0.34 0.34
 
-"Plant growth start day" :     #(Julian day) [0, 18446744073709551615]
+"Plant growth start day" :     #(Julian day) [1, 365] Day of year when plant growth begins
 140 140 130 150 110 140
 
-"Plant growth period" :     #(Julian day) [0, 18446744073709551615]
+"Plant growth period" :     #(Julian day) [0, 365] Length of plant growth period in days
 210 200 180 190 180 200
 
-"Nitrate plant uptake rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Nitrate plant uptake rate" :     #(m/day) [0, 162] Rate at which NO3 is taken up by plants.
 0.8 0.6 0.1 0.4 1 0.5
 
 "Soil water denitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
@@ -98,19 +98,19 @@ parameters:
 "Maximum nitrogen uptake rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 150 80 45 80 200 70
 
-"Fertilizer addition start day" :     #(Julian day) [0, 18446744073709551615]
+"Fertilizer addition start day" :     #(Julian day) [1, 365] Day of year when fertiliser application begins.
 1 1 1 1 110 1
 
-"Fertilizer addition period" :     #(Julian day) [0, 18446744073709551615]
+"Fertilizer addition period" :     #(Julian day) [0, 365] Length of fertiliser addition period in days.
 0 0 0 0 20 0
 
-"Fertilizer nitrate addition rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Fertilizer nitrate addition rate" :     #(kg/Ha/day) [0, 100] Amount of nitrate added as fertiliser on each day of fertiliser addition period.
 0 0 0 0 4 0
 
-"Fertilizer ammonium addition rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Fertilizer ammonium addition rate" :     #(kg/Ha/day) [0, 100] Amount of ammonium added as fertiliser on each day of fertiliser addition period.
 0 0 0 0 4 0
 
-"Ammonium plant uptake rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Ammonium plant uptake rate" :     #(m/day) [0, 162] Rate at which NH4 is taken up by plants.
 0.5 0.3 0.1 0.3 0.1 0.5
 
 "Ammonium immobilisation rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
@@ -126,30 +126,30 @@ parameters:
 100 100 100 100 100 100
 
 ###################### "Landscape units" "Soils" "Soils" ######################
-"item" :     #(dimensionless) [0, 1]
-0.1 0.9 0.0
-1.0 0.5 0.5
-1.0 0.0 1.0
+"Percolation matrix" :     #(dimensionless) [0, 1]
+0.1 0.9 0
+1 0.5 0.5
+0 0 1
 
-0.1 0.9 0.0
-1.0 0.5 0.5
-1.0 0.0 1.0
+0.1 0.9 0
+1 0.5 0.5
+0 0 1
 
-0.1 0.9 0.0
-1.0 0.5 0.5
-1.0 0.0 1.0
+0.1 0.9 0
+1 0.5 0.5
+0 0 1
 
-0.1 0.9 0.0
-1.0 0.5 0.5
-1.0 0.0 1.0
+0.1 0.9 0
+1 0.5 0.5
+0 0 1
 
-0.1 0.9 0.0
-1.0 0.5 0.5
-1.0 0.0 1.0
+0.1 0.9 0
+1 0.5 0.5
+0 0 1
 
-0.1 0.9 0.0
-1.0 0.5 0.5
-1.0 0.0 1.0
+0.1 0.9 0
+1 0.5 0.5
+0 0 1
 
 ###################### "Soils" ######################
 "This is a quick box" :
@@ -160,9 +160,6 @@ false false false
 
 "Allow infiltration" :
 false false false
-
-#"Use this box in SMD calculation" :
-#false true false
 
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :     #(mm) [0, 9999] The initial depth of water in a box at the start of a simulation

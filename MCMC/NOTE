@@ -11,3 +11,5 @@ This makes installation of the MCMC package nontrivial, as I don't want to uploa
 For now I have not decided what to do about this or whether we want to keep using that library.
 
 Also, the functionality of setting up an MCMC run for INCA right now is pretty rudimentary. It is not complete by any means.
+
+-MDN

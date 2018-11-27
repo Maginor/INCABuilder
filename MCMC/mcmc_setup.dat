@@ -17,11 +17,8 @@ de_b              : 0.1       #NOTE: each step each parameter can be perturbed [
 
 
 
-
-
-
 objective :
-"Reach flow" {"Tarland1"}           #sim
+"Reach flow" {"Tarland1"}      #sim
 "observed Q"  {}               #obs
 
 
@@ -39,8 +36,14 @@ parameter_calibration :
 #           } min max  initial_guess
 
 
-"Phosphorous sorption coefficient" {"Tarland1"}
-0.00001 0.0005 0.000113
+"Baseflow index" {"Tarland1"}
+0.1 1.0 0.7
+
+"Gradient of stream velocity-discharge relationship" {"Tarland1"}
+0.1 0.9 0.5
+
+"Exponent of stream velocity-discharge relationship"
+0.3 0.8 0.42
 
 #link {
 #	"Field capacity" {"Forest" "Upper box"}

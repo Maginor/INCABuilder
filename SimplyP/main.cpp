@@ -48,6 +48,9 @@ int main()
 	RunModel(DataSet);
 #endif
 
+	PrintResultSeries(DataSet, "Agricultural soil water volume", {"Tarland1"}, 10);
+	PrintResultSeries(DataSet, "Agricultural soil water flow", {"Tarland1"}, 10);
+
 	
 	//PrintResultSeries(DataSet, "Agricultural soil water EPC0", {"Tarland1"}, 1000);
 	//PrintResultSeries(DataSet, "Agricultural soil labile P mass", {"Tarland1"}, 1000);

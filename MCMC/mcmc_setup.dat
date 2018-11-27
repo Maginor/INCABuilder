@@ -1,0 +1,51 @@
+
+
+algorithm         : differential_evolution        #NOTE: currently only supports differential_evolution
+
+chains            : 8
+
+generations       : 100       #NOTE: excluding burnin
+
+burnin            : 10
+
+discard_timesteps : 365       #NOTE: Skip these many of the first timesteps when doing objective evaluations
+
+
+
+de_b              : 0.1       #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space. TODO: Find out if this is DE-specific?
+
+
+
+
+
+
+
+objective :
+"Reach flow" {"Tarland1"}           #sim
+"observed Q"  {}               #obs
+
+
+
+parameter_calibration :
+
+# Format:
+#           "name" {"index1" "index2" ..etc..}
+#           min max   initial_guess
+# OR
+#           link {
+#                "name1" {"index1" "index2" ..etc.. }
+#                "name2" {"index3" "index4" ..etc.. }
+#                ..etc..
+#           } min max  initial_guess
+
+
+"Phosphorous sorption coefficient" {"Tarland1"}
+0.00001 0.0005 0.000113
+
+#link {
+#	"Field capacity" {"Forest" "Upper box"}
+#	"Field capacity" {"Peatland" "Upper box"}
+#} 100 300   150
+
+
+

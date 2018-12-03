@@ -1,24 +1,22 @@
 
 #include "../inca.h"
-#include "../SimplyP/SimplyP.h"
+#include "../ExampleModules/PersistModel.h"
 
 #include "inca_mcmc.h"
 
 int main()
 {
-	const char *ParameterFile = "../SimplyP/tarlandparameters.dat";
-	const char *InputFile     = "../SimplyP/tarlandinputs.dat";
+	const char *ParameterFile = "../IncaN/tovdalparametersPersistOnly.dat";
+	const char *InputFile     = "../IncaN/tovdalinputs.dat";
 	
 	inca_model *Model = BeginModelDefinition();
 	
 	auto Days 	      = RegisterUnit(Model, "days");
-	auto System       = RegisterParameterGroup(Model, "Dynamic options");
+	auto System       = RegisterParameterGroup(Model, "System");
 	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
 	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
-	AddSimplyPHydrologyModule(Model);
-	AddSimplyPSedimentModule(Model);
-	AddSimplyPPhosphorusModule(Model);
+	AddPersistModel(Model);
 	
 	ReadInputDependenciesFromFile(Model, InputFile);
 	
@@ -45,4 +43,17 @@ int main()
 	
 	std::cout << "Acceptance rate: " << Results.AcceptanceRate << std::endl;
 	//TODO: post-processing / store results
+	
+	if(Setup.Algorithm == MCMCAlgorithm_DifferentialEvolution)
+	{
+		arma::cube& Draws = Results.DrawsOut;
+	
+		Draws.slice(Draws.n_slices - 1).print();
+	}
+	else
+	{
+		arma::mat& Draws2 = Results.DrawsOut2;
+	
+		Draws2.row(Draws2.n_rows - 1).print();
+	}
 }

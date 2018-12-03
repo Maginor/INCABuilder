@@ -1,6 +1,8 @@
 
 
-algorithm         : differential_evolution        #NOTE: currently only supports differential_evolution
+#NOTE: currently only supports differential_evolution and metropolis_hastings
+algorithm         : metropolis_hastings
+#algorithm         : differential_evolution
 
 chains            : 8
 
@@ -10,18 +12,20 @@ burnin            : 10
 
 discard_timesteps : 365       #NOTE: Skip these many of the first timesteps when doing objective evaluations
 
+de_b              : 0.1       #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space. Specific to differential evolution.
 
-
-de_b              : 0.1       #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space. TODO: Find out if this is DE-specific?
-
+#TODO: add these:
+#de_jump
+#de_jump_gamma
 
 
 
 objective :
-"Reach flow" {"Tarland1"}      #sim
-"observed Q"  {}               #obs
+#"Reach flow" {"Tarland1"}      #sim
+#"observed Q"  {}               #obs
 
-
+"Reach flow" {"Tveitvatn"}      #sim
+"Discharge"  {"Tveitvatn"}      #obs
 
 parameter_calibration :
 
@@ -36,14 +40,29 @@ parameter_calibration :
 #           } min max  initial_guess
 
 
-"Baseflow index" {"Tarland1"}
-0.1 1.0 0.7
+"a" {"Tveitvatn"}
+0.01 0.5 0.06
 
-"Gradient of stream velocity-discharge relationship" {"Tarland1"}
-0.1 0.9 0.5
+"b" {"Tveitvatn"}
+0.3 0.8 0.7
 
-"Exponent of stream velocity-discharge relationship"
-0.3 0.8 0.42
+link {
+	"Time constant" {"Soil water" "Forest Productive"}
+	"Time constant" {"Soil water" "Forest Unproductive"}
+	"Time constant" {"Soil water" "Peat"}
+	"Time constant" {"Soil water" "Open mountainous landscape"}
+	"Time constant" {"Soil water" "Arable"}
+} 3 15 6
+
+
+#"Baseflow index" {"Tarland1"}
+#0.1 1.0 0.7
+
+#"Gradient of stream velocity-discharge relationship" {"Tarland1"}
+#0.1 0.9 0.5
+
+#"Exponent of stream velocity-discharge relationship"
+#0.3 0.8 0.42
 
 #link {
 #	"Field capacity" {"Forest" "Upper box"}

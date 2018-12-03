@@ -4,6 +4,7 @@
 
 #include "mcmc.hpp"
 #include "de.cpp"
+#include "rwmh.cpp"
 
 
 #include <boost/accumulators/accumulators.hpp>
@@ -26,6 +27,7 @@ struct mcmc_parameter_calibration
 enum mcmc_algorithm
 {
 	MCMCAlgorithm_DifferentialEvolution,
+	MCMCAlgorithm_RandomWalkMetropolisHastings,
 };
 
 struct mcmc_setup
@@ -37,7 +39,7 @@ struct mcmc_setup
 	size_t NumBurnin;
 	size_t DiscardTimesteps; //Discard the N first timesteps.
 	
-	double Bound; // Bound on random movement in the parameter space each step.
+	double DeBound; // Bound on random movement in the parameter space each step in differential evolution.
 	
 	std::vector<mcmc_parameter_calibration> Calibration;
 	
@@ -67,6 +69,7 @@ struct mcmc_results
 {
 	double AcceptanceRate;
 	arma::cube DrawsOut;
+	arma::mat  DrawsOut2; //NOTE: For algs without multiple chains
 };
 
 static void
@@ -97,6 +100,10 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 				if(strcmp(Token.StringValue, "differential_evolution") == 0)
 				{
 					Setup->Algorithm = MCMCAlgorithm_DifferentialEvolution;
+				}
+				else if(strcmp(Token.StringValue, "metropolis_hastings") == 0)
+				{
+					Setup->Algorithm = MCMCAlgorithm_RandomWalkMetropolisHastings;
 				}
 				//else if ...
 				else
@@ -138,7 +145,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			{
 				ExpectToken(Stream, Token, TokenType_Colon);
 				ExpectToken(Stream, Token, TokenType_Numeric);
-				Setup->Bound = GetDoubleValue(Token);
+				Setup->DeBound = GetDoubleValue(Token);
 			}
 			else if(strcmp(Token.StringValue, "parameter_calibration") == 0)
 			{
@@ -294,7 +301,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 }
 
 double
-TargetLogKernel(const arma::vec& CalibrationIn, void* Data, size_t ChainIdx)
+TargetLogKernel(const arma::vec& CalibrationIn, void* Data, size_t ChainIdx = 0)
 {
 	mcmc_run_data *RunData = (mcmc_run_data *)Data;
 	
@@ -362,11 +369,6 @@ TargetLogKernel(const arma::vec& CalibrationIn, void* Data, size_t ChainIdx)
 
 static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Results)
 {
-	mcmc::algo_settings_t Settings;
-	Settings.de_n_pop = Setup->NumChains;
-	Settings.de_n_gen = Setup->NumGenerations;
-	Settings.de_n_burnin = Setup->NumBurnin;
-	
 	mcmc_run_data RunData = {};
 	
 	RunData.Calibration = Setup->Calibration;
@@ -397,12 +399,41 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	LowerBounds [Dimensions] = 0.0;
 	UpperBounds [Dimensions] = 1.0;
 	
-	Settings.vals_bound = true;
-	Settings.upper_bounds = UpperBounds;
-	Settings.lower_bounds = LowerBounds;
+	mcmc::algo_settings_t Settings;
 	
-	//TODO: This is apparently just for DE?
-	Settings.de_par_b = Setup->Bound;
+	Settings.vals_bound = true;				//Alternatively we could actually allow people to not have bounds here...
+	Settings.lower_bounds = LowerBounds;
+	Settings.upper_bounds = UpperBounds;
+	
+	if(Setup->Algorithm == MCMCAlgorithm_DifferentialEvolution)
+	{
+		Settings.de_n_pop = Setup->NumChains;
+		Settings.de_n_gen = Setup->NumGenerations;
+		Settings.de_n_burnin = Setup->NumBurnin;
+		
+		Settings.de_initial_lb = LowerBounds;
+		Settings.de_initial_ub = UpperBounds;
+
+		//NOTE: These are if we want to make the chains sometimes jump with a different jump distance
+		//Settings.de_jumps;
+		//Settings.de_par_gamma_jump
+		
+		Settings.de_par_b = Setup->DeBound;
+	}
+	else if(Setup->Algorithm == MCMCAlgorithm_RandomWalkMetropolisHastings)
+	{
+		Settings.rwmh_n_draws = Setup->NumGenerations;
+		Settings.rwmh_n_burnin = Setup->NumBurnin;
+		Settings.rwmh_par_scale = 1.0;
+		//arma::mat rwmh_cov_mat;
+		
+		//Ouch, rwmh does not support multiple chains, and so no parallelisation...
+		if(Setup->NumChains > 1)
+		{
+			std::cout << "WARNING (MCMC): Random Walk Metropolis Hastings does not support having more than one chain." << std::endl;
+		}
+		Setup->NumChains = 1; // :(
+	}
 	
 	//NOTE: Make one copy of the dataset for each chain (so that they don't overwrite each other).
 	RunData.DataSets.resize(Setup->NumChains);
@@ -427,21 +458,24 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		exit(0);
 	}
 	
-	omp_set_num_threads(Setup->NumChains);
+	omp_set_num_threads(Setup->NumChains); //TODO: This may disturb some of the post-processing in metropolis-hastings
 	
-	//TODO: figure out what these are for:
-	//Settings.de_initial_lb
-	//Settings.de_initial_ub
+	if(Setup->Algorithm == MCMCAlgorithm_DifferentialEvolution)
+	{
+		mcmc::de(InitialGuess, Results->DrawsOut, TargetLogKernel, &RunData, Settings); //NOTE: we had to make a modification to the library so that it passes the Chain index to the TargetLogKernel.
+	
+		Results->AcceptanceRate = Settings.de_accept_rate;
+	}
+	else if(Setup->Algorithm == MCMCAlgorithm_RandomWalkMetropolisHastings)
+	{
+		mcmc::rwmh(InitialGuess, Results->DrawsOut2, 
+		[](const arma::vec& CalibrationIn, void* Data){return TargetLogKernel(CalibrationIn, Data, 0);}, 
+		&RunData, Settings);
+		
+		Results->AcceptanceRate = Settings.rwmh_accept_rate;
+	}
 	
 	
-	//NOTE: These are if we want to make the chains jump with a different jump distance
-	//Settings.de_jumps;
-	//Settings.de_par_gamma_jump
-	
-	
-	mcmc::de(InitialGuess, Results->DrawsOut, TargetLogKernel, &RunData, Settings); //NOTE: we had to make a modification to the library so that it passes the Chain index to the TargetLogKernel.
-	
-	Results->AcceptanceRate = Settings.de_accept_rate;
 	
 	//NOTE: We delete every DataSet that we allocated above. We don't delete the one that was passed in since the caller may want to keep it.
 	for(size_t ChainIdx = 1; ChainIdx < Setup->NumChains; ++ChainIdx)

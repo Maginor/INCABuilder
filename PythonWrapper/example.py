@@ -18,7 +18,9 @@ def sum_squares_error(params, obs, min, max):
 	if a < min[0] or a > max[0] or b < min[1] or b > max[1] :
 		return np.inf
 	
-	#TODO: If we use a paralellized optimizer we need to make a copy of the dataset (using an exposed function from the dll) whenever we modify and run it to not have several threads overwrite each other.
+	#NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
+	# (in that case, only use the copy when setting parameter values, running the model, and extracting results below)
+	# datasetcopy = inca.CopyDataSet(dataset)
 	
 	inca.SetParameterDouble(dataset, 'a', ['Tveitvatn'], a)
 	inca.SetParameterDouble(dataset, 'b', ['Tveitvatn'], b)
@@ -31,6 +33,9 @@ def sum_squares_error(params, obs, min, max):
 	
 	sse = np.sum(((obs[skiptimesteps:] - sim[skiptimesteps:])**2))
     
+	#NOTE: If we made a copy of the dataset we need to delete items
+	# inca.DeleteDataSet(datasetcopy)
+	
 	return sse
 
 	

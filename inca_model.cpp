@@ -1218,11 +1218,11 @@ RunModel(inca_data_set *DataSet)
 	
 	
 	u64 Timesteps      = GetTimesteps(DataSet);
-#if INCA_PRINT_TIMING_INFO
-		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " Timesteps" << std::endl;
-#endif
-	
 	s64 ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
+	
+#if INCA_PRINT_TIMING_INFO
+		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " Timesteps, starting at " << TimeString(ModelStartTime) << std::endl;
+#endif
 	
 	//NOTE: Allocate input storage in case it was not allocated during setup.
 	if(!DataSet->InputData)

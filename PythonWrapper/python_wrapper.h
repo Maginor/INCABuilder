@@ -10,6 +10,18 @@ RunModel(void *DataSetPtr)
 	RunModel((inca_data_set *)DataSetPtr);
 }
 
+DLLEXPORT void *
+CopyDataSet(void *DataSetPtr)
+{
+	return (void *)CopyDataSet((inca_data_set *)DataSetPtr);
+}
+
+DLLEXPORT void
+DeleteDataSet(void *DataSetPtr)
+{
+	delete (inca_data_set *)DataSetPtr;
+}
+
 DLLEXPORT u64
 GetTimesteps(void *DataSetPtr)
 {
@@ -54,4 +66,32 @@ SetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCou
 	parameter_value Value;
 	Value.ValDouble = Val;
 	SetParameterValue(DataSet, Name, IndexNames, (size_t)IndexCount, Value, ParameterType_Double);
+}
+
+DLLEXPORT
+SetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, u64 Val)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	parameter_value Value;
+	Value.ValUInt = Val;
+	SetParameterValue(DataSet, Name, IndexNames, (size_t)IndexCount, Value, ParameterType_UInt);
+}
+
+DLLEXPORT
+SetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, bool Val)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	parameter_value Value;
+	Value.ValBool = Val;
+	SetParameterValue(DataSet, Name, IndexNames, (size_t)IndexCount, Value, ParameterType_Bool);
+}
+
+
+DLLEXPORT
+SetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, char *Val)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	parameter_value Value;
+	Value.ValTime = ParseSecondsSinceEpoch(Val);
+	SetParameterValue(DataSet, Name, IndexNames, (size_t)IndexCount, Value, ParameterType_Time);
 }

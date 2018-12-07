@@ -8,6 +8,11 @@ incadll.SetupModel.restype  = ctypes.c_void_p
 
 incadll.RunModel.argtypes = [ctypes.c_void_p]
 
+incadll.CopyDataSet.argtypes = [ctypes.c_void_p]
+incadll.CopyDataSet.restype  = ctypes.c_void_p
+
+incadll.DeleteDataSet.argtypes = [ctypes.c_void_p]
+
 incadll.GetTimesteps.argtypes = [ctypes.c_void_p]
 incadll.GetTimesteps.restype = ctypes.c_ulonglong
 
@@ -20,11 +25,23 @@ incadll.GetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POIN
 
 incadll.SetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_double]
 
+incadll.SetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_ulonglong]
+
+incadll.SetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_bool]
+
+incadll.SetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
+
 def SetupModel(parameterfilename, inputfilename):
 	return incadll.SetupModel(parameterfilename.encode('ascii'), inputfilename.encode('ascii'))           #TODO: We should figure out what encoding is best to use here.
 
 def RunModel(dataset):
 	incadll.RunModel(dataset)
+	
+def CopyDataSet(dataset):
+	return incadll.CopyDataSet(dataset)
+	
+def DeleteDataSet(dataset):
+	return incadll.DeleteDataSet(dataset)
 	
 def GetTimesteps(dataset):
 	return incadll.GetTimesteps(dataset)
@@ -63,5 +80,14 @@ def GetInputSeries(dataset, name, indexes, alignwithresults=False):
 	
 def SetParameterDouble(dataset, name, indexes, value):
 	incadll.SetParameterDouble(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), ctypes.c_double(value))
+	
+def SetParameterUInt(dataset, name, indexes, value):
+	incadll.SetParameterUInt(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), ctypes.c_ulonglong(value))
+	
+def SetParameterBool(dataset, name, indexes, value):
+	incadll.SetParameterBool(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), ctypes.c_bool(value))
+	
+def SetParameterTime(dataset, name, indexes, value):
+	incadll.SetParameterUInt(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), value.encode('ascii'))
 	
 	

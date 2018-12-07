@@ -88,6 +88,6 @@ def SetParameterBool(dataset, name, indexes, value):
 	incadll.SetParameterBool(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), ctypes.c_bool(value))
 	
 def SetParameterTime(dataset, name, indexes, value):
-	incadll.SetParameterUInt(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), value.encode('ascii'))
+	incadll.SetParameterTime(dataset, name.encode('ascii'), _PackIndexes(indexes), len(indexes), value.encode('ascii'))
 	
 	

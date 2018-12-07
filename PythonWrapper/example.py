@@ -8,6 +8,10 @@ from scipy import optimize
 
 dataset = inca.SetupModel('../IncaN/tovdalparametersPersistOnly.dat', '../IncaN/tovdalinputs.dat')
 
+#NOTE: Example of how you can overwrite the timesteps and start date, in case you don't want to change the parameter file
+#inca.SetParameterUInt(dataset, 'Timesteps', [], 1000)
+#inca.SetParameterTime(dataset, 'Start date', [], '1999-12-7')
+
 def sum_squares_error(params, obs, min, max):
 	
 	n = len(obs)
@@ -33,7 +37,7 @@ def sum_squares_error(params, obs, min, max):
 	
 	sse = np.sum(((obs[skiptimesteps:] - sim[skiptimesteps:])**2))
     
-	#NOTE: If we made a copy of the dataset we need to delete items
+	#NOTE: If we made a copy of the dataset we need to delete it so that we don't get a huge memory leak
 	# inca.DeleteDataSet(datasetcopy)
 	
 	return sse

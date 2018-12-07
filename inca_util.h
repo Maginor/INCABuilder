@@ -189,7 +189,7 @@ TimeString(s64 SecondsSinceEpoch)
 	s32 Year, Month, Day;
 	YearMonthDay(SecondsSinceEpoch, &Year, &Month, &Day);
 	static char Buf[11];
-	sprintf(Buf, "%4d-%2d-%2d", Year, Month, Day);
+	sprintf(Buf, "%04d-%02d-%02d", Year, Month, Day);
 	return Buf;
 }
 

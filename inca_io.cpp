@@ -213,7 +213,7 @@ struct token_stream
 		File = fopen(Filename, "r");
 		if(!File)
 		{	
-			std::cout << "Tried to open file " << Filename << ", but were not able to." << std::endl;
+			std::cout << "Tried to open file " << Filename << ", but was not able to." << std::endl;
 			exit(0);
 		}
 		

@@ -11,6 +11,9 @@ incadll.RunModel.argtypes = [ctypes.c_void_p]
 incadll.GetTimesteps.argtypes = [ctypes.c_void_p]
 incadll.GetTimesteps.restype = ctypes.c_ulonglong
 
+incadll.GetInputTimesteps.argtypes = [ctypes.c_void_p]
+incadll.GetInputTimesteps.restype = ctypes.c_ulonglong
+
 incadll.GetResultSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double)]
 
 incadll.GetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_bool]
@@ -25,6 +28,9 @@ def RunModel(dataset):
 	
 def GetTimesteps(dataset):
 	return incadll.GetTimesteps(dataset)
+	
+def GetInputTimesteps(dataset):
+	return incadll.GetInputTimesteps(dataset)
 	
 def _PackIndexes(indexes):
 	cindexes = [index.encode('ascii') for index in indexes]
@@ -44,7 +50,10 @@ def GetInputSeries(dataset, name, indexes, alignwithresults=False):
 	alignwithresults=False : Extract the entire input series that was provided in the input file
 	alignwithresults=True  : Extract the series from the parameter 'Start date', with 'Timesteps' number of values (i.e. aligned with any result series).
 	'''
-	timesteps = incadll.GetTimesteps(dataset)
+	if alignwithresults :
+		timesteps = incadll.GetTimesteps(dataset)
+	else :
+		timesteps = incadll.GetInputTimesteps(dataset)
 	
 	inputseries = (ctypes.c_double * timesteps)()
 	

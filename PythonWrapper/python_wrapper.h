@@ -5,15 +5,22 @@
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
 DLLEXPORT void
-RunModel(void *DataSet)
+RunModel(void *DataSetPtr)
 {
-	RunModel((inca_data_set *)DataSet);
+	RunModel((inca_data_set *)DataSetPtr);
 }
 
 DLLEXPORT u64
-GetTimesteps(void *DataSet)
+GetTimesteps(void *DataSetPtr)
 {
-	return GetTimesteps((inca_data_set *)DataSet);
+	return GetTimesteps((inca_data_set *)DataSetPtr);
+}
+
+DLLEXPORT u64
+GetInputTimesteps(void *DataSetPtr)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return DataSet->InputDataTimesteps;
 }
 
 DLLEXPORT
@@ -32,7 +39,7 @@ GetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, 
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	
 	size_t Timesteps = GetTimesteps(DataSet);
-	if(!AlignWithResults && DataSet->InputDataHasSeparateStartDate)
+	if(!AlignWithResults)
 	{
 		Timesteps = DataSet->InputDataTimesteps;
 	}

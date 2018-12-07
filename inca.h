@@ -10,14 +10,10 @@ Important TODOs:
 	- Have to figure out if the initial value equation system we have currently is good.
 	- Implement stream index set specific functionality. (or not??)
 	- Better logging / error handling system
-	- Functionality for re-running the same DataSet, potentially with changed parameter values. (i.e. for use with MCMC)
-	- Proper destructors for several structs (inca_model, inca_data_set etc) so as not to leak.
 	- In the equation placement optimization, try to move entire batches to reduce the number of batch groups if possible.
 	- Give warning if not all input series received values?
 	- Maybe just use fscanf for reading numbers in inca_io, but it is actually a little complicated since we have to figure out the type in any case.
 	- Register units with inputs too? They are after all expected to be in a certain unit.
-	- Function to copy dataset
-	- More access(get/set) function for easy access of dataset values.
 	
 Bugs:
 	- Check the dependency system with maximumnitrogenuptake in incan-classic again.. I may have misread it, but there is a potential bug there.
@@ -63,7 +59,7 @@ typedef int16_t s16;
 typedef int8_t s8;
 
 typedef size_t handle_t;
-//typedef u32    index_t; //NOTE: We get an error on the linux compilation with this, and have not entirely figured out why
+//typedef u32    index_t; //NOTE: We get an error on the 64 bit compilation with this, and I have not entirely figured out why
 typedef size_t index_t;
 
 #include "inca_util.h"

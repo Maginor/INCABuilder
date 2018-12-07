@@ -60,6 +60,8 @@ struct parameter_spec
 	const char *Description;
 	
 	parameter_group Group;
+	
+	//NOTE: This not set before EndModelDefinition:
 	std::vector<index_set> IndexSetDependencies;
 };
 
@@ -146,10 +148,12 @@ struct solver_spec
 	const char *Name;
 	double h;
 	inca_solver_function *SolverFunction;
-	std::set<index_set> IndexSetDependencies;
 	
+	//NOTE: These are built during EndModelDefinition:
+	std::set<index_set> IndexSetDependencies;
 	std::vector<equation> EquationsToSolve;
 	std::set<equation> DirectResultDependencies;
+	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
 };
@@ -313,7 +317,7 @@ struct inca_data_set
 	double *InputData;
 	storage_structure InputStorageStructure;
 	s64 InputDataStartDate;
-	bool InputDataHasSeparateStartDate = false; //NOTE: Whether or not a start date was provided for the input data, which is potentially different from the start date of the model.
+	bool InputDataHasSeparateStartDate = false; //NOTE: Whether or not a start date was provided for the input data, which is potentially different from the start date of the model run.
 	u64 InputDataTimesteps;
 	
 	double *ResultData;
@@ -343,6 +347,11 @@ struct inca_data_set
 
 struct value_set_accessor
 {
+	// The purpose of the value set accessor is to store state during the run of the model as well as providing access to various values to each equation that gets evaluated.
+	// There are two use cases.
+	// If Running=false, this is a setup run, where the purpose is to register the accesses of all the equations to later determine their dependencies.
+	// If Running=true, this is the actual run of the model, where equations should have access to the actual parameter values and so on.
+	
 	bool Running;
 	inca_model *Model;
 	inca_data_set *DataSet;
@@ -650,7 +659,8 @@ SetParentGroup(inca_model *Model, parameter_group Child, parameter_group Parent)
 	parameter_group_spec &ParentSpec = Model->ParameterGroupSpecs[Parent.Handle];
 	if(IsValid(ChildSpec.ParentGroup) && ChildSpec.ParentGroup.Handle != Parent.Handle)
 	{
-		std::cout << "WARNING: Setting a parent group for the parameter group " << GetName(Model, Child) << ", but it already has a different parent group.";
+		std::cout << "ERROR: Setting a parent group for the parameter group " << ChildSpec.Name << ", but it already has a different parent group " << GetName(Model, ChildSpec.ParentGroup) << ".";
+		exit(0);
 	}
 	ChildSpec.ParentGroup = Parent;
 	ParentSpec.ChildrenGroups.push_back(Child);
@@ -666,8 +676,6 @@ RegisterInput(inca_model *Model, const char *Name)
 	
 	return Input;
 }
-
-//TODO: store descriptions:
 
 inline parameter_double
 RegisterParameterDouble(inca_model *Model, parameter_group Group, const char *Name, unit Unit, double Default, double Min = -DBL_MAX, double Max = DBL_MAX, const char *Description = 0)
@@ -761,7 +769,7 @@ SetEquation(inca_model *Model, equation Equation, inca_equation EquationBody, bo
 	//REGISTRATION_BLOCK(Model) //NOTE: We can't use REGISTRATION_BLOCK since the user don't call the SetEquation explicitly, it is called through the macro EQUATION, and so they would not understand the error message.
 	if(Model->Finalized)
 	{
-		std::cout << "ERROR: You can not define an EQUATION for the model after it has been finalized using EndModelDefinition." << std::endl;
+		std::cout << "ERROR: You can not define an EQUATION body for the model after it has been finalized using EndModelDefinition." << std::endl;
 		exit(0);
 	}
 	
@@ -948,8 +956,9 @@ AddInputIndexSetDependency(inca_model *Model, input Input, index_set IndexSet)
 
 
 
-
-
+////////////////////////////////////////////////
+// All of the below are value accessors for use in EQUATION bodies (ONLY)!
+////////////////////////////////////////////////
 
 
 
@@ -1255,11 +1264,11 @@ struct branch_input_iterator
 	
 };
 
-index_t DummyData = 0; //TODO: Ugh! get rid of this global
-
 inline branch_input_iterator
 BranchInputIteratorBegin(value_set_accessor *ValueSet, index_set IndexSet, index_t Branch)
 {
+	static index_t DummyData = 0;
+	
 	branch_input_iterator Iterator;
 	Iterator.IndexSet = IndexSet;
 	Iterator.InputIndexes = ValueSet->Running ? ValueSet->DataSet->BranchInputs[IndexSet.Handle][Branch].Inputs : &DummyData;

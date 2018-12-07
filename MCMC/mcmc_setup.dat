@@ -1,22 +1,26 @@
 
 
 #NOTE: currently only supports differential_evolution and metropolis_hastings
-algorithm         : metropolis_hastings
-#algorithm         : differential_evolution
+#algorithm         : metropolis_hastings
+algorithm         : differential_evolution
 
-chains            : 8
+generations       : 10000      #NOTE: excluding burnin
 
-generations       : 100       #NOTE: excluding burnin
-
-burnin            : 10
+burnin            : 1000
 
 discard_timesteps : 365       #NOTE: Skip these many of the first timesteps when doing objective evaluations
 
+# Differential Evolution specific:
+chains            : 8
+
 de_b              : 0.1       #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space. Specific to differential evolution.
 
-#TODO: add these:
-#de_jump
-#de_jump_gamma
+de_jumps          : true      #NOTE: whether or not DE should perform a (longer) jump every 10 steps
+
+de_jump_gamma     : 1.0       #NOTE: The gamma for the jump (if jumps are enabled)
+
+#TODO: add this:
+#rwmh_cov_mat
 
 
 

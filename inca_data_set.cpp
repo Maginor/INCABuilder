@@ -740,7 +740,7 @@ GetIndex(inca_data_set *DataSet, index_set IndexSet, const char *IndexName)
 }
 
 static void
-SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes, parameter_value Value, parameter_type Type)
+SetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *Indexes, size_t IndexCount, parameter_value Value, parameter_type Type)
 {
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
@@ -766,20 +766,20 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	std::vector<storage_unit_specifier> &Units = DataSet->ParameterStorageStructure.Units;
 	std::vector<index_set> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
 	
-	if(Indexes.size() != IndexSetDependencies.size())
+	if(IndexCount != IndexSetDependencies.size())
 	{
-		std::cout << "ERROR; Tried to set the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << Indexes.size() << ", expected " << IndexSetDependencies.size() << std::endl;
+		std::cout << "ERROR; Tried to set the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << IndexCount << ", expected " << IndexSetDependencies.size() << std::endl;
 		exit(0);
 	}
 
 	//TODO: This crashes if somebody have more than 256 index sets for a parameter, but that is highly unlikely. Still, this is not clean code...
 	index_t IndexValues[256];
-	for(size_t Level = 0; Level < Indexes.size(); ++Level)
+	for(size_t Level = 0; Level < IndexCount; ++Level)
 	{
 		IndexValues[Level] = GetIndex(DataSet, IndexSetDependencies[Level], Indexes[Level]);
 	}
 	
-	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, IndexValues, Indexes.size(), DataSet->IndexCounts, ParameterHandle);
+	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, IndexValues, IndexCount, DataSet->IndexCounts, ParameterHandle);
 	DataSet->ParameterData[Offset] = Value;
 }
 
@@ -788,7 +788,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 {
 	parameter_value Val;
 	Val.ValDouble = Value;
-	SetParameterValue(DataSet, Name, Indexes, Val, ParameterType_Double);
+	SetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), Val, ParameterType_Double);
 }
 
 inline void
@@ -796,7 +796,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 {
 	parameter_value Val;
 	Val.ValUInt = Value;
-	SetParameterValue(DataSet, Name, Indexes, Val, ParameterType_UInt);
+	SetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), Val, ParameterType_UInt);
 }
 
 inline void
@@ -804,7 +804,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 {
 	parameter_value Val;
 	Val.ValBool = Value;
-	SetParameterValue(DataSet, Name, Indexes, Val, ParameterType_Bool);
+	SetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), Val, ParameterType_Bool);
 }
 
 inline void
@@ -812,11 +812,11 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 {
 	parameter_value Val;
 	Val.ValTime = ParseSecondsSinceEpoch(TimeValue);
-	SetParameterValue(DataSet, Name, Indexes, Val, ParameterType_Time);
+	SetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), Val, ParameterType_Time);
 }
 
 static parameter_value
-GetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes, parameter_type Type)
+GetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *Indexes, size_t IndexCount, parameter_type Type)
 {
 	if(DataSet->ParameterData == 0)
 	{
@@ -836,39 +836,39 @@ GetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	std::vector<storage_unit_specifier> &Units = DataSet->ParameterStorageStructure.Units;
 	std::vector<index_set> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
 	
-	if(Indexes.size() != IndexSetDependencies.size())
+	if(IndexCount != IndexSetDependencies.size())
 	{
-		std::cout << "ERROR; Tried to get the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << Indexes.size() << ", expected " << IndexSetDependencies.size() << std::endl;
+		std::cout << "ERROR; Tried to get the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << IndexCount << ", expected " << IndexSetDependencies.size() << std::endl;
 		exit(0);
 	}
 
 	//TODO: This crashes if somebody have more than 256 index sets for a parameter, but that is highly unlikely. Still, this is not clean code...
 	index_t IndexValues[256];
-	for(size_t Level = 0; Level < Indexes.size(); ++Level)
+	for(size_t Level = 0; Level < IndexCount; ++Level)
 	{
 		IndexValues[Level] = GetIndex(DataSet, IndexSetDependencies[Level], Indexes[Level]);
 	}
 	
-	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, IndexValues, Indexes.size(), DataSet->IndexCounts, ParameterHandle);
+	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, IndexValues, IndexCount, DataSet->IndexCounts, ParameterHandle);
 	return DataSet->ParameterData[Offset];
 }
 
 inline double
 GetParameterDouble(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes)
 {
-	return GetParameterValue(DataSet, Name, Indexes, ParameterType_Double).ValDouble;
+	return GetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), ParameterType_Double).ValDouble;
 }
 
 inline u64
 GetParameterUInt(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes)
 {
-	return GetParameterValue(DataSet, Name, Indexes, ParameterType_UInt).ValUInt;
+	return GetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), ParameterType_UInt).ValUInt;
 }
 
 inline bool
 GetParameterBool(inca_data_set *DataSet, const char  *Name, const std::vector<const char *>& Indexes)
 {
-	return GetParameterValue(DataSet, Name, Indexes, ParameterType_Bool).ValBool;
+	return GetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), ParameterType_Bool).ValBool;
 }
 
 //TODO: GetParameterTime? But what format should it use?
@@ -948,7 +948,7 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 // MyResults.resize(DataSet->TimestepsLastRun);
 // GetResultSeries(DataSet, "Percolation input", {"Reach 1", "Forest", "Groundwater"}, MyResult.data(), MyResult.size());
 static void
-GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
+GetResultSeries(inca_data_set *DataSet, const char *Name, const char* const* IndexNames, size_t IndexCount, double *WriteTo, size_t WriteSize)
 {	
 	if(!DataSet->HasBeenRun || !DataSet->ResultData)
 	{
@@ -967,9 +967,9 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<cons
 	std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
 	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
 
-	if(IndexNames.size() != IndexSets.size())
+	if(IndexCount != IndexSets.size())
 	{
-		std::cout << "ERROR: Got the wrong amount of indexes when getting the result series for " << GetName(Model, Equation) << ". Got " << IndexNames.size() << ", expected " << IndexSets.size() << std::endl;
+		std::cout << "ERROR: Got the wrong amount of indexes when getting the result series for " << GetName(Model, Equation) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl;
 		exit(0);
 	}
 	index_t Indexes[256];
@@ -978,7 +978,7 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<cons
 		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
 	}
 
-	size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Equation.Handle);
+	size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, Indexes, IndexCount, DataSet->IndexCounts, Equation.Handle);
 	double *Lookup = DataSet->ResultData + Offset;
 	
 	for(size_t Idx = 0; Idx < NumToWrite; ++Idx)
@@ -988,8 +988,14 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<cons
 	}
 }
 
+inline void
+GetResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
+{
+	GetResultSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), WriteTo, WriteSize);
+}
+
 static void
-GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize, bool FromDataSetStart = false)
+GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *IndexNames, size_t IndexCount, double *WriteTo, size_t WriteSize, bool AlignWithResults = false)
 {	
 	if(!DataSet->InputData)
 	{
@@ -1008,9 +1014,9 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
 	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
 
-	if(IndexNames.size() != IndexSets.size())
+	if(IndexCount != IndexSets.size())
 	{
-		std::cout << "ERROR: Got the wrong amount of indexes when getting the input series for " << GetName(Model, Input) << ". Got " << IndexNames.size() << ", expected " << IndexSets.size() << std::endl;
+		std::cout << "ERROR: Got the wrong amount of indexes when getting the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl;
 		exit(0);
 	}
 	index_t Indexes[256];
@@ -1019,10 +1025,10 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
 	}
 
-	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexNames.size(), DataSet->IndexCounts, Input.Handle);
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexCount, DataSet->IndexCounts, Input.Handle);
 	double *Lookup = DataSet->InputData + Offset;
 	
-	if(FromDataSetStart && DataSet->InputDataHasSeparateStartDate)
+	if(AlignWithResults && DataSet->InputDataHasSeparateStartDate)
 	{
 		//NOTE: In case the user asked for a input timeseries that starts at the start of the modelrun rather than at the start of the input series.
 		s64 DataSetStartDate = GetStartDate(DataSet);
@@ -1036,6 +1042,12 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 		WriteTo[Idx] = *Lookup;
 		Lookup += DataSet->InputStorageStructure.TotalCount;
 	}
+}
+
+inline void
+GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
+{
+	GetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), WriteTo, WriteSize);
 }
 
 static void

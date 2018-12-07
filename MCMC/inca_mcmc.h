@@ -39,7 +39,9 @@ struct mcmc_setup
 	size_t NumBurnin;
 	size_t DiscardTimesteps; //Discard the N first timesteps.
 	
-	double DeBound; // Bound on random movement in the parameter space each step in differential evolution.
+	double DeBound;
+	bool   DeJumps;
+	double DeJumpGamma;
 	
 	std::vector<mcmc_parameter_calibration> Calibration;
 	
@@ -147,6 +149,18 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 				ExpectToken(Stream, Token, TokenType_Numeric);
 				Setup->DeBound = GetDoubleValue(Token);
 			}
+			else if(strcmp(Token.StringValue, "de_jumps") == 0)
+			{
+				ExpectToken(Stream, Token, TokenType_Colon);
+				ExpectToken(Stream, Token, TokenType_Bool);
+				Setup->DeJumps = Token.BoolValue;
+			}
+			else if(strcmp(Token.StringValue, "de_jump_gamma") == 0)
+			{
+				ExpectToken(Stream, Token, TokenType_Colon);
+				ExpectToken(Stream, Token, TokenType_Numeric);
+				Setup->DeJumpGamma = GetDoubleValue(Token);
+			}
 			else if(strcmp(Token.StringValue, "parameter_calibration") == 0)
 			{
 				ExpectToken(Stream, Token, TokenType_Colon);
@@ -167,6 +181,12 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 				}
 				StartLink = true;
 				ExpectToken(Stream, Token, TokenType_OpenBrace);
+			}
+			else
+			{
+				PrintStreamErrorHeader(Stream);
+				std::cout << "Unknown command word " << Token.StringValue << std::endl;
+				exit(0);
 			}
 		}
 		else if(Mode == 0)
@@ -414,17 +434,16 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		Settings.de_initial_lb = LowerBounds;
 		Settings.de_initial_ub = UpperBounds;
 
-		//NOTE: These are if we want to make the chains sometimes jump with a different jump distance
-		//Settings.de_jumps;
-		//Settings.de_par_gamma_jump
-		
 		Settings.de_par_b = Setup->DeBound;
+		
+		Settings.de_jumps = Setup->DeJumps;
+		Settings.de_par_gamma_jump = Setup->DeJumpGamma;
 	}
 	else if(Setup->Algorithm == MCMCAlgorithm_RandomWalkMetropolisHastings)
 	{
 		Settings.rwmh_n_draws = Setup->NumGenerations;
 		Settings.rwmh_n_burnin = Setup->NumBurnin;
-		Settings.rwmh_par_scale = 1.0;
+		Settings.rwmh_par_scale = 1.0;                 //TODO: See if we need to do anything with this.
 		//arma::mat rwmh_cov_mat;
 		
 		//Ouch, rwmh does not support multiple chains, and so no parallelisation...

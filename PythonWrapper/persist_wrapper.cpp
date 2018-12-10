@@ -10,29 +10,27 @@
 #include "../ExampleModules/PersistModel.h"
 
 
-inca_model *GlobalModel;
-inca_data_set *GlobalDataSet;
 
 DLLEXPORT void *
 SetupModel(char *ParameterFilename, char *InputFilename) {
     
-	GlobalModel = BeginModelDefinition("PERSiST", "1.0");
+	inca_model *Model = BeginModelDefinition("PERSiST", "1.0");
 	
-	auto Days 	      = RegisterUnit(GlobalModel, "days");
-	auto System       = RegisterParameterGroup(GlobalModel, "System");
-	RegisterParameterUInt(GlobalModel, System, "Timesteps", Days, 100);
-	RegisterParameterDate(GlobalModel, System, "Start date", "1999-1-1");
+	auto Days 	      = RegisterUnit(Model, "days");
+	auto System       = RegisterParameterGroup(Model, "System");
+	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
+	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
-	AddPersistModel(GlobalModel);
+	AddPersistModel(Model);
 	
-	ReadInputDependenciesFromFile(GlobalModel, InputFilename);
+	ReadInputDependenciesFromFile(Model, InputFilename);
 	
-	EndModelDefinition(GlobalModel);
+	EndModelDefinition(Model);
 	
-	GlobalDataSet = GenerateDataSet(GlobalModel);
+	inca_data_set *DataSet = GenerateDataSet(Model);
 	
-	ReadParametersFromFile(GlobalDataSet, ParameterFilename);
-	ReadInputsFromFile(GlobalDataSet, InputFilename);
+	ReadParametersFromFile(DataSet, ParameterFilename);
+	ReadInputsFromFile(DataSet, InputFilename);
 	
-	return (void *)GlobalDataSet;
+	return (void *)DataSet;
 }

@@ -1,10 +1,6 @@
 import inca
 import numpy as np
 from scipy import optimize
-import pandas as pd
-import datetime as dt
-
-
 
 # NOTE: Example for optimizing the a and b values in the equation V = aQ^b (reach flow - velocity relationship)
 # This is just a toy setup, a proper calibration run probably needs to set up more parameters to modify and maybe use a better algorithm.
@@ -14,21 +10,6 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../IncaN/tovdalpara
 # NOTE: Example of how you can override the timesteps and start date, in case you don't want to change them in the parameter file
 # dataset.set_parameter_uint('Timesteps', [], 1000)
 # dataset.set_parameter_time('Start date', [], '1999-12-7')
-
-def plot_flow_vs_discharge(ds):
-	# NOTE: This function has not been tested yet..
-
-	discharge = ds.get_input_series('Discharge', ['Tveitvatn'], alignwithresults=True)
-	flow      = ds.get_result_series('Reach flow', ['Tveitvatn'])
-	start_date = dt.datetime.strptime(ds.get_parameter_time('Start date', []),'%Y-%m-%d')
-	timesteps = ds.get_parameter_uint('Timesteps', [])
-	
-	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
-	df = pd.DataFrame({'date' : date_idx, 'Discharge (obs)' :  discharge, 'flow (sim)' : flow })
-	df.set_index('date',inplace=True)
-
-	ax = df.plot(subplots=True)
-
 
 def sum_squares_error(params, obs, min, max):
 	a, b = params
@@ -57,10 +38,6 @@ def sum_squares_error(params, obs, min, max):
 	
 	return sse
 
-	
-	
-
-	
 obs = dataset.get_input_series('Discharge', ['Tveitvatn'], alignwithresults=True)
 
 initial_guess = [dataset.get_parameter_double('a', ['Tveitvatn']), dataset.get_parameter_double('b', ['Tveitvatn'])]

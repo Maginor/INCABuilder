@@ -188,7 +188,7 @@ TimeString(s64 SecondsSinceEpoch)
 {
 	s32 Year, Month, Day;
 	YearMonthDay(SecondsSinceEpoch, &Year, &Month, &Day);
-	static char Buf[11];
+	static char Buf[32];
 	sprintf(Buf, "%04d-%02d-%02d", Year, Month, Day);
 	return Buf;
 }

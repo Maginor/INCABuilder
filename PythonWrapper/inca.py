@@ -122,9 +122,8 @@ class DataSet :
 		
 	def get_parameter_time(self, name, indexes) :
 		# NOTE: We allocate the string here instead of in the C++ code so that the python garbage collector can delete it if it goes out of use.
-		# IMPORTANT: The length 15 does not handle all possible dates, I guess, but it should handle all within reason. May need to be changed if we change the string format for dates
 		# ALTERNATIVELY, we could just return a datetime value from this function so that the user does not have to work with the string format.
-		string = ctypes.create_string_buffer(15)
+		string = ctypes.create_string_buffer(32)
 		incadll.GetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), string)
 		return string.value.decode('ascii')
 

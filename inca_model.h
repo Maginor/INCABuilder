@@ -819,6 +819,7 @@ RegisterEquationInitialValue(inca_model *Model, const char *Name, unit Unit)
 	return RegisterEquation(Model, Name, Unit, EquationType_InitialValue);
 }
 
+//NOTE: CumulateResult is implemented in inca_data_set.cpp
 static double CumulateResult(inca_data_set *DataSet, equation Result, index_set CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase);
 
 inline equation

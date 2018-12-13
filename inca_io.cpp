@@ -583,7 +583,6 @@ AssertUInt(token_stream &Stream, io_file_token& Token)
 }
 
 
-//TODO: This does not right now consider index ordering, so if the indexes were reordered in an unexpected way after the indexes were set, the values are now read as if they correspond to the new index order, not the one that was inputted.
 static void
 SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values, size_t Count)
 {
@@ -596,7 +595,7 @@ SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values,
 	handle_t ParameterHandle = GetParameterHandle(Model, Name);
 	if(!ParameterHandle) return;
 	
-	//TODO: Check that the values are in the Min-Max range. (issue warning only)
+	//TODO: Check that the values are in the Min-Max range? (issue warning only)
 	
 	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
 	std::vector<index_set> &IndexSetStack = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
@@ -607,6 +606,7 @@ SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values,
 	if(DesiredCount != Count)
 	{
 		std::cout << "ERROR: Used the SetAllValuesForParameter function with the Parameter " << Name << ", but did not provide the right amount of values." << std::endl;
+		exit(0);
 	}
 	
 	parameter_value *In = (parameter_value *)Values;

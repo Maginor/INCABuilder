@@ -10,7 +10,7 @@
 #include "../ExampleModules/HBV.h"
 //#include "../ExampleModules/SoilTemperatureModel.h"
 //#include "../ExampleModules/WaterTemperatureModel.h"
-//#include "SimplyC.h"
+//#include "CarbonModel.h"
 
 #include "../sqlite3/sqlite3.h"
 #include "../inca_database_io.cpp"
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 	incaview_commandline_arguments Args;
 	ParseIncaviewCommandline(argc, argv, &Args);
 	
-	inca_model *Model = BeginModelDefinition("SimplyC", "0.0");
+	inca_model *Model = BeginModelDefinition("Carbon Model", "0.0");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
 	auto System       = RegisterParameterGroup(Model, "System");

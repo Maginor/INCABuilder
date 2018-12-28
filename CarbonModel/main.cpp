@@ -8,12 +8,12 @@
 #include "../ExampleModules/HBV.h"
 #include "../ExampleModules/SoilTemperatureModel.h"
 #include "../ExampleModules/WaterTemperatureModel.h"
-#include "SimplyC.h"
+#include "CarbonModel.h"
 
 #define READ_PARAMETER_FILE 1
 
 int main() {
-	inca_model *Model = BeginModelDefinition("Carbon model", "0.0");
+	inca_model *Model = BeginModelDefinition("Carbon Model", "0.0");
 
 	auto Days = RegisterUnit(Model, "days");
 	auto System = RegisterParameterGroup(Model, "System");

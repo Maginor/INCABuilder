@@ -66,6 +66,7 @@ typedef size_t index_t;
 #include "inca_model.h"
 #include "inca_data_set.cpp"
 #include "inca_model.cpp"
+#include "lexer.cpp"
 #include "inca_io.cpp"
 #include "inca_solvers.h"
 

@@ -79,7 +79,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
-	io_file_token Token = {};
+	token *Token;
 	
 	int Mode = -1;
 	
@@ -87,105 +87,94 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 	
 	while(true)
 	{
-		ReadToken(Stream, Token);
+		Token = Stream.ReadToken();
 		
-		if(Token.Type == TokenType_EOF)
+		if(Token->Type == TokenType_EOF)
 		{
 			break;
 		}
-		if(Token.Type == TokenType_UnquotedString)
+		if(Token->Type == TokenType_UnquotedString)
 		{
-			if(strcmp(Token.StringValue, "algorithm") == 0)
+			if(strcmp(Token->StringValue, "algorithm") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_UnquotedString);
-				if(strcmp(Token.StringValue, "differential_evolution") == 0)
+				Stream.ExpectToken(TokenType_Colon);
+				Token = Stream.ExpectToken(TokenType_UnquotedString);
+				if(strcmp(Token->StringValue, "differential_evolution") == 0)
 				{
 					Setup->Algorithm = MCMCAlgorithm_DifferentialEvolution;
 				}
-				else if(strcmp(Token.StringValue, "metropolis_hastings") == 0)
+				else if(strcmp(Token->StringValue, "metropolis_hastings") == 0)
 				{
 					Setup->Algorithm = MCMCAlgorithm_RandomWalkMetropolisHastings;
 				}
 				//else if ...
 				else
 				{
-					PrintStreamErrorHeader(Stream);
-					std::cout << "Unknown or unimplemented algorithm " << Token.StringValue << std::endl;
+					Stream.PrintErrorHeader();
+					std::cout << "Unknown or unimplemented algorithm " << Token->StringValue << std::endl;
 					exit(0);
 				}
 			}
-			else if(strcmp(Token.StringValue, "chains") == 0)
+			else if(strcmp(Token->StringValue, "chains") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Numeric);
-				AssertUInt(Stream, Token);
-				Setup->NumChains = (size_t)Token.BeforeComma;
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->NumChains = (size_t)Stream.ExpectUInt();
 			}
-			else if(strcmp(Token.StringValue, "generations") == 0)
+			else if(strcmp(Token->StringValue, "generations") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Numeric);
-				AssertUInt(Stream, Token);
-				Setup->NumGenerations = (size_t)Token.BeforeComma;
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->NumGenerations = (size_t)Stream.ExpectUInt();
 			}
-			else if(strcmp(Token.StringValue, "burnin") == 0)
+			else if(strcmp(Token->StringValue, "burnin") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Numeric);
-				AssertUInt(Stream, Token);
-				Setup->NumBurnin = (size_t)Token.BeforeComma;
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->NumBurnin = (size_t)Stream.ExpectUInt();
 			}
-			else if(strcmp(Token.StringValue, "discard_timesteps") == 0)
+			else if(strcmp(Token->StringValue, "discard_timesteps") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Numeric);
-				AssertUInt(Stream, Token);
-				Setup->DiscardTimesteps = (size_t)Token.BeforeComma;
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->DiscardTimesteps = (size_t)Stream.ExpectUInt();
 			}
-			else if(strcmp(Token.StringValue, "de_b") == 0)
+			else if(strcmp(Token->StringValue, "de_b") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Numeric);
-				Setup->DeBound = GetDoubleValue(Token);
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->DeBound = Stream.ExpectDouble();
 			}
-			else if(strcmp(Token.StringValue, "de_jumps") == 0)
+			else if(strcmp(Token->StringValue, "de_jumps") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Bool);
-				Setup->DeJumps = Token.BoolValue;
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->DeJumps = Stream.ExpectBool();
 			}
-			else if(strcmp(Token.StringValue, "de_jump_gamma") == 0)
+			else if(strcmp(Token->StringValue, "de_jump_gamma") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
-				ExpectToken(Stream, Token, TokenType_Numeric);
-				Setup->DeJumpGamma = GetDoubleValue(Token);
+				Stream.ExpectToken(TokenType_Colon);
+				Setup->DeJumpGamma = Stream.ExpectDouble();
 			}
-			else if(strcmp(Token.StringValue, "parameter_calibration") == 0)
+			else if(strcmp(Token->StringValue, "parameter_calibration") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
+				Stream.ExpectToken(TokenType_Colon);
 				Mode = 0;
 			}
-			else if(strcmp(Token.StringValue, "objective") == 0)
+			else if(strcmp(Token->StringValue, "objective") == 0)
 			{
-				ExpectToken(Stream, Token, TokenType_Colon);
+				Stream.ExpectToken(TokenType_Colon);
 				Mode = 1;
 			}
-			else if(strcmp(Token.StringValue, "link") == 0)
+			else if(strcmp(Token->StringValue, "link") == 0)
 			{
 				if(Mode != 0)
 				{
-					PrintStreamErrorHeader(Stream);
+					Stream.PrintErrorHeader();
 					std::cout << "Can only initiate a link under the parameter_calibration heading." << std::endl;
 					exit(0);
 				}
 				StartLink = true;
-				ExpectToken(Stream, Token, TokenType_OpenBrace);
+				Stream.ExpectToken(TokenType_OpenBrace);
 			}
 			else
 			{
-				PrintStreamErrorHeader(Stream);
-				std::cout << "Unknown command word " << Token.StringValue << std::endl;
+				Stream.PrintErrorHeader();
+				std::cout << "Unknown command word " << Token->StringValue << std::endl;
 				exit(0);
 			}
 		}
@@ -197,32 +186,32 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			{
 				const char *Name;
 				std::vector<const char *> Indexes;
-				if(StartLink && (Token.Type == TokenType_CloseBrace)) break;
-				else if(Token.Type == TokenType_QuotedString)
+				if(StartLink && (Token->Type == TokenType_CloseBrace)) break;
+				else if(Token->Type == TokenType_QuotedString)
 				{
-					Name = CopyString(Token.StringValue); //NOTE: leaks!
+					Name = CopyString(Token->StringValue); //NOTE: leaks!
 				}
 				else
 				{
-					PrintStreamErrorHeader(Stream);
+					Stream.PrintErrorHeader();
 					std::cout << "Expected the quoted name of a parameter." << std::endl;
 					exit(0);
 				}
-				ExpectToken(Stream, Token, TokenType_OpenBrace);
+				Stream.ExpectToken(TokenType_OpenBrace);
 				while(true)
 				{
-					ReadToken(Stream, Token);
-					if(Token.Type == TokenType_CloseBrace)
+					Token = Stream.ReadToken();
+					if(Token->Type == TokenType_CloseBrace)
 					{
 						break;
 					}
-					else if(Token.Type == TokenType_QuotedString)
+					else if(Token->Type == TokenType_QuotedString)
 					{
-						Indexes.push_back(CopyString(Token.StringValue)); //NOTE: Leaks!
+						Indexes.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
 					}
 					else
 					{
-						PrintStreamErrorHeader(Stream);
+						Stream.PrintErrorHeader();
 						std::cout << "Expected the quoted name of an index or a '}'." << std::endl;
 						exit(0);
 					}
@@ -236,74 +225,69 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 				}
 				else
 				{
-					ReadToken(Stream, Token);
+					Token = Stream.ReadToken();
 				}
 			}
 			StartLink = false;
 			
 			if(ParSetting.ParameterNames.empty())
 			{
-				PrintStreamErrorHeader(Stream);
+				Stream.PrintErrorHeader();
 				std::cout << "Expected at least one parameter." << std::endl;
 				exit(0);
 			}
 			
-			ExpectToken(Stream, Token, TokenType_Numeric);
-			ParSetting.Min = GetDoubleValue(Token);
-			
-			ExpectToken(Stream, Token, TokenType_Numeric);
-			ParSetting.Max = GetDoubleValue(Token);
-			
-			ExpectToken(Stream, Token, TokenType_Numeric);
-			ParSetting.InitialGuess = GetDoubleValue(Token);
+			ParSetting.Min = Stream.ExpectDouble();
+			ParSetting.Max = Stream.ExpectDouble();
+			ParSetting.InitialGuess = Stream.ExpectDouble();
 			
 			Setup->Calibration.push_back(ParSetting);
 		}
 		else if(Mode == 1)
 		{
-			if(Token.Type != TokenType_QuotedString)
+			if(Token->Type != TokenType_QuotedString)
 			{
-				PrintStreamErrorHeader(Stream);
+				Stream.PrintErrorHeader();
 				std::cout << "Expected the quoted name of a result series." << std::endl;
 				exit(0);
 			}
-			Setup->ResultName = CopyString(Token.StringValue); //NOTE: Leaks!
-			ExpectToken(Stream, Token, TokenType_OpenBrace);
+			Setup->ResultName = CopyString(Token->StringValue); //NOTE: Leaks!
+			Stream.ExpectToken(TokenType_OpenBrace);
 			while(true)
 			{
-				ReadToken(Stream, Token);
-				if(Token.Type == TokenType_CloseBrace)
+				Token = Stream.ReadToken();
+				if(Token->Type == TokenType_CloseBrace)
 				{
 					break;
 				}
-				else if(Token.Type == TokenType_QuotedString)
+				else if(Token->Type == TokenType_QuotedString)
 				{
-					Setup->ResultIndexes.push_back(CopyString(Token.StringValue)); //NOTE: Leaks!
+					Setup->ResultIndexes.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
 				}
 				else
 				{
-					PrintStreamErrorHeader(Stream);
+					Stream.PrintErrorHeader();
 					std::cout << "Expected the quoted name of an index" << std::endl;
 					exit(0);
 				}
 			}
-			ExpectToken(Stream, Token, TokenType_QuotedString);
-			Setup->ObservedName = CopyString(Token.StringValue); //NOTE: Leaks!
-			ExpectToken(Stream, Token, TokenType_OpenBrace);
+			Token = Stream.ExpectToken(TokenType_QuotedString);
+			Setup->ObservedName = CopyString(Token->StringValue); //NOTE: Leaks!
+			Stream.ExpectToken(TokenType_OpenBrace);
 			while(true)
 			{
-				ReadToken(Stream, Token);
-				if(Token.Type == TokenType_CloseBrace)
+				Token = Stream.ReadToken();
+				if(Token->Type == TokenType_CloseBrace)
 				{
 					break;
 				}
-				else if(Token.Type == TokenType_QuotedString)
+				else if(Token->Type == TokenType_QuotedString)
 				{
-					Setup->ObservedIndexes.push_back(CopyString(Token.StringValue)); //NOTE: Leaks!
+					Setup->ObservedIndexes.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
 				}
 				else
 				{
-					PrintStreamErrorHeader(Stream);
+					Stream.PrintErrorHeader();
 					std::cout << "Expected the quoted name of an index" << std::endl;
 					exit(0);
 				}
@@ -311,7 +295,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 		}
 		else
 		{
-			PrintStreamErrorHeader(Stream);
+			Stream.PrintErrorHeader();
 			std::cout << "Unexpected token." << std::endl;
 			exit(0);
 		}

@@ -65,6 +65,8 @@ struct glue_results
 };
 
 
+#include "../../sqlite3/sqlite3.h"
+
 #include "glue_io.cpp"
 #include "glue.cpp"
 

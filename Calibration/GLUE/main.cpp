@@ -10,12 +10,9 @@
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 0
 
-#include "../inca.h"
+#include "../../inca.h"
 
-#include "../Modules/HBV.h"
-//#include "../Modules/SoilTemperatureModel.h"
-//#include "../Modules/WaterTemperatureModel.h"
-//#include "../SimplyC/SimplyC.h"
+#include "../../Modules/HBV.h"
 
 #define GLUE_PRINT_DEBUG_INFO 0
 #define GLUE_MULTITHREAD 1
@@ -32,9 +29,6 @@ int main()
 	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
 	AddHBVModel(Model);
-	//AddSoilTemperatureModel(Model);
-	//AddWaterTemperatureModel(Model);
-	//AddSimplyCModel(Model);
 	
 	ReadInputDependenciesFromFile(Model, "langtjerninputs.dat");
 	

@@ -1,7 +1,5 @@
 
 
-#include "../sqlite3/sqlite3.h"
-
 
 static void
 ReadSetupFromFile(glue_setup *Setup, const char *Filename)

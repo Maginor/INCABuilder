@@ -3,11 +3,11 @@
 #define INCA_TEST_FOR_NAN 1
 #define INCA_EQUATION_PROFILING 0
 
-#include "../inca.h"
+#include "../../inca.h"
 
-#include "../ExampleModules/HBV.h"
-#include "../ExampleModules/SoilTemperatureModel.h"
-#include "../ExampleModules/WaterTemperatureModel.h"
+#include "../../Modules/HBV.h"
+#include "../../Modules/SoilTemperatureModel.h"
+#include "../../Modules/WaterTemperatureModel.h"
 #include "CarbonModel.h"
 
 #define READ_PARAMETER_FILE 1

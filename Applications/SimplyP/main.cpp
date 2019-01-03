@@ -5,7 +5,7 @@
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 1
 
-#include "../inca.h"
+#include "../../inca.h"
 
 #include "SimplyP.h"
 

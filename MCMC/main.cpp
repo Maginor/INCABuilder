@@ -1,6 +1,6 @@
 
 #include "../inca.h"
-#include "../ExampleModules/PersistModel.h"
+#include "../Modules/PersistModel.h"
 
 #include "inca_mcmc.h"
 

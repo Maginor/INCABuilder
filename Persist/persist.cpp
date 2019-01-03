@@ -6,7 +6,7 @@
 
 #include "../inca.h"
 
-#include "../ExampleModules/PersistModel.h"
+#include "../Modules/PersistModel.h"
 
 #include "../sqlite3/sqlite3.h"
 #include "../inca_database_io.cpp"

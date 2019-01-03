@@ -12,9 +12,9 @@
 
 #include "../inca.h"
 
-#include "../ExampleModules/HBV.h"
-//#include "../ExampleModules/SoilTemperatureModel.h"
-//#include "../ExampleModules/WaterTemperatureModel.h"
+#include "../Modules/HBV.h"
+//#include "../Modules/SoilTemperatureModel.h"
+//#include "../Modules/WaterTemperatureModel.h"
 //#include "../SimplyC/SimplyC.h"
 
 #define GLUE_PRINT_DEBUG_INFO 0

@@ -222,7 +222,7 @@ EndModelDefinition(inca_model *Model)
 	
 	///////////// Find out what index sets each parameter depends on /////////////
 	
-	for(handle_t ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
 	{
 		parameter_group_h CurrentGroup = Model->ParameterSpecs[ParameterHandle].Group;
 		std::vector<index_set_h>& Dependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
@@ -241,7 +241,7 @@ EndModelDefinition(inca_model *Model)
 	/////////////////////// Find all dependencies of equations on parameters and other results /////////////////////
 	
 	value_set_accessor ValueSet(Model);
-	for(handle_t EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 	{
 		equation_spec &Spec = Model->EquationSpecs[EquationHandle];
 		
@@ -266,7 +266,7 @@ EndModelDefinition(inca_model *Model)
 		
 		//std::cout << GetName(Model, equation {EquationHandle}) << std::endl;
 		
-		for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 		{
 			//NOTE: Direct dependency on an index set coming from looking up a CURRENT_INDEX inside the equation.
 			if(ValueSet.DirectIndexSetDependency[IndexSetHandle] != 0)
@@ -275,7 +275,7 @@ EndModelDefinition(inca_model *Model)
 			}
 		}
 		
-		for(handle_t ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+		for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
 		{
 			if(ValueSet.ParameterDependency[ParameterHandle] != 0) // The equation requested a read of this parameter.
 			{
@@ -285,7 +285,7 @@ EndModelDefinition(inca_model *Model)
 			}
 		}
 		
-		for(handle_t InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
+		for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
 		{
 			if(ValueSet.InputDependency[InputHandle] != 0)
 			{
@@ -303,7 +303,7 @@ EndModelDefinition(inca_model *Model)
 			Spec.ParameterDependencies.insert(Spec.InitialValue.Handle);
 		}
 		
-		for(handle_t DepResultHandle = 1; DepResultHandle < Model->FirstUnusedEquationHandle; ++DepResultHandle)
+		for(entity_handle DepResultHandle = 1; DepResultHandle < Model->FirstUnusedEquationHandle; ++DepResultHandle)
 		{
 			if(ValueSet.ResultDependency[DepResultHandle] != 0)
 			{
@@ -343,7 +343,7 @@ EndModelDefinition(inca_model *Model)
 	for(size_t It = 0; It < 100; ++It)
 	{
 		bool Changed = false;
-		for(handle_t EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+		for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 		{
 			equation_spec &Spec = Model->EquationSpecs[EquationHandle];
 			u64 DependencyCount = Spec.IndexSetDependencies.size();
@@ -392,7 +392,7 @@ EndModelDefinition(inca_model *Model)
 	
 	bool *SolverHasBeenHitOnce = AllocClearedArray(bool, Model->FirstUnusedSolverHandle);
 	
-	for(handle_t EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 	{
 		equation_spec &Spec = Model->EquationSpecs[EquationHandle];
 		solver_h Solver = Spec.Solver;
@@ -617,7 +617,7 @@ EndModelDefinition(inca_model *Model)
 	
 	{
 		//NOTE: We have to clear sorting flags from previous sortings since we have to do a new sorting for the initial value equations.
-		for(handle_t EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+		for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 		{
 			Model->EquationSpecs[EquationHandle].TempVisited = false;
 			Model->EquationSpecs[EquationHandle].Visited = false;
@@ -695,7 +695,7 @@ EndModelDefinition(inca_model *Model)
 		size_t BatchGroupIdx = 0;
 		for(equation_batch_group &BatchGroup : Model->BatchGroups)
 		{
-			std::set<handle_t>     AllParameterDependenciesForBatchGroup;
+			std::set<entity_handle>     AllParameterDependenciesForBatchGroup;
 			std::set<equation_h>   AllResultDependenciesForBatchGroup;
 			std::set<equation_h>   AllLastResultDependenciesForBatchGroup;
 			std::set<input_h>      AllInputDependenciesForBatchGroup;
@@ -728,7 +728,7 @@ EndModelDefinition(inca_model *Model)
 				index_set_h IndexSetAtLevel = BatchGroup.IndexSets[IndexSetLevel];
 				//NOTE: Gather up all the parameters that need to be updated at this stage of the execution tree. By updated we mean that they need to be read into the CurParameters buffer during execution.
 				//TODO: We do a lot of redundant checks here. We could store temporary information to speed this up.
-				for(handle_t ParameterHandle : AllParameterDependenciesForBatchGroup)
+				for(entity_handle ParameterHandle : AllParameterDependenciesForBatchGroup)
 				{
 					std::vector<index_set_h> &ThisParDependsOn = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
 					if(IsTopIndexSetForThisDependency(ThisParDependsOn, BatchGroup.IndexSets, IndexSetLevel))
@@ -873,7 +873,7 @@ NaNTest(inca_model *Model, value_set_accessor *ValueSet, double ResultValue, equ
 			const char *IndexName = ValueSet->DataSet->IndexNames[IndexSet.Handle][ValueSet->CurrentIndexes[IndexSet.Handle]];
 			std::cout << GetName(Model, IndexSet) << ": " << IndexName << std::endl;
 		}
-		for(handle_t Par : Spec.ParameterDependencies )
+		for(entity_handle Par : Spec.ParameterDependencies )
 		{
 			//Ugh, it is cumbersome to print parameter values when we don't know the type a priori....
 			parameter_spec &ParSpec = Model->ParameterSpecs[Par];
@@ -928,7 +928,7 @@ INNER_LOOP_BODY(RunInnerLoop)
 	if(CurrentLevel >= 0)
 	{
 		iteration_data &IterationData = BatchGroup.IterationData[CurrentLevel];
-		for(handle_t ParameterHandle : IterationData.ParametersToRead)
+		for(entity_handle ParameterHandle : IterationData.ParametersToRead)
 		{
 			ValueSet->CurParameters[ParameterHandle] = *ValueSet->AtParameterLookup; //NOTE: Parameter values are stored directly in the lookup since they don't change with the timestep.
 			++ValueSet->AtParameterLookup;
@@ -1087,7 +1087,7 @@ INNER_LOOP_BODY(FastLookupSetupInnerLoop)
 {
 	if(CurrentLevel < 0) return;
 	
-	for(handle_t ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
+	for(entity_handle ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
 	{
 		//NOTE: Parameters are special here in that we can just store the value in the fast lookup, instead of the offset. This is because they don't change with the timestep.
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, ParameterHandle);
@@ -1164,7 +1164,7 @@ INNER_LOOP_BODY(InitialValueSetupInnerLoop)
 	
 	if(CurrentLevel >= 0)
 	{
-		for(handle_t ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
+		for(entity_handle ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
 		{
 			ValueSet->CurParameters[ParameterHandle] = *ValueSet->AtParameterLookup;
 			++ValueSet->AtParameterLookup;
@@ -1200,7 +1200,7 @@ RunModel(inca_data_set *DataSet)
 	inca_model *Model = DataSet->Model;
 	
 	//NOTE: Check that all the index sets have at least one index.
-	for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{
 		if(DataSet->IndexCounts[IndexSetHandle] == 0)
 		{
@@ -1296,7 +1296,7 @@ RunModel(inca_data_set *DataSet)
 	//NOTE: If any system parameters exist, the storage units are sorted such that the system parameters have to belong to storage unit [0].
 	if(!DataSet->ParameterStorageStructure.Units.empty() && DataSet->ParameterStorageStructure.Units[0].IndexSets.empty())
 	{
-		for(handle_t ParameterHandle : DataSet->ParameterStorageStructure.Units[0].Handles)
+		for(entity_handle ParameterHandle : DataSet->ParameterStorageStructure.Units[0].Handles)
 		{
 			size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
 			ValueSet.CurParameters[ParameterHandle] = DataSet->ParameterData[Offset];
@@ -1352,7 +1352,7 @@ RunModel(inca_data_set *DataSet)
 		//NOTE: We have to update the inputs that don't depend on any index sets here, as that is not handled by the "fast lookup system".
 		if(!DataSet->InputStorageStructure.Units.empty() && DataSet->InputStorageStructure.Units[0].IndexSets.empty())
 		{
-			for(handle_t InputHandle : DataSet->InputStorageStructure.Units[0].Handles)
+			for(entity_handle InputHandle : DataSet->InputStorageStructure.Units[0].Handles)
 			{
 				size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, InputHandle);
 				ValueSet.CurInputs[InputHandle] = ValueSet.AllCurInputsBase[Offset];
@@ -1403,7 +1403,7 @@ PrintEquationDependencies(inca_model *Model)
 	std::cout << std::endl << "**** Equation Dependencies ****" << std::endl;
 	if(Model->Finalized)
 	{	
-		for(handle_t EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+		for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 		{
 			std::cout << GetName(Model, equation_h {EquationHandle}) << "\n\t";
 			for(index_set_h IndexSet : Model->EquationSpecs[EquationHandle].IndexSetDependencies)
@@ -1475,7 +1475,7 @@ PrintParameterStorageStructure(inca_data_set *DataSet)
 		{
 			std::cout << "[" << GetName(Model, IndexSet) << "]";
 		}
-		for(handle_t ParameterHandle : DataSet->ParameterStorageStructure.Units[StorageIdx].Handles)
+		for(entity_handle ParameterHandle : DataSet->ParameterStorageStructure.Units[StorageIdx].Handles)
 		{
 			std::cout << "\n\t" << GetParameterName(Model, ParameterHandle);
 		}
@@ -1508,7 +1508,7 @@ PrintInputStorageStructure(inca_data_set *DataSet)
 		{
 			std::cout << "[" << GetName(Model, IndexSet) << "]";
 		}
-		for(handle_t Handle : DataSet->InputStorageStructure.Units[StorageIdx].Handles)
+		for(entity_handle Handle : DataSet->InputStorageStructure.Units[StorageIdx].Handles)
 		{
 			std::cout << "\n\t" << GetName(Model, input_h {Handle});
 		}

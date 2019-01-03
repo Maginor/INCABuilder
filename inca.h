@@ -58,8 +58,8 @@ typedef int32_t s32;
 typedef int16_t s16;
 typedef int8_t s8;
 
-typedef size_t handle_t;
-//typedef u32    index_t; //NOTE: We get an error on the 64 bit compilation with this, and I have not entirely figured out why
+typedef size_t entity_handle;
+//typedef u32    index_t; //NOTE: We get an error on the 64 bit compilation with this, and I have not entirely figured out why yet
 typedef size_t index_t;
 
 #include "inca_util.h"

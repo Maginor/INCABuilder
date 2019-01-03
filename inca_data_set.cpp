@@ -34,7 +34,7 @@ inca_data_set::~inca_data_set()
 	{
 		if(IndexNames)
 		{
-			for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+			for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 			{
 				if(IndexNames[IndexSetHandle])
 				{
@@ -50,7 +50,7 @@ inca_data_set::~inca_data_set()
 		
 		if(BranchInputs)
 		{
-			for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+			for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 			{
 				if(BranchInputs[IndexSetHandle])
 				{
@@ -114,7 +114,7 @@ CopyDataSet(inca_data_set *DataSet)
 	if(DataSet->IndexNames)
 	{
 		Copy->IndexNames = AllocClearedArray(const char **, Model->FirstUnusedIndexSetHandle);
-		for(handle_t IndexSetHandle = 0; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		for(entity_handle IndexSetHandle = 0; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 		{
 			if(DataSet->IndexNames[IndexSetHandle])
 			{
@@ -132,7 +132,7 @@ CopyDataSet(inca_data_set *DataSet)
 	if(DataSet->BranchInputs)
 	{
 		Copy->BranchInputs = AllocClearedArray(branch_inputs *, Model->FirstUnusedIndexSetHandle);
-		for(handle_t IndexSetHandle = 0; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		for(entity_handle IndexSetHandle = 0; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 		{
 			if(DataSet->BranchInputs[IndexSetHandle])
 			{
@@ -184,7 +184,7 @@ SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts,
 		}
 		
 		size_t HandleIdx = 0;
-		for(handle_t Handle : Unit.Handles)
+		for(entity_handle Handle : Unit.Handles)
 		{
 			Structure.UnitForHandle[Handle] = UnitIndex;
 			Structure.LocationOfHandleInUnit[Handle] = HandleIdx;
@@ -217,7 +217,7 @@ storage_structure::~storage_structure()
 
 // NOTE: Returns the storage index of the first instance of a value corresponding to this Handle, i.e where all indexes that this handle depends on are the first index of their index set.
 inline size_t
-OffsetForHandle(storage_structure &Structure, handle_t Handle)
+OffsetForHandle(storage_structure &Structure, entity_handle Handle)
 {
 	size_t UnitIndex = Structure.UnitForHandle[Handle];
 	size_t OffsetForUnit = Structure.OffsetForUnit[UnitIndex];
@@ -230,7 +230,7 @@ OffsetForHandle(storage_structure &Structure, handle_t Handle)
 // CurrentIndexes must be set up so that for any index set with handle IndexSetHandle, CurrentIndexes[IndexSetHandle] is the current index of that index set. (Typically ValueSet->CurrentIndexes)
 // IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
 static size_t
-OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, handle_t Handle)
+OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -259,7 +259,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 // WARNING: There is no error checking at all to see if IndexesCount is the same as the number of index set dependencies. If this is wrong, the program could crash, though this access function is mostly used by wrappers that do such error checks themselves.
 // TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
 static size_t
-OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t IndexesCount, const size_t *IndexCounts, handle_t Handle)
+OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t IndexesCount, const size_t *IndexCounts, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -299,7 +299,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t Ind
 // WARNING: There is no error checking at all to see if OverrideCount is not larger than the number of index set dependencies, and in that case the program could crash.
 // TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
 inline size_t
-OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, handle_t Handle)
+OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -346,7 +346,7 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 //
 // This function is designed to be used with the system that evaluates cumulation equations.
 static size_t
-OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *IndexCounts, index_set_h Skip, size_t& SubsequentOffset, handle_t Handle)
+OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *IndexCounts, index_set_h Skip, size_t& SubsequentOffset, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -388,7 +388,7 @@ GetStartDate(inca_data_set *DataSet)
 	auto FindTime = Model->ParameterNameToHandle.find("Start date");
 	if(FindTime != Model->ParameterNameToHandle.end())
 	{
-		handle_t StartTimeHandle = FindTime->second;
+		entity_handle StartTimeHandle = FindTime->second;
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, StartTimeHandle);
 		return DataSet->ParameterData[Offset].ValTime; //TODO: Check that it was actually registered with the correct type and that it does not have any index set dependencies.
 	}
@@ -404,7 +404,7 @@ GetTimesteps(inca_data_set *DataSet)
 	auto FindTimestep = Model->ParameterNameToHandle.find("Timesteps");
 	if(FindTimestep != Model->ParameterNameToHandle.end())
 	{
-		handle_t TimestepHandle = FindTimestep->second;
+		entity_handle TimestepHandle = FindTimestep->second;
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, TimestepHandle);
 		return DataSet->ParameterData[Offset].ValUInt; //TODO: Check that it was actually registered with the correct type and that it does not have any index set dependencies.
 	}
@@ -418,7 +418,7 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 {
 	inca_model *Model = DataSet->Model;
 	
-	handle_t IndexSetHandle = GetIndexSetHandle(DataSet->Model, IndexSetName).Handle;
+	entity_handle IndexSetHandle = GetIndexSetHandle(DataSet->Model, IndexSetName).Handle;
 	index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 	
 	if(Spec.Type != IndexSetType_Basic)
@@ -499,7 +499,7 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 {
 	inca_model *Model = DataSet->Model;
 	
-	handle_t IndexSetHandle = GetIndexSetHandle(Model, IndexSetName).Handle;
+	entity_handle IndexSetHandle = GetIndexSetHandle(Model, IndexSetName).Handle;
 	index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 	
 	if(Spec.Type != IndexSetType_Branched)
@@ -588,8 +588,8 @@ AllocateParameterStorage(inca_data_set *DataSet)
 		exit(0);
 	}
 	
-	std::map<std::vector<index_set_h>, std::vector<handle_t>> TransposedParameterDependencies;
-	for(handle_t ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	std::map<std::vector<index_set_h>, std::vector<entity_handle>> TransposedParameterDependencies;
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
 	{
 		std::vector<index_set_h> Dependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
 		TransposedParameterDependencies[Dependencies].push_back(ParameterHandle);
@@ -617,7 +617,7 @@ AllocateParameterStorage(inca_data_set *DataSet)
 		size_t TotalHandlesForUnit = DataSet->ParameterStorageStructure.TotalCountForUnit[UnitIndex];
 		
 		size_t ParameterIndex = 0;
-		for(handle_t ParameterHandle : Unit.Handles)
+		for(entity_handle ParameterHandle : Unit.Handles)
 		{
 			parameter_value DefaultValue = Model->ParameterSpecs[ParameterHandle].Default;
 			size_t At = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
@@ -650,9 +650,9 @@ AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 		exit(0);
 	}
 
-	std::map<std::vector<index_set_h>, std::vector<handle_t>> TransposedInputDependencies;
+	std::map<std::vector<index_set_h>, std::vector<entity_handle>> TransposedInputDependencies;
 	
-	for(handle_t InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
+	for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
 	{
 		input_spec &Spec = Model->InputSpecs[InputHandle];
 		TransposedInputDependencies[Spec.IndexSetDependencies].push_back(InputHandle);
@@ -753,7 +753,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 	}
 	
 	inca_model *Model = DataSet->Model;
-	handle_t ParameterHandle = GetParameterHandle(Model, Name);
+	entity_handle ParameterHandle = GetParameterHandle(Model, Name);
 	
 	if(Model->ParameterSpecs[ParameterHandle].Type != Type)
 	{
@@ -825,7 +825,7 @@ GetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 	}
 	
 	inca_model *Model = DataSet->Model;
-	handle_t ParameterHandle = GetParameterHandle(Model, Name);
+	entity_handle ParameterHandle = GetParameterHandle(Model, Name);
 	
 	if(Model->ParameterSpecs[ParameterHandle].Type != Type)
 	{
@@ -1107,7 +1107,7 @@ PrintIndexes(inca_data_set *DataSet, const char *IndexSetName)
 {
 	//TODO: checks
 	inca_model *Model = DataSet->Model;
-	handle_t IndexSetHandle = GetIndexSetHandle(Model, IndexSetName).Handle;
+	entity_handle IndexSetHandle = GetIndexSetHandle(Model, IndexSetName).Handle;
 	std::cout << "Indexes for " << IndexSetName << ": ";
 	index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 	if(Spec.Type == IndexSetType_Basic)

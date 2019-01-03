@@ -79,11 +79,11 @@ WriteParameterValueToDatabase(sqlite3 *Db, int ID, parameter_value Min, paramete
 }
 
 static void
-WriteParametersForParameterGroupToDatabase(inca_data_set *DataSet, handle_t ParameterGroupHandle, sqlite3 *Db, int &RunningID, int& RunningLft, int Dpt, index_t *Indexes, size_t IndexCount)
+WriteParametersForParameterGroupToDatabase(inca_data_set *DataSet, entity_handle ParameterGroupHandle, sqlite3 *Db, int &RunningID, int& RunningLft, int Dpt, index_t *Indexes, size_t IndexCount)
 {
 	inca_model *Model = DataSet->Model;
 	parameter_group_spec &Spec = Model->ParameterGroupSpecs[ParameterGroupHandle];
-	for(handle_t ParameterHandle : Spec.Parameters)
+	for(entity_handle ParameterHandle : Spec.Parameters)
 	{
 		int IdOfParameter = RunningID++;
 		int LftOfParameter = RunningLft++;
@@ -116,7 +116,7 @@ WriteParametersForParameterGroupToDatabase(inca_data_set *DataSet, handle_t Para
 }
 
 static void
-ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, handle_t ParameterGroupHandle, sqlite3 *Db, int &RunningID, int& RunningLft, int Dpt, index_t *Indexes)
+ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, entity_handle ParameterGroupHandle, sqlite3 *Db, int &RunningID, int& RunningLft, int Dpt, index_t *Indexes)
 {
 	inca_model *Model = DataSet->Model;
 	parameter_group_spec &Spec = Model->ParameterGroupSpecs[ParameterGroupHandle];
@@ -297,7 +297,7 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *
 	int RunningID = 2;
 	int RunningLft = 1;
 	index_t Indexes[256]; //NOTE: Probably no parameter will have more index set dependencies than 256???
-	for(handle_t ParameterGroupHandle = 1; ParameterGroupHandle < Model->FirstUnusedParameterGroupHandle; ++ParameterGroupHandle)
+	for(entity_handle ParameterGroupHandle = 1; ParameterGroupHandle < Model->FirstUnusedParameterGroupHandle; ++ParameterGroupHandle)
 	{
 		parameter_group_spec &GroupSpec = Model->ParameterGroupSpecs[ParameterGroupHandle];
 		if(!IsValid(GroupSpec.ParentGroup))
@@ -321,7 +321,7 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *
 	rc = sqlite3_prepare_v2(Db, InsertInputData, -1, &Statement, 0);
 	
 	
-	for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{
 		index_set_spec &IndexSetSpec = Model->IndexSetSpecs[IndexSetHandle];
 		if(IndexSetSpec.Type == IndexSetType_Branched)
@@ -529,7 +529,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 	const char *GetInputsCommand = "SELECT InputOf, Input FROM BranchInputs WHERE IndexSet = ?";
 	rc = sqlite3_prepare_v2(Db, GetInputsCommand, -1, &Statement, 0);
 	
-	for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{	
 		index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		if(Spec.Type == IndexSetType_Basic)
@@ -591,7 +591,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		}
 		else if(!Entry.IsIndexer)
 		{
-			handle_t ParameterHandle = GetParameterHandle(Model, Entry.Name.data());
+			entity_handle ParameterHandle = GetParameterHandle(Model, Entry.Name.data());
 			size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, Indexes, Level, DataSet->IndexCounts, ParameterHandle);
 			DataSet->ParameterData[Offset] = IDToParameterValue[Entry.ID]; //TODO: Check that it exists?
 		}
@@ -604,7 +604,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 struct database_structure_tree
 {
 	index_set_h IndexSet;
-	std::vector<handle_t> Handles;
+	std::vector<entity_handle> Handles;
 	std::vector<database_structure_tree> Children;
 };
 
@@ -664,7 +664,7 @@ PrintStructureTreeRecursively(inca_model *Model, std::vector<database_structure_
 			for(size_t Lev = 0; Lev < CurrentLevel; ++Lev) std::cout << '\t';
 			std::cout << "[" << GetName(Model, Tree.IndexSet) << "]" << std::endl;
 		}
-		for(handle_t Handle : Tree.Handles)
+		for(entity_handle Handle : Tree.Handles)
 		{
 			if(IsValid(Tree.IndexSet)) for(size_t Lev = 0; Lev < CurrentLevel; ++Lev) std::cout << '\t';
 			if(Mode == 0)
@@ -678,7 +678,7 @@ PrintStructureTreeRecursively(inca_model *Model, std::vector<database_structure_
 
 
 static void
-WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *Statement, int ID, handle_t Handle, index_t *Indexes, size_t IndexesCount, s64 StartDate, s64 Step, u64 Timesteps)
+WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *Statement, int ID, entity_handle Handle, index_t *Indexes, size_t IndexesCount, s64 StartDate, s64 Step, u64 Timesteps)
 {
 	size_t Offset = OffsetForHandle(StorageStructure, Indexes, IndexesCount, DataSet->IndexCounts, Handle);
 	
@@ -759,7 +759,7 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				
 				Indexes[CurrentLevel] = Index;
 				
-				for(handle_t Handle : Tree.Handles)
+				for(entity_handle Handle : Tree.Handles)
 				{
 					int LftOfHandle = RunningLft++;
 					int RgtOfHandle = RunningLft++;
@@ -793,7 +793,7 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 		}
 		else
 		{
-			for(handle_t Handle : Tree.Handles)
+			for(entity_handle Handle : Tree.Handles)
 			{
 				int LftOfHandle = RunningLft++;
 				int RgtOfHandle = RunningLft++;

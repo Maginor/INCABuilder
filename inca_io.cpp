@@ -25,7 +25,7 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 }
 
 static void
-WriteParameterValues(FILE *File, handle_t ParameterHandle, parameter_type Type, inca_data_set *DataSet, index_set_h *IndexSets, index_t *Indexes, size_t IndexSetCount, size_t Level)
+WriteParameterValues(FILE *File, entity_handle ParameterHandle, parameter_type Type, inca_data_set *DataSet, index_set_h *IndexSets, index_t *Indexes, size_t IndexSetCount, size_t Level)
 {
 	if(IndexSetCount == 0)
 	{
@@ -81,7 +81,7 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	fprintf(File, "# Parameter file generated for %s V%s\n\n", Model->Name, Model->Version);
 	
 	fprintf(File, "index_sets:\n");
-	for(handle_t IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{
 		index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		fprintf(File, "\"%s\" : {", Spec.Name);
@@ -125,7 +125,7 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 		}
 		fprintf(File, " ######################\n");
 		
-		for(handle_t ParameterHandle: DataSet->ParameterStorageStructure.Units[UnitIndex].Handles)
+		for(entity_handle ParameterHandle: DataSet->ParameterStorageStructure.Units[UnitIndex].Handles)
 		{
 			parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
 			fprintf(File, "\"%s\" :", Spec.Name);
@@ -592,7 +592,7 @@ SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values,
 	}
 	
 	inca_model *Model = DataSet->Model;
-	handle_t ParameterHandle = GetParameterHandle(Model, Name);
+	entity_handle ParameterHandle = GetParameterHandle(Model, Name);
 	if(!ParameterHandle) return;
 	
 	//TODO: Check that the values are in the Min-Max range? (issue warning only)
@@ -793,7 +793,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 			}
 			
 			const char *ParameterName = Token.StringValue;
-			handle_t ParameterHandle = GetParameterHandle(Model, ParameterName);
+			entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName);
 			parameter_type Type = Model->ParameterSpecs[ParameterHandle].Type;
 			size_t ExpectedCount = 1;
 			size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];

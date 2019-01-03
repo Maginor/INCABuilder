@@ -6,8 +6,8 @@
 
 int main()
 {
-	const char *ParameterFile = "../IncaN/tovdalparametersPersistOnly.dat";
-	const char *InputFile     = "../IncaN/tovdalinputs.dat";
+	const char *ParameterFile = "../../Applications/IncaN/tovdalparametersPersistOnly.dat";
+	const char *InputFile     = "../../Applications/IncaN/tovdalinputs.dat";
 	
 	inca_model *Model = BeginModelDefinition();
 	

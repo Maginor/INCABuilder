@@ -7,7 +7,7 @@
 
 #include "../../inca.h"
 
-#include "SimplyP.h"
+#include "../../Modules/SimplyP.h"
 
 #define READ_PARAMETER_FILE 1
 

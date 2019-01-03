@@ -6,7 +6,7 @@
 
 #include "../../inca.h"
 
-#include "SimplyP.h"
+#include "../../Modules/SimplyP.h"
 
 #include "../../sqlite3/sqlite3.h"
 #include "../../inca_database_io.cpp"

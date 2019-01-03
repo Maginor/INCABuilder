@@ -7,7 +7,7 @@
 
 #define MODEL_ENTITY_HANDLE(Type) struct Type \
 { \
-	handle_t Handle; \
+	entity_handle Handle; \
 }; \
 bool operator==(const Type &A, const Type &B) { return A.Handle == B.Handle; } \
 bool operator!=(const Type &A, const Type &B) { return A.Handle != B.Handle; } \
@@ -88,7 +88,7 @@ struct parameter_group_spec
 	parameter_group_h ParentGroup;
 	std::vector<parameter_group_h> ChildrenGroups;
 	index_set_h IndexSet;
-	std::vector<handle_t> Parameters;
+	std::vector<entity_handle> Parameters;
 };
 
 enum index_set_type
@@ -136,7 +136,7 @@ struct equation_spec
 	
 	//NOTE: These are built during EndModelDefinition:
 	std::set<index_set_h> IndexSetDependencies;
-	std::set<handle_t>  ParameterDependencies;
+	std::set<entity_handle>  ParameterDependencies;
 	std::set<input_h>     InputDependencies;
 	std::set<equation_h>  DirectResultDependencies;
 	std::set<equation_h>  DirectLastResultDependencies;
@@ -173,7 +173,7 @@ struct input_spec
 //TODO: Find a better name for this struct?
 struct iteration_data
 {
-	std::vector<handle_t>   ParametersToRead;
+	std::vector<entity_handle>   ParametersToRead;
 	std::vector<input_h>      InputsToRead;
 	std::vector<equation_h>   ResultsToRead;
 	std::vector<equation_h>   LastResultsToRead;
@@ -207,7 +207,7 @@ struct equation_batch_group
 struct storage_unit_specifier
 {
 	std::vector<index_set_h> IndexSets;
-	std::vector<handle_t> Handles;
+	std::vector<entity_handle> Handles;
 };
 
 struct storage_structure
@@ -249,7 +249,7 @@ struct hash_function
     }
 };
 
-typedef std::unordered_map<const char *, handle_t, hash_function, char_equals> char_map;
+typedef std::unordered_map<const char *, entity_handle, hash_function, char_equals> char_map;
 
 
 struct inca_model
@@ -257,32 +257,32 @@ struct inca_model
 	const char *Name;
 	const char *Version;
 	
-	handle_t FirstUnusedEquationHandle;
+	entity_handle FirstUnusedEquationHandle;
 	char_map EquationNameToHandle;
 	std::vector<inca_equation> Equations;
 	std::vector<equation_spec> EquationSpecs;
 	
-	handle_t FirstUnusedInputHandle;
+	entity_handle FirstUnusedInputHandle;
 	char_map InputNameToHandle;
 	std::vector<input_spec> InputSpecs;
 	
-	handle_t FirstUnusedParameterHandle;
+	entity_handle FirstUnusedParameterHandle;
 	char_map ParameterNameToHandle;
 	std::vector<parameter_spec> ParameterSpecs;
 	
-	handle_t FirstUnusedIndexSetHandle;
+	entity_handle FirstUnusedIndexSetHandle;
 	char_map IndexSetNameToHandle;
 	std::vector<index_set_spec> IndexSetSpecs;
 	
-	handle_t FirstUnusedParameterGroupHandle;
+	entity_handle FirstUnusedParameterGroupHandle;
 	char_map ParameterGroupNameToHandle;
 	std::vector<parameter_group_spec> ParameterGroupSpecs;
 	
-	handle_t FirstUnusedSolverHandle;
+	entity_handle FirstUnusedSolverHandle;
 	char_map SolverNameToHandle;
 	std::vector<solver_spec> SolverSpecs;
 	
-	handle_t FirstUnusedUnitHandle;
+	entity_handle FirstUnusedUnitHandle;
 	char_map UnitNameToHandle;
 	std::vector<unit_spec> UnitSpecs;
 	
@@ -503,7 +503,7 @@ GET_ENTITY_NAME(unit_h, Unit)
 #undef GET_ENTITY_NAME
 
 inline const char *
-GetParameterName(inca_model *Model, handle_t ParameterHandle) //NOTE: In case we don't know the type of the parameter and just want the name.
+GetParameterName(inca_model *Model, entity_handle ParameterHandle) //NOTE: In case we don't know the type of the parameter and just want the name.
 {
 	return Model->ParameterSpecs[ParameterHandle].Name;
 }
@@ -511,7 +511,7 @@ GetParameterName(inca_model *Model, handle_t ParameterHandle) //NOTE: In case we
 #define GET_ENTITY_HANDLE(Type, Typename, Typename2) \
 inline Type Get##Typename2##Handle(inca_model *Model, const char *Name) \
 { \
-	handle_t Handle = 0; \
+	entity_handle Handle = 0; \
 	auto Find = Model->Typename##NameToHandle.find(Name); \
 	if(Find != Model->Typename##NameToHandle.end()) \
 	{ \
@@ -537,10 +537,10 @@ GET_ENTITY_HANDLE(solver_h, Solver, Solver)
 
 #undef GET_ENTITY_HANDLE
 
-inline handle_t
+inline entity_handle
 GetParameterHandle(inca_model *Model, const char *Name) //NOTE: In case we don't know the type of the parameter and just want the handle.
 {
-	handle_t Handle = 0;
+	entity_handle Handle = 0;
 	auto Find = Model->ParameterNameToHandle.find(Name);
 	if(Find != Model->ParameterNameToHandle.end())
 	{
@@ -1022,7 +1022,7 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool_h Parameter)
 
 //NOTE: This does NOT do error checking to see if we provided too many override indexes or if they were out of bounds! We could maybe add an option to do that
 // that is compile-out-able?
-size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, handle_t Handle);
+size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle);
 
 
 template<typename... T> double

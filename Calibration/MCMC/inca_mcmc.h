@@ -14,15 +14,8 @@
 
 #include <omp.h>
 
-//NOTE: Specification of calibration of one (or several linked) parameter(s).
-struct mcmc_parameter_calibration
-{
-	std::vector<const char *> ParameterNames;
-	std::vector<std::vector<const char *>> ParameterIndexes;
-	double Min;
-	double Max;
-	double InitialGuess;
-};
+
+#include "../calibration_setup.h"
 
 enum mcmc_algorithm
 {
@@ -43,7 +36,7 @@ struct mcmc_setup
 	bool   DeJumps;
 	double DeJumpGamma;
 	
-	std::vector<mcmc_parameter_calibration> Calibration;
+	std::vector<parameter_calibration> Calibration;
 	
 	const char *ResultName;
 	std::vector<const char *> ResultIndexes;
@@ -57,7 +50,7 @@ struct mcmc_run_data
 {
 	std::vector<inca_data_set *> DataSets;
 	
-	std::vector<mcmc_parameter_calibration> Calibration;
+	std::vector<parameter_calibration> Calibration;
 	
 	const char *ResultName;
 	std::vector<const char *> ResultIndexes;
@@ -153,23 +146,13 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			else if(strcmp(Token->StringValue, "parameter_calibration") == 0)
 			{
 				Stream.ExpectToken(TokenType_Colon);
-				Mode = 0;
+				
+				ReadParameterCalibration(Stream, Setup->Calibration);
 			}
 			else if(strcmp(Token->StringValue, "objective") == 0)
 			{
 				Stream.ExpectToken(TokenType_Colon);
 				Mode = 1;
-			}
-			else if(strcmp(Token->StringValue, "link") == 0)
-			{
-				if(Mode != 0)
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Can only initiate a link under the parameter_calibration heading." << std::endl;
-					exit(0);
-				}
-				StartLink = true;
-				Stream.ExpectToken(TokenType_OpenBrace);
 			}
 			else
 			{
@@ -177,71 +160,6 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 				std::cout << "Unknown command word " << Token->StringValue << std::endl;
 				exit(0);
 			}
-		}
-		else if(Mode == 0)
-		{
-			mcmc_parameter_calibration ParSetting;
-			
-			while(true)
-			{
-				const char *Name;
-				std::vector<const char *> Indexes;
-				if(StartLink && (Token->Type == TokenType_CloseBrace)) break;
-				else if(Token->Type == TokenType_QuotedString)
-				{
-					Name = CopyString(Token->StringValue); //NOTE: leaks!
-				}
-				else
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Expected the quoted name of a parameter." << std::endl;
-					exit(0);
-				}
-				Stream.ExpectToken(TokenType_OpenBrace);
-				while(true)
-				{
-					Token = Stream.ReadToken();
-					if(Token->Type == TokenType_CloseBrace)
-					{
-						break;
-					}
-					else if(Token->Type == TokenType_QuotedString)
-					{
-						Indexes.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
-					}
-					else
-					{
-						Stream.PrintErrorHeader();
-						std::cout << "Expected the quoted name of an index or a '}'." << std::endl;
-						exit(0);
-					}
-				}
-				ParSetting.ParameterNames.push_back(Name);
-				ParSetting.ParameterIndexes.push_back(Indexes);
-				
-				if(!StartLink)
-				{
-					break;
-				}
-				else
-				{
-					Token = Stream.ReadToken();
-				}
-			}
-			StartLink = false;
-			
-			if(ParSetting.ParameterNames.empty())
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "Expected at least one parameter." << std::endl;
-				exit(0);
-			}
-			
-			ParSetting.Min = Stream.ExpectDouble();
-			ParSetting.Max = Stream.ExpectDouble();
-			ParSetting.InitialGuess = Stream.ExpectDouble();
-			
-			Setup->Calibration.push_back(ParSetting);
 		}
 		else if(Mode == 1)
 		{
@@ -317,15 +235,9 @@ TargetLogKernel(const arma::vec& CalibrationIn, void* Data, size_t ChainIdx = 0)
 	for(size_t CalIdx = 0; CalIdx < Dimensions; ++CalIdx)
 	{
 		double ParamVal = CalibrationIn[CalIdx];
-		mcmc_parameter_calibration &Cal = RunData->Calibration[CalIdx];
+		parameter_calibration &Cal = RunData->Calibration[CalIdx];
 		
-		for(size_t ParIdx = 0; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
-		{
-			const char *ParameterName = Cal.ParameterNames[ParIdx];
-			std::vector<const char *> &ParameterIndexes = Cal.ParameterIndexes[ParIdx];
-			
-			SetParameterValue(DataSet, ParameterName, ParameterIndexes, ParamVal);
-		}
+		SetCalibrationValue(DataSet, Cal, ParamVal);
 	}
 	
 	double M = CalibrationIn[Dimensions]; //NOTE: The last parameter estimates the random perturbation.
@@ -391,7 +303,7 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	
 	for(size_t CalIdx = 0; CalIdx < Dimensions; ++CalIdx)
 	{
-		mcmc_parameter_calibration &Cal = RunData.Calibration[CalIdx];
+		parameter_calibration &Cal = RunData.Calibration[CalIdx];
 		InitialGuess[CalIdx] = Cal.InitialGuess;
 		LowerBounds [CalIdx] = Cal.Min;
 		UpperBounds [CalIdx] = Cal.Max;

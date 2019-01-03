@@ -5,7 +5,7 @@ from scipy import optimize
 # NOTE: Example for optimizing the a and b values in the equation V = aQ^b (reach flow - velocity relationship)
 # This is just a toy setup, a proper calibration run probably needs to set up more parameters to modify and maybe use a better algorithm.
 
-dataset = inca.DataSet.setup_from_parameter_and_input_files('../IncaN/tovdalparametersPersistOnly.dat', '../IncaN/tovdalinputs.dat')
+dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/IncaN/tovdalparametersPersistOnly.dat', '../Applications/IncaN/tovdalinputs.dat')
 
 # NOTE: Example of how you can override the timesteps and start date, in case you don't want to change them in the parameter file
 # dataset.set_parameter_uint('Timesteps', [], 1000)

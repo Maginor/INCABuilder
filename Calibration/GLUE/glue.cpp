@@ -162,7 +162,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 		glue_parameter_calibration &ParSetting = Setup->CalibrationSettings[ParIdx];
 		
 		{ //TODO: Make it work with other parameter types later?
-			handle_t Handle = GetParameterHandle(DataSet->Model, ParSetting.ParameterName);
+			entity_handle Handle = GetParameterHandle(DataSet->Model, ParSetting.ParameterName);
 			parameter_type Type = DataSet->Model->ParameterSpecs[Handle].Type;
 			if(Type != ParameterType_Double)
 			{

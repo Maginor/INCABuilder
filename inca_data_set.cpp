@@ -178,7 +178,7 @@ SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts,
 	for(storage_unit_specifier &Unit : Structure.Units)
 	{
 		Structure.TotalCountForUnit[UnitIndex] = Unit.Handles.size();
-		for(index_set IndexSet : Unit.IndexSets)
+		for(index_set_h IndexSet : Unit.IndexSets)
 		{
 			Structure.TotalCountForUnit[UnitIndex] *= IndexCounts[IndexSet.Handle];
 		}
@@ -241,7 +241,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 	size_t LocationOfHandleInUnit = Structure.LocationOfHandleInUnit[Handle];
 	
 	size_t InstanceOffset = 0;
-	for(index_set IndexSet : Specifier.IndexSets)
+	for(index_set_h IndexSet : Specifier.IndexSets)
 	{
 		size_t Count = IndexCounts[IndexSet.Handle];
 		index_t Index = CurrentIndexes[IndexSet.Handle];
@@ -271,7 +271,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t Ind
 	
 	size_t InstanceOffset = 0;
 	size_t Level = 0;
-	for(index_set IndexSet : Specifier.IndexSets)
+	for(index_set_h IndexSet : Specifier.IndexSets)
 	{
 		size_t Count = IndexCounts[IndexSet.Handle];
 		index_t Index = Indexes[Level];
@@ -312,7 +312,7 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 	size_t IndexSetCount = Specifier.IndexSets.size();
 	size_t InstanceOffset = 0;
 	size_t IndexSetLevel = 0;
-	for(index_set IndexSet : Specifier.IndexSets)
+	for(index_set_h IndexSet : Specifier.IndexSets)
 	{
 		size_t Count = IndexCounts[IndexSet.Handle];
 		index_t Index;
@@ -346,7 +346,7 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 //
 // This function is designed to be used with the system that evaluates cumulation equations.
 static size_t
-OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *IndexCounts, index_set Skip, size_t& SubsequentOffset, handle_t Handle)
+OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *IndexCounts, index_set_h Skip, size_t& SubsequentOffset, handle_t Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -359,7 +359,7 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 	size_t InstanceOffset = 0;
 	SubsequentOffset = 1;
 	bool Skipped = false;
-	for(index_set IndexSet : Specifier.IndexSets)
+	for(index_set_h IndexSet : Specifier.IndexSets)
 	{
 		size_t Count = IndexCounts[IndexSet.Handle];
 		index_t Index = CurrentIndexes[IndexSet.Handle];
@@ -588,10 +588,10 @@ AllocateParameterStorage(inca_data_set *DataSet)
 		exit(0);
 	}
 	
-	std::map<std::vector<index_set>, std::vector<handle_t>> TransposedParameterDependencies;
+	std::map<std::vector<index_set_h>, std::vector<handle_t>> TransposedParameterDependencies;
 	for(handle_t ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
 	{
-		std::vector<index_set> Dependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
+		std::vector<index_set_h> Dependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
 		TransposedParameterDependencies[Dependencies].push_back(ParameterHandle);
 	}
 	size_t ParameterStorageUnitCount = TransposedParameterDependencies.size();
@@ -650,7 +650,7 @@ AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 		exit(0);
 	}
 
-	std::map<std::vector<index_set>, std::vector<handle_t>> TransposedInputDependencies;
+	std::map<std::vector<index_set_h>, std::vector<handle_t>> TransposedInputDependencies;
 	
 	for(handle_t InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
 	{
@@ -723,7 +723,7 @@ AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 
 //NOTE: Returns the numeric index corresponding to an index name and an index_set.
 inline index_t
-GetIndex(inca_data_set *DataSet, index_set IndexSet, const char *IndexName)
+GetIndex(inca_data_set *DataSet, index_set_h IndexSet, const char *IndexName)
 {
 	auto &IndexMap = DataSet->IndexNamesToHandle[IndexSet.Handle];
 	auto Find = IndexMap.find(IndexName);
@@ -764,7 +764,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 	
 	size_t StorageUnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
 	std::vector<storage_unit_specifier> &Units = DataSet->ParameterStorageStructure.Units;
-	std::vector<index_set> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
+	std::vector<index_set_h> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
 	
 	if(IndexCount != IndexSetDependencies.size())
 	{
@@ -834,7 +834,7 @@ GetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 	
 	size_t StorageUnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
 	std::vector<storage_unit_specifier> &Units = DataSet->ParameterStorageStructure.Units;
-	std::vector<index_set> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
+	std::vector<index_set_h> &IndexSetDependencies = Units[StorageUnitIndex].IndexSets;
 	
 	if(IndexCount != IndexSetDependencies.size())
 	{
@@ -876,7 +876,7 @@ GetParameterBool(inca_data_set *DataSet, const char  *Name, const std::vector<co
 
 //NOTE: Is used by cumulation equations when they evaluate.
 static double
-CumulateResult(inca_data_set *DataSet, equation Equation, index_set CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase)
+CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase)
 {
 	//NOTE: LookupBase should always be DataSet->ResultData + N*DataSet->ResultStorageStructure.TotalCount. I.e. it should point to the beginning of one timestep.
 	
@@ -915,11 +915,11 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 	
 	inca_model *Model = DataSet->Model;
 	
-	input Input = GetInputHandle(Model, Name);
+	input_h Input = GetInputHandle(Model, Name);
 	
 	size_t StorageUnitIndex = DataSet->InputStorageStructure.UnitForHandle[Input.Handle];
 	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
-	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
+	std::vector<index_set_h> &IndexSets = Units[StorageUnitIndex].IndexSets;
 	
 	if(IndexNames.size() != IndexSets.size())
 	{
@@ -961,11 +961,11 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const char* const* Ind
 	//TODO: If we ask for more values than we could get, should there not be an error?
 	u64 NumToWrite = Min(WriteSize, DataSet->TimestepsLastRun);
 	
-	equation Equation = GetEquationHandle(Model, Name);
+	equation_h Equation = GetEquationHandle(Model, Name);
 	
 	size_t StorageUnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
 	std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
-	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
+	std::vector<index_set_h> &IndexSets = Units[StorageUnitIndex].IndexSets;
 
 	if(IndexCount != IndexSets.size())
 	{
@@ -1008,11 +1008,11 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 	//TODO: If we ask for more values than we could get, should there not be an error?
 	u64 NumToWrite = Min(WriteSize, DataSet->InputDataTimesteps);
 	
-	input Input = GetInputHandle(Model, Name);
+	input_h Input = GetInputHandle(Model, Name);
 	
 	size_t StorageUnitIndex = DataSet->InputStorageStructure.UnitForHandle[Input.Handle];
 	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
-	std::vector<index_set> &IndexSets = Units[StorageUnitIndex].IndexSets;
+	std::vector<index_set_h> &IndexSets = Units[StorageUnitIndex].IndexSets;
 
 	if(IndexCount != IndexSets.size())
 	{
@@ -1045,9 +1045,9 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 }
 
 inline void
-GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize)
+GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames, double *WriteTo, size_t WriteSize, bool AlignWithResults = false)
 {
-	GetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), WriteTo, WriteSize);
+	GetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), WriteTo, WriteSize, AlignWithResults);
 }
 
 static void
@@ -1059,7 +1059,7 @@ PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<co
 	std::cout << "Result series for " << Name << " ";
 	for(const char *Index : Indexes) std::cout << "[" << Index << "]";
 	
-	equation Equation = GetEquationHandle(DataSet->Model, Name);
+	equation_h Equation = GetEquationHandle(DataSet->Model, Name);
 	equation_spec &Spec = DataSet->Model->EquationSpecs[Equation.Handle];
 	if(IsValid(Spec.Unit))
 	{
@@ -1085,7 +1085,7 @@ PrintInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<con
 	std::cout << "Input series for " << Name << " ";
 	for(const char *Index : Indexes) std::cout << "[" << Index << "]";
 	
-	input Input = GetInputHandle(DataSet->Model, Name);
+	input_h Input = GetInputHandle(DataSet->Model, Name);
 	input_spec &Spec = DataSet->Model->InputSpecs[Input.Handle];
 	if(IsValid(Spec.Unit))
 	{

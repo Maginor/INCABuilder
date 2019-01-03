@@ -124,7 +124,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, handle_t Param
 	int IDOfGroup = RunningID++;
 	int LftOfGroup = RunningLft++;
 	
-	index_set IndexSet = Spec.IndexSet;
+	index_set_h IndexSet = Spec.IndexSet;
 	if(IsValid(IndexSet))
 	{
 		size_t Level = (size_t) (Dpt + 1) / 2; //NOTE: This is kind of abusive and depends on the structure not changing a lot;
@@ -138,7 +138,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, handle_t Param
 			
 			WriteParametersForParameterGroupToDatabase(DataSet, ParameterGroupHandle, Db, RunningID, RunningLft, Dpt + 2 , Indexes, Level);
 			
-			for(parameter_group ChildGroup : Spec.ChildrenGroups)
+			for(parameter_group_h ChildGroup : Spec.ChildrenGroups)
 			{
 				ExportParameterGroupRecursivelyToDatabase(DataSet, ChildGroup.Handle, Db, RunningID, RunningLft, Dpt + 2, Indexes);
 			}
@@ -491,7 +491,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 	}
 	
 	inca_model *Model = DataSet->Model;
-	std::map<int, index_set> IDToIndexSet;
+	std::map<int, index_set_h> IDToIndexSet;
 	std::vector<std::vector<const char *>> IndexNames;
 	IndexNames.resize(Model->FirstUnusedIndexSetHandle);
 	
@@ -502,14 +502,14 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		if(Entry.ParentID == 0) continue; //NOTE: Ignore the root node
 		if(Entry.IsIndexer)
 		{
-			parameter_group Group = GetParameterGroupHandle(Model, Entry.Name.data());
+			parameter_group_h Group = GetParameterGroupHandle(Model, Entry.Name.data());
 			parameter_group_spec &Spec = Model->ParameterGroupSpecs[Group.Handle];
 			IDToIndexSet[Entry.ID] = Spec.IndexSet;
 		}
 		else if(Entry.IsIndex)
 		{
 			//NOTE: Indexes appear several times in the database structure, so we have to make sure we add them uniquely.
-			index_set IndexSet = IDToIndexSet[Entry.ParentID];
+			index_set_h IndexSet = IDToIndexSet[Entry.ParentID];
 			bool Found = false;
 			for(const char * IndexName : IndexNames[IndexSet.Handle]) //NOTE: No obvious way to use the std::find since we need to compare using strcmp.
 			{
@@ -582,7 +582,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		
 		if(Entry.IsIndex)
 		{
-			index_set IndexSet = IDToIndexSet[Entry.ParentID];
+			index_set_h IndexSet = IDToIndexSet[Entry.ParentID];
 			index_t Index = DataSet->IndexNamesToHandle[IndexSet.Handle][Entry.Name.data()];
 			
 			Level = Entry.Dpt / 2; //NOTE: This is kind of abusive. Depends a lot on the format not changing at all.
@@ -603,7 +603,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 
 struct database_structure_tree
 {
-	index_set IndexSet;
+	index_set_h IndexSet;
 	std::vector<handle_t> Handles;
 	std::vector<database_structure_tree> Children;
 };
@@ -613,7 +613,7 @@ PlaceUnitInTreeStructureRecursively(storage_unit_specifier &Unit, std::vector<da
 {	
 	for(database_structure_tree& Tree : TreeStructure)
 	{
-		index_set IndexSet = {};
+		index_set_h IndexSet = {};
 		if(!Unit.IndexSets.empty())
 		{
 			IndexSet = Unit.IndexSets[CurrentLevel];
@@ -668,9 +668,9 @@ PrintStructureTreeRecursively(inca_model *Model, std::vector<database_structure_
 		{
 			if(IsValid(Tree.IndexSet)) for(size_t Lev = 0; Lev < CurrentLevel; ++Lev) std::cout << '\t';
 			if(Mode == 0)
-				std::cout << GetName(Model, equation {Handle} ) << std::endl;
+				std::cout << GetName(Model, equation_h {Handle} ) << std::endl;
 			else
-				std::cout << GetName(Model, input {Handle} ) << std::endl;
+				std::cout << GetName(Model, input_h {Handle} ) << std::endl;
 		}
 		PrintStructureTreeRecursively(Model, Tree.Children, CurrentLevel + 1, Mode);
 	}
@@ -745,7 +745,7 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 	
 	for(database_structure_tree &Tree : StructureTree)
 	{	
-		index_set IndexSet = Tree.IndexSet;
+		index_set_h IndexSet = Tree.IndexSet;
 		
 		if(IsValid(IndexSet))
 		{
@@ -766,9 +766,9 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 					int IDOfHandle  = RunningID++;
 					const char *Name;
 					if(Mode == 0)
-						Name = GetName(Model, equation {Handle});
+						Name = GetName(Model, equation_h {Handle});
 					else
-						Name = GetName(Model, input {Handle});
+						Name = GetName(Model, input_h {Handle});
 					
 					const char *Unit = 0;
 					if(Mode == 0 && IsValid(Model->EquationSpecs[Handle].Unit))
@@ -800,9 +800,9 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				int IDOfHandle  = RunningID++;
 				const char *Name;
 				if(Mode == 0)
-					Name = GetName(DataSet->Model, equation {Handle});
+					Name = GetName(DataSet->Model, equation_h {Handle});
 				else
-					Name = GetName(DataSet->Model, input {Handle});
+					Name = GetName(DataSet->Model, input_h {Handle});
 				
 				const char *Unit = 0;
 				if(Mode == 0 && IsValid(Model->EquationSpecs[Handle].Unit))

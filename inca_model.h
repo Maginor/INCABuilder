@@ -2,43 +2,45 @@
 #if !defined(INCA_MODEL_H)
 
 
-#define MODEL_ENTITY_HANDLE(Name) struct Name \
+//NOTE: The purpose of having unit_h, input_h, equation_h etc. be structs that contain a numeric handle rather than just letting them be a handle directly is that we can then use the C++ type system to get type safety. Unfortunately, C++ does not allow you to typedef a unique copy of a type that is not interchangable with others. However the type system WILL distinguish between two differently named structs even though they are otherwise equal.
+
+
+#define MODEL_ENTITY_HANDLE(Type) struct Type \
 { \
 	handle_t Handle; \
 }; \
-bool operator==(const Name &A, const Name &B) { return A.Handle == B.Handle; } \
-bool operator!=(const Name &A, const Name &B) { return A.Handle != B.Handle; } \
-bool operator<(const Name &A, const Name &B) { return A.Handle < B.Handle; } \
-inline bool IsValid(Name H) { return H.Handle > 0; }
+bool operator==(const Type &A, const Type &B) { return A.Handle == B.Handle; } \
+bool operator!=(const Type &A, const Type &B) { return A.Handle != B.Handle; } \
+bool operator<(const Type &A, const Type &B) { return A.Handle < B.Handle; } \
+inline bool IsValid(Type H) { return H.Handle > 0; }
 
-MODEL_ENTITY_HANDLE(unit)
+MODEL_ENTITY_HANDLE(unit_h)
 
-MODEL_ENTITY_HANDLE(input)
-MODEL_ENTITY_HANDLE(equation)
-MODEL_ENTITY_HANDLE(parameter_double)
-MODEL_ENTITY_HANDLE(parameter_uint)
-MODEL_ENTITY_HANDLE(parameter_bool)
-MODEL_ENTITY_HANDLE(parameter_ptime)
+MODEL_ENTITY_HANDLE(input_h)
+MODEL_ENTITY_HANDLE(equation_h)
+MODEL_ENTITY_HANDLE(parameter_double_h)
+MODEL_ENTITY_HANDLE(parameter_uint_h)
+MODEL_ENTITY_HANDLE(parameter_bool_h)
+MODEL_ENTITY_HANDLE(parameter_ptime_h)
 
-MODEL_ENTITY_HANDLE(solver)
+MODEL_ENTITY_HANDLE(solver_h)
 
-MODEL_ENTITY_HANDLE(index_set)
+MODEL_ENTITY_HANDLE(index_set_h)
 
-MODEL_ENTITY_HANDLE(parameter_group)
+MODEL_ENTITY_HANDLE(parameter_group_h)
 
 #undef MODEL_ENTITY_HANDLE
 
 
-struct parameter_value
+
+union parameter_value
 {
-	union
-	{
-		double ValDouble;
-		u64 ValUInt;
-		u64 ValBool; //NOTE: Since this is a union we don't save space by making the bool smaller any way.
-		s64 ValTime; //NOTE: Seconds since 1/1/1970
-	};
+	double ValDouble;
+	u64 ValUInt;
+	u64 ValBool; //NOTE: Since this is a union we don't save space by making the bool smaller any way.
+	s64 ValTime; //NOTE: Seconds since 1/1/1970
 };
+
 
 enum parameter_type
 {
@@ -56,13 +58,13 @@ struct parameter_spec
 	parameter_value Max;
 	parameter_value Default;
 	
-	unit Unit;
+	unit_h Unit;
 	const char *Description;
 	
-	parameter_group Group;
+	parameter_group_h Group;
 	
 	//NOTE: This not set before EndModelDefinition:
-	std::vector<index_set> IndexSetDependencies;
+	std::vector<index_set_h> IndexSetDependencies;
 };
 
 struct unit_spec
@@ -83,9 +85,9 @@ typedef INCA_SOLVER_FUNCTION(inca_solver_function);
 struct parameter_group_spec
 {
 	const char *Name;
-	parameter_group ParentGroup;
-	std::vector<parameter_group> ChildrenGroups;
-	index_set IndexSet;
+	parameter_group_h ParentGroup;
+	std::vector<parameter_group_h> ChildrenGroups;
+	index_set_h IndexSet;
 	std::vector<handle_t> Parameters;
 };
 
@@ -116,28 +118,28 @@ struct equation_spec
 	const char *Name;
 	equation_type Type;
 	
-	unit Unit;
+	unit_h Unit;
 	
-	parameter_double InitialValue;
+	parameter_double_h InitialValue;
 	double ExplicitInitialValue;
 	bool HasExplicitInitialValue;
-	equation InitialValueEquation;
+	equation_h InitialValueEquation;
 	
 	bool ResetEveryTimestep;         //NOTE: Only used for Type == EquationType_ODE.
 	
 	bool EquationIsSet;              //NOTE: Whether or not the equation body has been provided.
 	
-	index_set CumulatesOverIndexSet; //NOTE: Only used for Type == EquationType_Cumulative.
-	equation Cumulates;              //NOTE: Only used for Type == EquationType_Cumulative.
+	index_set_h CumulatesOverIndexSet; //NOTE: Only used for Type == EquationType_Cumulative.
+	equation_h Cumulates;              //NOTE: Only used for Type == EquationType_Cumulative.
 	
-	solver Solver;
+	solver_h Solver;
 	
 	//NOTE: These are built during EndModelDefinition:
-	std::set<index_set> IndexSetDependencies;
+	std::set<index_set_h> IndexSetDependencies;
 	std::set<handle_t>  ParameterDependencies;
-	std::set<input>     InputDependencies;
-	std::set<equation>  DirectResultDependencies;
-	std::set<equation>  DirectLastResultDependencies;
+	std::set<input_h>     InputDependencies;
+	std::set<equation_h>  DirectResultDependencies;
+	std::set<equation_h>  DirectLastResultDependencies;
 	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
@@ -150,9 +152,9 @@ struct solver_spec
 	inca_solver_function *SolverFunction;
 	
 	//NOTE: These are built during EndModelDefinition:
-	std::set<index_set> IndexSetDependencies;
-	std::vector<equation> EquationsToSolve;
-	std::set<equation> DirectResultDependencies;
+	std::set<index_set_h> IndexSetDependencies;
+	std::vector<equation_h> EquationsToSolve;
+	std::set<equation_h> DirectResultDependencies;
 	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
@@ -162,9 +164,9 @@ struct input_spec
 {
 	const char *Name;
 	
-	unit Unit; //NOTE: Not currently used.
+	unit_h Unit; //NOTE: Not currently used.
 	
-	std::vector<index_set> IndexSetDependencies;
+	std::vector<index_set_h> IndexSetDependencies;
 };
 
 
@@ -172,9 +174,9 @@ struct input_spec
 struct iteration_data
 {
 	std::vector<handle_t>   ParametersToRead;
-	std::vector<input>      InputsToRead;
-	std::vector<equation>   ResultsToRead;
-	std::vector<equation>   LastResultsToRead;
+	std::vector<input_h>      InputsToRead;
+	std::vector<equation_h>   ResultsToRead;
+	std::vector<equation_h>   LastResultsToRead;
 };
 
 enum equation_batch_type
@@ -186,17 +188,17 @@ enum equation_batch_type
 struct equation_batch
 { 
 	equation_batch_type Type;
-	std::vector<equation> Equations;
+	std::vector<equation_h> Equations;
 	
-	solver Solver;                      //NOTE: Only for Type==BatchType_Solver.
-	std::vector<equation> EquationsODE; //NOTE: Only for Type==BatchType_Solver.
+	solver_h Solver;                      //NOTE: Only for Type==BatchType_Solver.
+	std::vector<equation_h> EquationsODE; //NOTE: Only for Type==BatchType_Solver.
 	
-	std::vector<equation> InitialValueOrder; //NOTE: The initial value setup of equations happens in a different order than the execution order during model run because the intial value equations may have different dependencies than the equations they are initial values for.
+	std::vector<equation_h> InitialValueOrder; //NOTE: The initial value setup of equations happens in a different order than the execution order during model run because the intial value equations may have different dependencies than the equations they are initial values for.
 };
 
 struct equation_batch_group
 {
-	std::vector<index_set> IndexSets;
+	std::vector<index_set_h> IndexSets;
 	std::vector<iteration_data> IterationData;
 	size_t FirstBatch;
 	size_t LastBatch;
@@ -204,7 +206,7 @@ struct equation_batch_group
 
 struct storage_unit_specifier
 {
-	std::vector<index_set> IndexSets;
+	std::vector<index_set_h> IndexSets;
 	std::vector<handle_t> Handles;
 };
 
@@ -292,8 +294,8 @@ struct inca_model
 };
 
 #define FOR_ALL_BATCH_EQUATIONS(Batch, Do) \
-for(equation Equation : Batch.Equations) { Do } \
-if(Batch.Type == BatchType_Solver) { for(equation Equation : Batch.EquationsODE) { Do } }
+for(equation_h Equation : Batch.Equations) { Do } \
+if(Batch.Type == BatchType_Solver) { for(equation_h Equation : Batch.EquationsODE) { Do } }
 
 #if !defined(INCA_EQUATION_PROFILING)
 #define INCA_EQUATION_PROFILING 0
@@ -487,16 +489,16 @@ inline const char * GetName(inca_model *Model, Type H) \
 	return Model->NType##Specs[H.Handle].Name; \
 }
 
-GET_ENTITY_NAME(equation, Equation)
-GET_ENTITY_NAME(input, Input)
-GET_ENTITY_NAME(parameter_double, Parameter)
-GET_ENTITY_NAME(parameter_uint, Parameter)
-GET_ENTITY_NAME(parameter_bool, Parameter)
-GET_ENTITY_NAME(parameter_ptime, Parameter)
-GET_ENTITY_NAME(index_set, IndexSet)
-GET_ENTITY_NAME(parameter_group, ParameterGroup)
-GET_ENTITY_NAME(solver, Solver)
-GET_ENTITY_NAME(unit, Unit)
+GET_ENTITY_NAME(equation_h, Equation)
+GET_ENTITY_NAME(input_h, Input)
+GET_ENTITY_NAME(parameter_double_h, Parameter)
+GET_ENTITY_NAME(parameter_uint_h, Parameter)
+GET_ENTITY_NAME(parameter_bool_h, Parameter)
+GET_ENTITY_NAME(parameter_ptime_h, Parameter)
+GET_ENTITY_NAME(index_set_h, IndexSet)
+GET_ENTITY_NAME(parameter_group_h, ParameterGroup)
+GET_ENTITY_NAME(solver_h, Solver)
+GET_ENTITY_NAME(unit_h, Unit)
 
 #undef GET_ENTITY_NAME
 
@@ -506,32 +508,32 @@ GetParameterName(inca_model *Model, handle_t ParameterHandle) //NOTE: In case we
 	return Model->ParameterSpecs[ParameterHandle].Name;
 }
 
-#define GET_ENTITY_HANDLE(Type, NType, NType2) \
-inline Type Get##NType2##Handle(inca_model *Model, const char *Name) \
+#define GET_ENTITY_HANDLE(Type, Typename, Typename2) \
+inline Type Get##Typename2##Handle(inca_model *Model, const char *Name) \
 { \
 	handle_t Handle = 0; \
-	auto Find = Model->NType##NameToHandle.find(Name); \
-	if(Find != Model->NType##NameToHandle.end()) \
+	auto Find = Model->Typename##NameToHandle.find(Name); \
+	if(Find != Model->Typename##NameToHandle.end()) \
 	{ \
 		Handle = Find->second; \
 	} \
 	else \
 	{ \
-		std::cout << "ERROR: Tried to look up the handle of the " << #NType << " \"" << Name << "\", but it was not registered with the model." << std::endl; \
+		std::cout << "ERROR: Tried to look up the handle of the " << #Typename << " \"" << Name << "\", but it was not registered with the model." << std::endl; \
 		exit(0);\
 	} \
 	return { Handle }; \
 }
 
-GET_ENTITY_HANDLE(equation, Equation, Equation)
-GET_ENTITY_HANDLE(input, Input, Input)
-GET_ENTITY_HANDLE(parameter_double, Parameter, ParameterDouble)
-GET_ENTITY_HANDLE(parameter_uint, Parameter, ParameterUInt)
-GET_ENTITY_HANDLE(parameter_bool, Parameter, ParameterBool)
-GET_ENTITY_HANDLE(parameter_ptime, Parameter, ParameterTime)
-GET_ENTITY_HANDLE(index_set, IndexSet, IndexSet)
-GET_ENTITY_HANDLE(parameter_group, ParameterGroup, ParameterGroup)
-GET_ENTITY_HANDLE(solver, Solver, Solver)
+GET_ENTITY_HANDLE(equation_h, Equation, Equation)
+GET_ENTITY_HANDLE(input_h, Input, Input)
+GET_ENTITY_HANDLE(parameter_double_h, Parameter, ParameterDouble)
+GET_ENTITY_HANDLE(parameter_uint_h, Parameter, ParameterUInt)
+GET_ENTITY_HANDLE(parameter_bool_h, Parameter, ParameterBool)
+GET_ENTITY_HANDLE(parameter_ptime_h, Parameter, ParameterTime)
+GET_ENTITY_HANDLE(index_set_h, IndexSet, IndexSet)
+GET_ENTITY_HANDLE(parameter_group_h, ParameterGroup, ParameterGroup)
+GET_ENTITY_HANDLE(solver_h, Solver, Solver)
 
 #undef GET_ENTITY_HANDLE
 
@@ -560,60 +562,60 @@ if(Model->Finalized) \
 	exit(0); \
 }
 
-#define REGISTER_MODEL_ENTITY(Model, NType, Name) \
-auto Find = Model->NType##NameToHandle.find(Name); \
-if(Find != Model->NType##NameToHandle.end()) \
+#define REGISTER_MODEL_ENTITY(Model, Typename, Handlename, Name) \
+auto Find = Model->Typename##NameToHandle.find(Name); \
+if(Find != Model->Typename##NameToHandle.end()) \
 { \
-	NType.Handle = Find->second; \
+	Handlename.Handle = Find->second; \
 } \
 else \
 { \
-	NType.Handle = Model->FirstUnused##NType##Handle++; \
-	Model->NType##NameToHandle[Name] = NType.Handle; \
+	Handlename.Handle = Model->FirstUnused##Typename##Handle++; \
+	Model->Typename##NameToHandle[Name] = Handlename.Handle; \
 } \
-if(Model->NType##Specs.size() <= NType.Handle) \
+if(Model->Typename##Specs.size() <= Handlename.Handle) \
 { \
-	Model->NType##Specs.resize(NType.Handle + 1, {}); \
+	Model->Typename##Specs.resize(Handlename.Handle + 1, {}); \
 } \
-Model->NType##Specs[NType.Handle].Name = Name;
+Model->Typename##Specs[Handlename.Handle].Name = Name;
 
-inline unit 
+inline unit_h
 RegisterUnit(inca_model *Model, const char *Name = "dimensionless")
 {
 	REGISTRATION_BLOCK(Model)
 	
-	unit Unit = {};
+	unit_h Unit = {};
 	
-	REGISTER_MODEL_ENTITY(Model, Unit, Name);
+	REGISTER_MODEL_ENTITY(Model, Unit, Unit, Name);
 	
 	return Unit;
 }
 
-inline index_set
+inline index_set_h
 RegisterIndexSet(inca_model *Model, const char *Name, index_set_type Type = IndexSetType_Basic)
 {
 	REGISTRATION_BLOCK(Model)
 
-	index_set IndexSet = {};
-	REGISTER_MODEL_ENTITY(Model, IndexSet, Name);
+	index_set_h IndexSet = {};
+	REGISTER_MODEL_ENTITY(Model, IndexSet, IndexSet, Name);
 	
 	Model->IndexSetSpecs[IndexSet.Handle].Type = Type;
 	
 	return IndexSet;
 }
 
-inline index_set
+inline index_set_h
 RegisterIndexSetBranched(inca_model *Model, const char *Name)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	index_set IndexSet = RegisterIndexSet(Model, Name, IndexSetType_Branched);
+	index_set_h IndexSet = RegisterIndexSet(Model, Name, IndexSetType_Branched);
 	
 	return IndexSet;
 }
 
 inline index_t
-RequireIndex(inca_model *Model, index_set IndexSet, const char *IndexName)
+RequireIndex(inca_model *Model, index_set_h IndexSet, const char *IndexName)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -637,13 +639,13 @@ RequireIndex(inca_model *Model, index_set IndexSet, const char *IndexName)
 }
 
 
-inline parameter_group
-RegisterParameterGroup(inca_model *Model, const char *Name, index_set IndexSet = {0})
+inline parameter_group_h
+RegisterParameterGroup(inca_model *Model, const char *Name, index_set_h IndexSet = {0})
 {
 	REGISTRATION_BLOCK(Model)
 	
-	parameter_group ParameterGroup = {};
-	REGISTER_MODEL_ENTITY(Model, ParameterGroup, Name)
+	parameter_group_h ParameterGroup = {};
+	REGISTER_MODEL_ENTITY(Model, ParameterGroup, ParameterGroup, Name)
 	
 	Model->ParameterGroupSpecs[ParameterGroup.Handle].IndexSet = IndexSet;
 	
@@ -651,7 +653,7 @@ RegisterParameterGroup(inca_model *Model, const char *Name, index_set IndexSet =
 }
 
 inline void
-SetParentGroup(inca_model *Model, parameter_group Child, parameter_group Parent)
+SetParentGroup(inca_model *Model, parameter_group_h Child, parameter_group_h Parent)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -666,24 +668,24 @@ SetParentGroup(inca_model *Model, parameter_group Child, parameter_group Parent)
 	ParentSpec.ChildrenGroups.push_back(Child);
 }
 
-inline input
+inline input_h
 RegisterInput(inca_model *Model, const char *Name)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	input Input = {};
-	REGISTER_MODEL_ENTITY(Model, Input, Name)
+	input_h Input = {};
+	REGISTER_MODEL_ENTITY(Model, Input, Input, Name)
 	
 	return Input;
 }
 
-inline parameter_double
-RegisterParameterDouble(inca_model *Model, parameter_group Group, const char *Name, unit Unit, double Default, double Min = -DBL_MAX, double Max = DBL_MAX, const char *Description = 0)
+inline parameter_double_h
+RegisterParameterDouble(inca_model *Model, parameter_group_h Group, const char *Name, unit_h Unit, double Default, double Min = -DBL_MAX, double Max = DBL_MAX, const char *Description = 0)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	parameter_double Parameter = {};
-	REGISTER_MODEL_ENTITY(Model, Parameter, Name)
+	parameter_double_h Parameter = {};
+	REGISTER_MODEL_ENTITY(Model, Parameter, Parameter, Name)
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Double;
@@ -699,13 +701,13 @@ RegisterParameterDouble(inca_model *Model, parameter_group Group, const char *Na
 	return Parameter;
 }
 
-inline parameter_uint
-RegisterParameterUInt(inca_model *Model, parameter_group Group, const char *Name, unit Unit, u64 Default, u64 Min = 0, u64 Max = 0xffffffffffffffff, const char *Description = 0)
+inline parameter_uint_h
+RegisterParameterUInt(inca_model *Model, parameter_group_h Group, const char *Name, unit_h Unit, u64 Default, u64 Min = 0, u64 Max = 0xffffffffffffffff, const char *Description = 0)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	parameter_uint Parameter = {};
-	REGISTER_MODEL_ENTITY(Model, Parameter, Name)
+	parameter_uint_h Parameter = {};
+	REGISTER_MODEL_ENTITY(Model, Parameter, Parameter, Name)
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_UInt;
@@ -721,13 +723,13 @@ RegisterParameterUInt(inca_model *Model, parameter_group Group, const char *Name
 	return Parameter;
 }
 
-inline parameter_bool
-RegisterParameterBool(inca_model *Model, parameter_group Group, const char *Name, bool Default, const char *Description = 0)
+inline parameter_bool_h
+RegisterParameterBool(inca_model *Model, parameter_group_h Group, const char *Name, bool Default, const char *Description = 0)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	parameter_bool Parameter = {};
-	REGISTER_MODEL_ENTITY(Model, Parameter, Name)
+	parameter_bool_h Parameter = {};
+	REGISTER_MODEL_ENTITY(Model, Parameter, Parameter, Name)
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Bool;
@@ -742,13 +744,13 @@ RegisterParameterBool(inca_model *Model, parameter_group Group, const char *Name
 	return Parameter;
 }
 
-inline parameter_ptime
-RegisterParameterDate(inca_model *Model, parameter_group Group, const char *Name, const char *Default, const char *Min = "1000-1-1", const char *Max = "3000-12-31", const char *Description = 0)
+inline parameter_ptime_h
+RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Name, const char *Default, const char *Min = "1000-1-1", const char *Max = "3000-12-31", const char *Description = 0)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	parameter_ptime Parameter = {};
-	REGISTER_MODEL_ENTITY(Model, Parameter, Name)
+	parameter_ptime_h Parameter = {};
+	REGISTER_MODEL_ENTITY(Model, Parameter, Parameter, Name)
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Time;
@@ -764,7 +766,7 @@ RegisterParameterDate(inca_model *Model, parameter_group Group, const char *Name
 }
 
 inline void
-SetEquation(inca_model *Model, equation Equation, inca_equation EquationBody, bool Override = false)
+SetEquation(inca_model *Model, equation_h Equation, inca_equation EquationBody, bool Override = false)
 {
 	//REGISTRATION_BLOCK(Model) //NOTE: We can't use REGISTRATION_BLOCK since the user don't call the SetEquation explicitly, it is called through the macro EQUATION, and so they would not understand the error message.
 	if(Model->Finalized)
@@ -784,13 +786,13 @@ SetEquation(inca_model *Model, equation Equation, inca_equation EquationBody, bo
 	Model->EquationSpecs[Equation.Handle].EquationIsSet = true;
 }
 
-static equation
-RegisterEquation(inca_model *Model, const char *Name, unit Unit, equation_type Type = EquationType_Basic)
+static equation_h
+RegisterEquation(inca_model *Model, const char *Name, unit_h Unit, equation_type Type = EquationType_Basic)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	equation Equation = {};
-	REGISTER_MODEL_ENTITY(Model, Equation, Name)
+	equation_h Equation = {};
+	REGISTER_MODEL_ENTITY(Model, Equation, Equation, Name)
 	
 	if(Model->Equations.size() <= Equation.Handle)
 	{
@@ -803,16 +805,16 @@ RegisterEquation(inca_model *Model, const char *Name, unit Unit, equation_type T
 	return Equation;
 }
 
-inline equation
-RegisterEquationODE(inca_model *Model, const char *Name, unit Unit)
+inline equation_h
+RegisterEquationODE(inca_model *Model, const char *Name, unit_h Unit)
 {
 	REGISTRATION_BLOCK(Model)
 	
 	return RegisterEquation(Model, Name, Unit, EquationType_ODE);
 }
 
-inline equation
-RegisterEquationInitialValue(inca_model *Model, const char *Name, unit Unit)
+inline equation_h
+RegisterEquationInitialValue(inca_model *Model, const char *Name, unit_h Unit)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -820,10 +822,10 @@ RegisterEquationInitialValue(inca_model *Model, const char *Name, unit Unit)
 }
 
 //NOTE: CumulateResult is implemented in inca_data_set.cpp
-static double CumulateResult(inca_data_set *DataSet, equation Result, index_set CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase);
+static double CumulateResult(inca_data_set *DataSet, equation_h Result, index_set_h CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase);
 
-inline equation
-RegisterEquationCumulative(inca_model *Model, const char *Name, equation Cumulates, index_set CumulatesOverIndexSet)
+inline equation_h
+RegisterEquationCumulative(inca_model *Model, const char *Name, equation_h Cumulates, index_set_h CumulatesOverIndexSet)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -834,8 +836,8 @@ RegisterEquationCumulative(inca_model *Model, const char *Name, equation Cumulat
 		exit(0);
 	}
 	
-	unit Unit = Model->EquationSpecs[Cumulates.Handle].Unit;
-	equation Equation = RegisterEquation(Model, Name, Unit, EquationType_Cumulative);
+	unit_h Unit = Model->EquationSpecs[Cumulates.Handle].Unit;
+	equation_h Equation = RegisterEquation(Model, Name, Unit, EquationType_Cumulative);
 	Model->EquationSpecs[Equation.Handle].CumulatesOverIndexSet = CumulatesOverIndexSet;
 	Model->EquationSpecs[Equation.Handle].Cumulates = Cumulates;
 	
@@ -851,7 +853,7 @@ RegisterEquationCumulative(inca_model *Model, const char *Name, equation Cumulat
 
 //TODO: Give warnings or errors when setting a initial value on an equation that already has one.
 inline void
-SetInitialValue(inca_model *Model, equation Equation, parameter_double InitialValue)
+SetInitialValue(inca_model *Model, equation_h Equation, parameter_double_h InitialValue)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -864,7 +866,7 @@ SetInitialValue(inca_model *Model, equation Equation, parameter_double InitialVa
 }
 
 inline void
-SetInitialValue(inca_model *Model, equation Equation, double Value)
+SetInitialValue(inca_model *Model, equation_h Equation, double Value)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -873,7 +875,7 @@ SetInitialValue(inca_model *Model, equation Equation, double Value)
 }
 
 inline void
-SetInitialValue(inca_model *Model, equation Equation, equation InitialValueEquation)
+SetInitialValue(inca_model *Model, equation_h Equation, equation_h InitialValueEquation)
 {
 	REGISTRATION_BLOCK(Model)
 	if(Model->EquationSpecs[InitialValueEquation.Handle].Type != EquationType_InitialValue)
@@ -891,7 +893,7 @@ SetInitialValue(inca_model *Model, equation Equation, equation InitialValueEquat
 }
 
 inline void
-ResetEveryTimestep(inca_model *Model, equation Equation)
+ResetEveryTimestep(inca_model *Model, equation_h Equation)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -906,13 +908,13 @@ ResetEveryTimestep(inca_model *Model, equation Equation)
 	Spec.ResetEveryTimestep = true;
 }
 
-static solver
+static solver_h
 RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_function *SolverFunction)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	solver Solver = {};
-	REGISTER_MODEL_ENTITY(Model, Solver, Name)
+	solver_h Solver = {};
+	REGISTER_MODEL_ENTITY(Model, Solver, Solver, Name)
 	
 	if(h <= 0.0 || h > 1.0)
 	{
@@ -927,7 +929,7 @@ RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_functi
 }
 
 static void
-SetSolver(inca_model *Model, equation Equation, solver Solver)
+SetSolver(inca_model *Model, equation_h Equation, solver_h Solver)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -941,7 +943,7 @@ SetSolver(inca_model *Model, equation Equation, solver Solver)
 }
 
 inline void
-AddInputIndexSetDependency(inca_model *Model, input Input, index_set IndexSet)
+AddInputIndexSetDependency(inca_model *Model, input_h Input, index_set_h IndexSet)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -1001,19 +1003,19 @@ SetEquation(Model, ResultH, \
 //NOTE: These inline functions are used for type safety, which we don't get from macros.
 //NOTE: We don't provide direct access to Time parameters since we want to encapsulate their storage. Instead we have accessor macros like CURRENT_DAY_OF_YEAR.
 inline double
-GetCurrentParameter(value_set_accessor *ValueSet, parameter_double Parameter)
+GetCurrentParameter(value_set_accessor *ValueSet, parameter_double_h Parameter)
 {
 	return ValueSet->CurParameters[Parameter.Handle].ValDouble;
 }
 
 inline u64
-GetCurrentParameter(value_set_accessor *ValueSet, parameter_uint Parameter)
+GetCurrentParameter(value_set_accessor *ValueSet, parameter_uint_h Parameter)
 {
 	return ValueSet->CurParameters[Parameter.Handle].ValUInt;
 }
 
 inline bool
-GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool Parameter)
+GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool_h Parameter)
 {
 	return ValueSet->CurParameters[Parameter.Handle].ValBool;
 }
@@ -1024,7 +1026,7 @@ size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndex
 
 
 template<typename... T> double
-GetCurrentParameter(value_set_accessor *ValueSet, parameter_double Parameter, T... Indexes)
+GetCurrentParameter(value_set_accessor *ValueSet, parameter_double_h Parameter, T... Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
@@ -1034,7 +1036,7 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_double Parameter, T.
 }
 
 template<typename... T> u64
-GetCurrentParameter(value_set_accessor *ValueSet, parameter_uint Parameter, T... Indexes)
+GetCurrentParameter(value_set_accessor *ValueSet, parameter_uint_h Parameter, T... Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
@@ -1044,7 +1046,7 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_uint Parameter, T...
 }
 
 template<typename... T> bool
-GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool Parameter, T... Indexes)
+GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool_h Parameter, T... Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
@@ -1055,19 +1057,19 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool Parameter, T...
 
 
 inline double
-GetCurrentResult(value_set_accessor *ValueSet, equation Result)
+GetCurrentResult(value_set_accessor *ValueSet, equation_h Result)
 {
 	return ValueSet->CurResults[Result.Handle];
 }
 
 inline double 
-GetLastResult(value_set_accessor *ValueSet, equation LastResult)
+GetLastResult(value_set_accessor *ValueSet, equation_h LastResult)
 {
 	return ValueSet->LastResults[LastResult.Handle];
 }
 
 template<typename... T> double
-GetCurrentResult(value_set_accessor *ValueSet, equation Result, T... Indexes)
+GetCurrentResult(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
@@ -1077,7 +1079,7 @@ GetCurrentResult(value_set_accessor *ValueSet, equation Result, T... Indexes)
 }
 
 template<typename... T> double
-GetLastResult(value_set_accessor *ValueSet, equation Result, T... Indexes)
+GetLastResult(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
@@ -1088,14 +1090,14 @@ GetLastResult(value_set_accessor *ValueSet, equation Result, T... Indexes)
 }
 
 template<typename... T> double
-GetEarlierResult(value_set_accessor *ValueSet, equation Result, u64 StepBack, T...Indexes)
+GetEarlierResult(value_set_accessor *ValueSet, equation_h Result, u64 StepBack, T...Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
 	index_t OverrideIndexes[OverrideCount] = {Indexes...};
 	size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, OverrideIndexes, OverrideCount, Result.Handle);
 	
-	//TODO: Make proper accessor for this that belongs to inca_data_set.cpp
+	//TODO: Make proper accessor for this that belongs to inca_data_set.cpp so that this file does not need to have knowledge of the inner workings of the storage system.
 	double *Initial = DataSet->ResultData + Offset;
 	//NOTE: Initial points to the initial value (adding TotalCount once gives us timestep 0)
 	if(StepBack > ValueSet->Timestep)
@@ -1106,7 +1108,7 @@ GetEarlierResult(value_set_accessor *ValueSet, equation Result, u64 StepBack, T.
 }
 
 inline double
-GetCurrentInput(value_set_accessor *ValueSet, input Input)
+GetCurrentInput(value_set_accessor *ValueSet, input_h Input)
 {
 	return ValueSet->CurInputs[Input.Handle];
 }
@@ -1115,14 +1117,14 @@ GetCurrentInput(value_set_accessor *ValueSet, input Input)
 
 
 inline double
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double Parameter)
+RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double_h Parameter)
 {
 	ValueSet->ParameterDependency[Parameter.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double Parameter, T... Indexes)
+RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double_h Parameter, T... Indexes)
 {
 	//TODO: @ImplementMe!
 	
@@ -1130,14 +1132,14 @@ RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double Param
 }
 
 inline u64
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint Parameter)
+RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint_h Parameter)
 {
 	ValueSet->ParameterDependency[Parameter.Handle]++;
 	return 0;
 }
 
 template<typename... T> double
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint Parameter, T... Indexes)
+RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint_h Parameter, T... Indexes)
 {
 	//TODO: @ImplementMe!
 	
@@ -1145,14 +1147,14 @@ RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint Paramet
 }
 
 inline bool
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool Parameter)
+RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Parameter)
 {
 	ValueSet->ParameterDependency[Parameter.Handle]++;
 	return false;
 }
 
 template<typename... T> double
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool Parameter, T... Indexes)
+RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Parameter, T... Indexes)
 {
 	//TODO: @ImplementMe!
 	
@@ -1160,21 +1162,21 @@ RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool Paramet
 }
 
 inline double
-RegisterInputDependency(value_set_accessor *ValueSet, input Input)
+RegisterInputDependency(value_set_accessor *ValueSet, input_h Input)
 {
 	ValueSet->InputDependency[Input.Handle]++;
 	return 0.0;
 }
 
 inline double
-RegisterResultDependency(value_set_accessor *ValueSet, equation Result)
+RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result)
 {
 	ValueSet->ResultDependency[Result.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
-RegisterResultDependency(value_set_accessor *ValueSet, equation Result, T... Indexes)
+RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
 	//TODO: May need to do more stuff here
 	ValueSet->ResultCrossIndexDependency[Result.Handle]++;
@@ -1183,14 +1185,14 @@ RegisterResultDependency(value_set_accessor *ValueSet, equation Result, T... Ind
 }
 
 inline double
-RegisterLastResultDependency(value_set_accessor *ValueSet, equation Result)
+RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result)
 {
 	ValueSet->LastResultDependency[Result.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
-RegisterLastResultDependency(value_set_accessor *ValueSet, equation Result, T... Indexes)
+RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
 	//TODO: @ImplementMe!
 	
@@ -1201,7 +1203,7 @@ RegisterLastResultDependency(value_set_accessor *ValueSet, equation Result, T...
 #define SET_RESULT(ResultH, Value, ...) {if(ValueSet__->Running){SetResult(ValueSet__, Value, ResultH, ##__VA_ARGS__);}}
 
 template<typename... T> void
-SetResult(value_set_accessor *ValueSet, double Value, equation Result, T... Indexes)
+SetResult(value_set_accessor *ValueSet, double Value, equation_h Result, T... Indexes)
 {
 	inca_data_set *DataSet = ValueSet->DataSet;
 	const size_t OverrideCount = sizeof...(Indexes);
@@ -1218,20 +1220,20 @@ SetResult(value_set_accessor *ValueSet, double Value, equation Result, T... Inde
 #define INPUT_COUNT(IndexSetH) (ValueSet__->Running ? InputCount(ValueSet__, IndexSetH) : 0)
 
 inline index_t
-RegisterIndexSetDependency(value_set_accessor *ValueSet, index_set IndexSet)
+RegisterIndexSetDependency(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	ValueSet->DirectIndexSetDependency[IndexSet.Handle]++;
 	return 0;
 }
 
 inline index_t
-GetCurrentIndex(value_set_accessor *ValueSet, index_set IndexSet)
+GetCurrentIndex(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	return ValueSet->CurrentIndexes[IndexSet.Handle];
 }
 
 inline index_t
-GetPreviousIndex(value_set_accessor *ValueSet, index_set IndexSet)
+GetPreviousIndex(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	index_t CurrentIndex = GetCurrentIndex(ValueSet, IndexSet);
 	if(CurrentIndex == 0) return 0;
@@ -1239,21 +1241,21 @@ GetPreviousIndex(value_set_accessor *ValueSet, index_set IndexSet)
 }
 
 inline size_t
-InputCount(value_set_accessor *ValueSet, index_set IndexSet)
+InputCount(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	index_t Current = GetCurrentIndex(ValueSet, IndexSet);
 	return ValueSet->DataSet->BranchInputs[IndexSet.Handle][Current].Count;
 }
 
 inline size_t
-BranchInputIteratorEnd(value_set_accessor *ValueSet, index_set IndexSet, index_t Branch)
+BranchInputIteratorEnd(value_set_accessor *ValueSet, index_set_h IndexSet, index_t Branch)
 {
 	return ValueSet->Running ? ValueSet->DataSet->BranchInputs[IndexSet.Handle][Branch].Count : 1; //NOTE: The count is always one greater than the largest index, so it is guaranteed to be invalid.
 }
 
 struct branch_input_iterator
 {
-	index_set IndexSet;
+	index_set_h IndexSet;
 	index_t *InputIndexes;
 	size_t CurrentInputIndexIndex;
 	
@@ -1266,7 +1268,7 @@ struct branch_input_iterator
 };
 
 inline branch_input_iterator
-BranchInputIteratorBegin(value_set_accessor *ValueSet, index_set IndexSet, index_t Branch)
+BranchInputIteratorBegin(value_set_accessor *ValueSet, index_set_h IndexSet, index_t Branch)
 {
 	static index_t DummyData = 0;
 	

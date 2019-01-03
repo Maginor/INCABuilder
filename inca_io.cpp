@@ -25,7 +25,7 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 }
 
 static void
-WriteParameterValues(FILE *File, handle_t ParameterHandle, parameter_type Type, inca_data_set *DataSet, index_set *IndexSets, index_t *Indexes, size_t IndexSetCount, size_t Level)
+WriteParameterValues(FILE *File, handle_t ParameterHandle, parameter_type Type, inca_data_set *DataSet, index_set_h *IndexSets, index_t *Indexes, size_t IndexSetCount, size_t Level)
 {
 	if(IndexSetCount == 0)
 	{
@@ -35,7 +35,7 @@ WriteParameterValues(FILE *File, handle_t ParameterHandle, parameter_type Type, 
 		return;
 	}
 	
-	index_set IndexSet = IndexSets[Level];
+	index_set_h IndexSet = IndexSets[Level];
 	size_t IndexCount = DataSet->IndexCounts[IndexSet.Handle];
 	
 	for(index_t Index = 0; Index < IndexCount; ++Index)
@@ -116,10 +116,10 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	fprintf(File, "\nparameters:\n");
 	for(size_t UnitIndex = 0; UnitIndex < DataSet->ParameterStorageStructure.Units.size(); ++UnitIndex)
 	{
-		std::vector<index_set> &IndexSets = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
+		std::vector<index_set_h> &IndexSets = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
 		fprintf(File, "######################");
 		if(IndexSets.empty()) fprintf(File, " (no index sets)");
-		for(index_set IndexSet : IndexSets)
+		for(index_set_h IndexSet : IndexSets)
 		{
 			fprintf(File, " \"%s\"", GetName(Model, IndexSet));
 		}
@@ -598,7 +598,7 @@ SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values,
 	//TODO: Check that the values are in the Min-Max range? (issue warning only)
 	
 	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
-	std::vector<index_set> &IndexSetStack = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
+	std::vector<index_set_h> &IndexSetStack = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
 	
 	size_t Stride = DataSet->ParameterStorageStructure.Units[UnitIndex].Handles.size();
 	size_t DesiredCount = DataSet->ParameterStorageStructure.TotalCountForUnit[UnitIndex] / Stride;
@@ -679,7 +679,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 				exit(0);
 			}
 			const char *IndexSetName = Token.StringValue;
-			index_set IndexSet = GetIndexSetHandle(Model, IndexSetName);
+			index_set_h IndexSet = GetIndexSetHandle(Model, IndexSetName);
 			ExpectToken(Stream, Token, TokenType_Colon);
 			ExpectToken(Stream, Token, TokenType_OpenBrace);
 			if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Basic)
@@ -797,7 +797,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 			parameter_type Type = Model->ParameterSpecs[ParameterHandle].Type;
 			size_t ExpectedCount = 1;
 			size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
-			for(index_set IndexSet : DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets)
+			for(index_set_h IndexSet : DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets)
 			{
 				ExpectedCount *= DataSet->IndexCounts[IndexSet.Handle];
 			}
@@ -963,7 +963,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		const char *InputName = Token.StringValue;
 		
-		input Input = GetInputHandle(Model, InputName);
+		input_h Input = GetInputHandle(Model, InputName);
 		std::vector<const char *> IndexNames;
 		
 		ReadToken(Stream, Token);
@@ -1001,7 +1001,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			}
 		}
 		
-		std::vector<index_set> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
+		std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
 		if(IndexNames.size() != IndexSets.size())
 		{
 			PrintStreamErrorHeader(Stream);
@@ -1157,8 +1157,8 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 				if(Token.Type == TokenType_QuotedString)
 				{
 					const char *InputName = Token.StringValue;
-					input Input = GetInputHandle(Model, InputName);
-					std::vector<index_set> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
+					input_h Input = GetInputHandle(Model, InputName);
+					std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
 					if(!IndexSets.empty()) //TODO: OR we could just clear it and give a warning..
 					{
 						PrintStreamErrorHeader(Stream);
@@ -1172,7 +1172,7 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 						ReadToken(Stream, Token);
 						if(Token.Type == TokenType_QuotedString)
 						{
-							index_set IndexSet = GetIndexSetHandle(Model, Token.StringValue);
+							index_set_h IndexSet = GetIndexSetHandle(Model, Token.StringValue);
 							IndexSets.push_back(IndexSet);
 						}
 						else if(Token.Type == TokenType_CloseBrace)

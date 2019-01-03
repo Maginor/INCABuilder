@@ -798,15 +798,15 @@ EndModelDefinition(inca_model *Model)
 }
 
 //NOTE: It is kind of superfluous to both provide the stack and the stack index... But it does probably not harm either?
-#define INNER_LOOP_BODY(Name) void Name(inca_data_set *DataSet, value_set_accessor *ValueSet, equation_batch_group &BatchGroup, size_t BatchGroupIdx, s32 CurrentLevel)
+#define INNER_LOOP_BODY(Name) void Name(inca_data_set *DataSet, value_set_accessor *ValueSet, const equation_batch_group &BatchGroup, size_t BatchGroupIdx, s32 CurrentLevel)
 typedef INNER_LOOP_BODY(inca_inner_loop_body);
 
 static void
 ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_body InnerLoopBody)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	size_t BatchGroupIdx = 0;
-	for(equation_batch_group &BatchGroup : Model->BatchGroups)
+	for(const equation_batch_group &BatchGroup : Model->BatchGroups)
 	{	
 		if(BatchGroup.IndexSets.empty())
 		{
@@ -903,7 +903,7 @@ NaNTest(inca_model *Model, value_set_accessor *ValueSet, double ResultValue, equ
 }
 
 inline double
-CallEquation(inca_model *Model, value_set_accessor *ValueSet, equation_h Equation)
+CallEquation(const inca_model *Model, value_set_accessor *ValueSet, equation_h Equation)
 {
 #if INCA_EQUATION_PROFILING
 	u64 Begin = __rdtsc();
@@ -920,14 +920,14 @@ CallEquation(inca_model *Model, value_set_accessor *ValueSet, equation_h Equatio
 
 INNER_LOOP_BODY(RunInnerLoop)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	s32 BottomLevel = BatchGroup.IndexSets.size() - 1;
 	
 	//NOTE: Reading in to the Cur-buffers data that need to be updated at this iteration stage.
 	if(CurrentLevel >= 0)
 	{
-		iteration_data &IterationData = BatchGroup.IterationData[CurrentLevel];
+		const iteration_data &IterationData = BatchGroup.IterationData[CurrentLevel];
 		for(entity_handle ParameterHandle : IterationData.ParametersToRead)
 		{
 			ValueSet->CurParameters[ParameterHandle] = *ValueSet->AtParameterLookup; //NOTE: Parameter values are stored directly in the lookup since they don't change with the timestep.
@@ -965,7 +965,7 @@ INNER_LOOP_BODY(RunInnerLoop)
 		for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
 		{
 			//NOTE: Write LastResult values into the ValueSet for fast lookup.
-			equation_batch &Batch = Model->EquationBatches[BatchIdx];
+			const equation_batch &Batch = Model->EquationBatches[BatchIdx];
 			FOR_ALL_BATCH_EQUATIONS(Batch,
 				double LastResultValue = *ValueSet->AtLastResult;
 				++ValueSet->AtLastResult;
@@ -975,7 +975,7 @@ INNER_LOOP_BODY(RunInnerLoop)
 		
 		for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
 		{
-			equation_batch &Batch = Model->EquationBatches[BatchIdx];
+			const equation_batch &Batch = Model->EquationBatches[BatchIdx];
 			if(Batch.Type == BatchType_Regular)
 			{
 				//NOTE: Basic discrete timestep evaluation of equations.
@@ -1014,7 +1014,7 @@ INNER_LOOP_BODY(RunInnerLoop)
 				}
 				// NOTE: Do we need to clear DataSet->wk to 0? (Has not been needed in the solvers we have used so far...)
 				
-				solver_spec &SolverSpec = Model->SolverSpecs[Batch.Solver.Handle];
+				const solver_spec &SolverSpec = Model->SolverSpecs[Batch.Solver.Handle];
 				
 				SolverSpec.SolverFunction(SolverSpec.h, Batch.EquationsODE.size(), DataSet->x0, DataSet->wk,
 					//NOTE: This lambda is the "equation function" of the solver. It solves the set of equations once given the values in the working sets x0 and wk. It can be run by the SolverFunction many times.
@@ -1120,8 +1120,8 @@ inline void
 SetupInitialValue(inca_data_set *DataSet, value_set_accessor *ValueSet, equation_h Equation)
 {
 	
-	inca_model *Model = DataSet->Model;
-	equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
+	const inca_model *Model = DataSet->Model;
+	const equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
 	
 	equation_h InitialValueEq = Model->EquationSpecs[Equation.Handle].InitialValueEquation;
 	
@@ -1160,7 +1160,7 @@ INNER_LOOP_BODY(InitialValueSetupInnerLoop)
 	// TODO: IMPORTANT!! If an initial value equation depends on the result of an equation from a different batch than itself, that is not guaranteed to work correctly.
 	// TODO: Currently we don't report an error if that happens!
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	if(CurrentLevel >= 0)
 	{
@@ -1176,7 +1176,7 @@ INNER_LOOP_BODY(InitialValueSetupInnerLoop)
 	{
 		for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
 		{
-			equation_batch &Batch = Model->EquationBatches[BatchIdx];
+			const equation_batch &Batch = Model->EquationBatches[BatchIdx];
 			for(equation_h Equation : Batch.InitialValueOrder)
 			{
 				SetupInitialValue(DataSet, ValueSet, Equation);
@@ -1197,7 +1197,7 @@ RunModel(inca_data_set *DataSet)
 	timer SetupTimer = BeginTimer();
 #endif
 
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	//NOTE: Check that all the index sets have at least one index.
 	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
@@ -1275,11 +1275,11 @@ RunModel(inca_data_set *DataSet)
 	
 	//NOTE: Temporary storage for use by solvers:
 	size_t MaxODECount = 0;
-	for(equation_batch_group& BatchGroup : Model->BatchGroups)
+	for(const equation_batch_group& BatchGroup : Model->BatchGroups)
 	{
 		for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
 		{
-			equation_batch &Batch = Model->EquationBatches[BatchIdx];
+			const equation_batch &Batch = Model->EquationBatches[BatchIdx];
 			if(Batch.Type == BatchType_Solver)
 			{
 				size_t ODECount = Batch.EquationsODE.size();
@@ -1460,7 +1460,7 @@ PrintParameterStorageStructure(inca_data_set *DataSet)
 		return;
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	std::cout << std::endl << "**** Parameter storage structure ****" << std::endl;
 	size_t StorageCount = DataSet->ParameterStorageStructure.Units.size();
@@ -1493,7 +1493,7 @@ PrintInputStorageStructure(inca_data_set *DataSet)
 		return;
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	std::cout << std::endl << "**** Input storage structure ****" << std::endl;
 	size_t StorageCount = DataSet->InputStorageStructure.Units.size();
@@ -1521,13 +1521,13 @@ static void
 PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet)
 {
 #if INCA_EQUATION_PROFILING
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	std::cout << std::endl << "**** Equation profiles (Average cycles per evaluation) ****" << std::endl;
 	//std::cout << "Number of batches: " << Model->ResultStructure.size() << std::endl;
 	u64 SumCc = 0;
 	u64 TotalHits = 0;
 	
-	for(equation_batch_group &BatchGroup : Model->BatchGroups)
+	for(const equation_batch_group &BatchGroup : Model->BatchGroups)
 	{	
 		std::cout << std::endl;
 		if(BatchGroup.IndexSets.empty()) std::cout << "[]";
@@ -1538,7 +1538,7 @@ PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet)
 		
 		for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
 		{
-			equation_batch &Batch = Model->EquationBatches[BatchIdx];
+			const equation_batch &Batch = Model->EquationBatches[BatchIdx];
 			std::cout << "\n\t-----";
 			if(Batch.Type == BatchType_Solver) std::cout << " (SOLVER: " << GetName(Model, Batch.Solver) << ")";
 			

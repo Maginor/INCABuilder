@@ -311,7 +311,7 @@ struct branch_inputs
 
 struct inca_data_set
 {
-	inca_model *Model;
+	const inca_model *Model;
 	
 	parameter_value *ParameterData;
 	storage_structure ParameterStorageStructure;
@@ -355,7 +355,7 @@ struct value_set_accessor
 	// If Running=true, this is the actual run of the model, where equations should have access to the actual parameter values and so on.
 	
 	bool Running;
-	inca_model *Model;
+	const inca_model *Model;
 	inca_data_set *DataSet;
 	
 	u64 DayOfYear;
@@ -406,7 +406,7 @@ struct value_set_accessor
 #endif
 	
 	//NOTE: For dependency registration run:
-	value_set_accessor(inca_model *Model)
+	value_set_accessor(const inca_model *Model)
 	{
 		Running = false;
 		DataSet = 0;
@@ -484,7 +484,7 @@ struct value_set_accessor
 
 
 #define GET_ENTITY_NAME(Type, NType) \
-inline const char * GetName(inca_model *Model, Type H) \
+inline const char * GetName(const inca_model *Model, Type H) \
 { \
 	return Model->NType##Specs[H.Handle].Name; \
 }
@@ -503,13 +503,13 @@ GET_ENTITY_NAME(unit_h, Unit)
 #undef GET_ENTITY_NAME
 
 inline const char *
-GetParameterName(inca_model *Model, entity_handle ParameterHandle) //NOTE: In case we don't know the type of the parameter and just want the name.
+GetParameterName(const inca_model *Model, entity_handle ParameterHandle) //NOTE: In case we don't know the type of the parameter and just want the name.
 {
 	return Model->ParameterSpecs[ParameterHandle].Name;
 }
 
 #define GET_ENTITY_HANDLE(Type, Typename, Typename2) \
-inline Type Get##Typename2##Handle(inca_model *Model, const char *Name) \
+inline Type Get##Typename2##Handle(const inca_model *Model, const char *Name) \
 { \
 	entity_handle Handle = 0; \
 	auto Find = Model->Typename##NameToHandle.find(Name); \
@@ -538,7 +538,7 @@ GET_ENTITY_HANDLE(solver_h, Solver, Solver)
 #undef GET_ENTITY_HANDLE
 
 inline entity_handle
-GetParameterHandle(inca_model *Model, const char *Name) //NOTE: In case we don't know the type of the parameter and just want the handle.
+GetParameterHandle(const inca_model *Model, const char *Name) //NOTE: In case we don't know the type of the parameter and just want the handle.
 {
 	entity_handle Handle = 0;
 	auto Find = Model->ParameterNameToHandle.find(Name);

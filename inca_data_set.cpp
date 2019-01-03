@@ -90,7 +90,7 @@ CopyStorageStructure(storage_structure &Source, storage_structure &Dest, size_t 
 static inca_data_set *
 CopyDataSet(inca_data_set *DataSet)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	inca_data_set *Copy = new inca_data_set {};
 	
@@ -383,7 +383,7 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 static s64
 GetStartDate(inca_data_set *DataSet)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	auto FindTime = Model->ParameterNameToHandle.find("Start date");
 	if(FindTime != Model->ParameterNameToHandle.end())
@@ -399,7 +399,7 @@ GetStartDate(inca_data_set *DataSet)
 static u64
 GetTimesteps(inca_data_set *DataSet)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	auto FindTimestep = Model->ParameterNameToHandle.find("Timesteps");
 	if(FindTimestep != Model->ParameterNameToHandle.end())
@@ -416,10 +416,10 @@ GetTimesteps(inca_data_set *DataSet)
 static void
 SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<const char *>& IndexNames)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	entity_handle IndexSetHandle = GetIndexSetHandle(DataSet->Model, IndexSetName).Handle;
-	index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
+	const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 	
 	if(Spec.Type != IndexSetType_Basic)
 	{
@@ -497,10 +497,10 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 static void
 SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::vector<std::pair<const char *, std::vector<const char *>>>& Inputs)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	entity_handle IndexSetHandle = GetIndexSetHandle(Model, IndexSetName).Handle;
-	index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
+	const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 	
 	if(Spec.Type != IndexSetType_Branched)
 	{
@@ -574,7 +574,7 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 static void
 AllocateParameterStorage(inca_data_set *DataSet)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
@@ -636,7 +636,7 @@ AllocateParameterStorage(inca_data_set *DataSet)
 static void
 AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
@@ -654,7 +654,7 @@ AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 	
 	for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
 	{
-		input_spec &Spec = Model->InputSpecs[InputHandle];
+		const input_spec &Spec = Model->InputSpecs[InputHandle];
 		TransposedInputDependencies[Spec.IndexSetDependencies].push_back(InputHandle);
 	}
 	
@@ -679,7 +679,7 @@ AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 static void
 AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
@@ -702,11 +702,11 @@ AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 		Units.resize(ResultStorageUnitCount);
 		for(size_t UnitIndex = 0; UnitIndex < ResultStorageUnitCount; ++UnitIndex)
 		{
-			equation_batch_group &BatchGroup = Model->BatchGroups[UnitIndex];
+			const equation_batch_group &BatchGroup = Model->BatchGroups[UnitIndex];
 			Units[UnitIndex].IndexSets = BatchGroup.IndexSets;
 			for(size_t BatchIdx = BatchGroup.FirstBatch; BatchIdx <= BatchGroup.LastBatch; ++BatchIdx)
 			{
-				equation_batch &Batch = Model->EquationBatches[BatchIdx];
+				const equation_batch &Batch = Model->EquationBatches[BatchIdx];
 				FOR_ALL_BATCH_EQUATIONS(Batch,
 					Units[UnitIndex].Handles.push_back(Equation.Handle);
 				)
@@ -752,7 +752,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 		AllocateParameterStorage(DataSet);
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	entity_handle ParameterHandle = GetParameterHandle(Model, Name);
 	
 	if(Model->ParameterSpecs[ParameterHandle].Type != Type)
@@ -824,7 +824,7 @@ GetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 		exit(0);
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	entity_handle ParameterHandle = GetParameterHandle(Model, Name);
 	
 	if(Model->ParameterSpecs[ParameterHandle].Type != Type)
@@ -913,7 +913,7 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 	
 	size_t WriteSize = Min(InputSeriesSize, DataSet->InputDataTimesteps);
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	input_h Input = GetInputHandle(Model, Name);
 	
@@ -956,7 +956,7 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const char* const* Ind
 		exit(0);
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	//TODO: If we ask for more values than we could get, should there not be an error?
 	u64 NumToWrite = Min(WriteSize, DataSet->TimestepsLastRun);
@@ -1003,7 +1003,7 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 		exit(0);
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	//TODO: If we ask for more values than we could get, should there not be an error?
 	u64 NumToWrite = Min(WriteSize, DataSet->InputDataTimesteps);
@@ -1060,7 +1060,7 @@ PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<co
 	for(const char *Index : Indexes) std::cout << "[" << Index << "]";
 	
 	equation_h Equation = GetEquationHandle(DataSet->Model, Name);
-	equation_spec &Spec = DataSet->Model->EquationSpecs[Equation.Handle];
+	const equation_spec &Spec = DataSet->Model->EquationSpecs[Equation.Handle];
 	if(IsValid(Spec.Unit))
 	{
 		std::cout << " (" << GetName(DataSet->Model, Spec.Unit) << ")";
@@ -1086,7 +1086,7 @@ PrintInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<con
 	for(const char *Index : Indexes) std::cout << "[" << Index << "]";
 	
 	input_h Input = GetInputHandle(DataSet->Model, Name);
-	input_spec &Spec = DataSet->Model->InputSpecs[Input.Handle];
+	const input_spec &Spec = DataSet->Model->InputSpecs[Input.Handle];
 	if(IsValid(Spec.Unit))
 	{
 		std::cout << " (" << GetName(DataSet->Model, Spec.Unit) << ")";
@@ -1106,10 +1106,10 @@ static void
 PrintIndexes(inca_data_set *DataSet, const char *IndexSetName)
 {
 	//TODO: checks
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	entity_handle IndexSetHandle = GetIndexSetHandle(Model, IndexSetName).Handle;
 	std::cout << "Indexes for " << IndexSetName << ": ";
-	index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
+	const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 	if(Spec.Type == IndexSetType_Basic)
 	{
 		for(size_t IndexIndex = 0; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)

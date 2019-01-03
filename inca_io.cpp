@@ -114,14 +114,14 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 		return;
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	fprintf(File, "# Parameter file generated for %s V%s\n\n", Model->Name, Model->Version);
 	
 	fprintf(File, "index_sets:\n");
 	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
 	{
-		index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
+		const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		fprintf(File, "\"%s\" : {", Spec.Name);
 		for(index_t IndexIndex = 0; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)
 		{
@@ -165,7 +165,7 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 		
 		for(entity_handle ParameterHandle: DataSet->ParameterStorageStructure.Units[UnitIndex].Handles)
 		{
-			parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+			const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
 			fprintf(File, "\"%s\" :", Spec.Name);
 			bool PrintedPnd = false;
 			if(IsValid(Spec.Unit))
@@ -211,7 +211,7 @@ SetAllValuesForParameter(inca_data_set *DataSet, const char *Name, void *Values,
 		AllocateParameterStorage(DataSet); //NOTE: Will fail if not all indexes have been set.
 	}
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	entity_handle ParameterHandle = GetParameterHandle(Model, Name);
 	if(!ParameterHandle) return;
 	
@@ -247,7 +247,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	int Mode = -1; // 0: index set mode, 1: parameter mode
 	
@@ -457,7 +457,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 static void
 ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	token_stream Stream(Filename);
 	
@@ -574,7 +574,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			}
 		}
 		
-		std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
+		const std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
 		if(IndexNames.size() != IndexSets.size())
 		{
 			Stream.PrintErrorHeader();

@@ -130,7 +130,7 @@ EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective, std::vector
 static void
 RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 {
-	inca_model *Model = DataSet->Model;
+	const inca_model *Model = DataSet->Model;
 	
 	std::mt19937_64 Generator(42);
 	

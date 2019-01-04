@@ -4,38 +4,17 @@
 
 #include "../calibration_setup.h"
 
-enum glue_performance_measure
-{
-	GLUE_PerformanceMeasure_MeanAverageError,
-	GLUE_PerformanceMeasure_NashSutcliffe,
-};
-
-struct glue_objective
-{
-	const char *Modeled;
-	std::vector<const char *> IndexesModeled;
-	
-	const char *Observed;
-	std::vector<const char *> IndexesObserved;
-	
-	glue_performance_measure PerformanceMeasure;
-	
-	double Threshold;
-	double OptimalValue;
-	
-	bool Maximize;
-	//IsPartOfMultiObjective?
-};
-
 struct glue_setup
 {
 	size_t NumRuns;
 	
 	size_t NumThreads;
 	
+	size_t DiscardTimesteps;
+	
 	std::vector<parameter_calibration> Calibration;
 	
-	std::vector<glue_objective> Objectives;
+	std::vector<calibration_objective> Objectives;
 	
 	std::vector<double> Quantiles;
 };

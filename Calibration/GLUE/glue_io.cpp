@@ -44,60 +44,27 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 			}
 			Setup->NumThreads = NumThreads;
 		}
+		else if(strcmp(Section, "discard_timesteps") == 0)
+		{
+			Setup->DiscardTimesteps = (size_t)Stream.ExpectUInt();
+		}
 		else if(strcmp(Section, "parameter_calibration") == 0)
 		{
 			ReadParameterCalibration(Stream, Setup->Calibration, ParameterCalibrationReadDistribution);
 		}
 		else if(strcmp(Section, "objectives") == 0)
 		{
-			ReadObs = true;
+			ReadCalibrationObjectives(Stream, Setup->Objectives, true);
 		}
 		else if(strcmp(Section, "quantiles") == 0)
 		{
 			ReadDoubleSeries(Stream, Setup->Quantiles);
 		}
-
-		if(ReadObs)
+		else
 		{
-			//TODO: This currently just reads exactly one objective. We may allow for multiple objectives later.
-			
-			glue_objective Objective;
-			Token = Stream.ReadToken();
-			if(Token->Type != TokenType_QuotedString)
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "Expected the quoted name of a result series." << std::endl;
-				exit(0);
-			}
-			Objective.Modeled = CopyString(Token->StringValue); //NOTE: Leaks!
-			
-			ReadQuotedStringList(Stream, Objective.IndexesModeled, true);
-			
-			Token = Stream.ExpectToken(TokenType_QuotedString);
-			Objective.Observed = CopyString(Token->StringValue); //NOTE: Leaks!
-			
-			ReadQuotedStringList(Stream, Objective.IndexesObserved, true);
-			
-			Token = Stream.ExpectToken(TokenType_UnquotedString);
-			if(strcmp(Token->StringValue, "mean_average_error") == 0)
-			{
-				Objective.PerformanceMeasure = GLUE_PerformanceMeasure_MeanAverageError;
-			}
-			else if(strcmp(Token->StringValue, "nash_sutcliffe") == 0)
-			{
-				Objective.PerformanceMeasure = GLUE_PerformanceMeasure_NashSutcliffe;
-			}
-			//else if ...
-			else
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "The name " << Token->StringValue << " is not recognized as the name of an implemented performance measure" << std::endl;
-			}
-			Objective.Threshold = Stream.ExpectDouble();
-			Objective.OptimalValue = Stream.ExpectDouble();
-			Objective.Maximize = Stream.ExpectBool();
-			
-			Setup->Objectives.push_back(Objective);
+			Stream.PrintErrorHeader();
+			std::cout << "Unknown section name: " << Section << std::endl;
+			exit(0);
 		}
 	}
 	

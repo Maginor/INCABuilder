@@ -24,12 +24,9 @@ de_jump_gamma     : 1.0       #NOTE: The gamma for the jump (if jumps are enable
 
 
 
-objective :
-#"Reach flow" {"Tarland1"}      #sim
-#"observed Q"  {}               #obs
+objectives :
 
-"Reach flow" {"Tveitvatn"}      #sim
-"Discharge"  {"Tveitvatn"}      #obs
+"Reach flow" {"Tveitvatn"}     "Discharge"  {"Tveitvatn"}    ll_proportional_normal
 
 parameter_calibration :
 
@@ -58,20 +55,6 @@ link {
 	"Time constant" {"Soil water" "Arable"}
 } 3 15 6
 
-
-#"Baseflow index" {"Tarland1"}
-#0.1 1.0 0.7
-
-#"Gradient of stream velocity-discharge relationship" {"Tarland1"}
-#0.1 0.9 0.5
-
-#"Exponent of stream velocity-discharge relationship" {"Tarland1"}
-#0.3 0.8 0.42
-
-#link {
-#	"Field capacity" {"Forest" "Upper box"}
-#	"Field capacity" {"Peatland" "Upper box"}
-#} 100 300   150
 
 
 

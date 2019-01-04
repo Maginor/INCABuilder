@@ -206,6 +206,8 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 static void
 SetAllValuesForParameter(inca_data_set *DataSet, entity_handle ParameterHandle, parameter_value *Values, size_t Count)
 {
+	//TODO: Should this function be in inca_data_set.cpp instead?
+	
 	//NOTE: There are almost no safety checks in this function. The caller of the function is responsible for the checks!
 	
 	if(!DataSet->ParameterData)
@@ -215,9 +217,7 @@ SetAllValuesForParameter(inca_data_set *DataSet, entity_handle ParameterHandle, 
 	
 	//TODO: Check that the values are in the Min-Max range? (issue warning only)
 	
-	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
-	std::vector<index_set_h> &IndexSetStack = DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets;
-	
+	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];	
 	size_t Stride = DataSet->ParameterStorageStructure.Units[UnitIndex].Handles.size();
 	
 	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);

@@ -4,11 +4,8 @@
 #include <thread>
 #include <mutex>
 
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
+
 #include <boost/accumulators/statistics/weighted_extended_p_square.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/variance.hpp>
 
 
 static double
@@ -39,65 +36,14 @@ std::mutex AccumulatorLock;
 #endif
 
 static std::pair<double, double>
-EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective, std::vector<quantile_accumulator>& QuantileAccumulators)
+EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, std::vector<quantile_accumulator>& QuantileAccumulators, size_t DiscardTimesteps)
 {
 	using namespace boost::accumulators;
 	
-	u64 Timesteps = DataSet->TimestepsLastRun;
-	
-	//TODO: if we instead just hooked right into the storage, we would not need to copy the results over, but then we would have to do error handling for names and indexes (in case these were typed in incorrectly) because GetResultSeries would not do it for us in that case..
-	std::vector<double> ModeledSeries((size_t)Timesteps);
-	std::vector<double> ObservedSeries((size_t)Timesteps);
-
-	GetResultSeries(DataSet, Objective.Modeled, Objective.IndexesModeled, ModeledSeries.data(), ModeledSeries.size());
-	GetInputSeries(DataSet, Objective.Observed, Objective.IndexesObserved, ObservedSeries.data(), ObservedSeries.size(), true); //NOTE: The 'true' says that we extract the input series from the start of the modelrun rather than the start of the input series (which could be different).
-	
-	std::vector<double> Residuals((size_t)Timesteps);
-	
-	for(size_t Timestep = 0; Timestep < Timesteps; ++Timestep)
-	{
-		Residuals[Timestep] = ModeledSeries[Timestep] - ObservedSeries[Timestep];
-	}
-	
-	double Performance;
-	
-	if(Objective.PerformanceMeasure == GLUE_PerformanceMeasure_MeanAverageError)
-	{
-		accumulator_set<double, features<tag::mean>> Accumulator;
-		
-		for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
-		{
-			if(!std::isnan(Residuals[Timestep]))
-				Accumulator(std::abs(Residuals[Timestep]));
-		}
-		
-		Performance = mean(Accumulator);
-	}
-	else if(Objective.PerformanceMeasure == GLUE_PerformanceMeasure_NashSutcliffe)
-	{
-		accumulator_set<double, features<tag::variance>> ObsAccum;
-		accumulator_set<double, features<tag::mean>> ResAccum;
-
-		for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
-		{
-			double Obs = ObservedSeries[Timestep];
-			double Res = Residuals[Timestep];
-			if(!std::isnan(Res) && !std::isnan(Obs))
-			{
-				ObsAccum(Obs);	
-				ResAccum(Res*Res);
-			}
-		}
-		
-		double MeanSquaresResidual = mean(ResAccum);
-		double ObservedVariance = variance(ObsAccum);
-		
-		Performance = 1.0 - MeanSquaresResidual / ObservedVariance;
-	}
-	//else if
+	double Performance = EvaluateObjective(DataSet, Objective, DiscardTimesteps);
 	
 	double WeightedPerformance;
-	if(Objective.Maximize)
+	if(ShouldMaximize(Objective.PerformanceMeasure))
 	{
 		WeightedPerformance = (Performance - Objective.Threshold) / (Objective.OptimalValue - Objective.Threshold);
 	}
@@ -106,10 +52,18 @@ EvaluateObjective(inca_data_set *DataSet, glue_objective &Objective, std::vector
 		WeightedPerformance = (Objective.Threshold - Performance) / (Objective.Threshold - Objective.OptimalValue);
 	}
 	
+	
+	//TODO: The other EvaluateObjective we call above already extracts this series, so it is kind of stupid to do it twice. Maybe we could make an optional version of it that gives us back the modeled series?
+	size_t Timesteps = (size_t)DataSet->TimestepsLastRun;
+	
+	std::vector<double> ModeledSeries(Timesteps);
+	GetResultSeries(DataSet, Objective.ModeledName, Objective.ModeledIndexes, ModeledSeries.data(), ModeledSeries.size());
+	
 #if GLUE_MULTITHREAD
 	std::lock_guard<std::mutex> Lock(AccumulatorLock); //NOTE: I don't know if it is safe for several threads to write to the same accumulator without locking it, so I do this to be safe. If it is not a problem, just remove the mutex.
 #endif
 	
+	//TODO! TODO! We should maybe also discard timesteps here too (but has to take care to do it correctly!)
 	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{
 		QuantileAccumulators[Timestep](ModeledSeries[Timestep], weight = WeightedPerformance);
@@ -266,11 +220,11 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 		
 		for(size_t ObjIdx = 0; ObjIdx < Setup->Objectives.size(); ++ObjIdx)
 		{
-			glue_objective &Objective = Setup->Objectives[ObjIdx];
+			calibration_objective &Objective = Setup->Objectives[ObjIdx];
 			
-			auto Perf = EvaluateObjective(DataSet, Objective, QuantileAccumulators);
+			auto Perf = EvaluateObjective(DataSet, Objective, QuantileAccumulators, Setup->DiscardTimesteps);
 #if GLUE_PRINT_DEBUG_INFO		
-			std::cout << "Performance and weighted performance for " << Objective.Modeled << " vs " << Objective.Observed << " was " << std::endl << Perf.first << ", " << Perf.second << std::endl;
+			std::cout << "Performance and weighted performance for " << Objective.ModeledName << " vs " << Objective.ObservedName << " was " << std::endl << Perf.first << ", " << Perf.second << std::endl;
 #endif
 			Results->RunData[Run].PerformanceMeasures[ObjIdx] = Perf;
 		}

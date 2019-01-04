@@ -8,110 +8,61 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 	
 	token *Token;
 	
-	int Mode = -1;
+	
 	
 	while(true)
 	{
-		Token = Stream.ReadToken();
+		Token = Stream.PeekToken();
+		
+		bool ReadObs = false;
 		
 		if(Token->Type == TokenType_EOF)
-		{
 			break;
-		}
-		if(Token->Type == TokenType_UnquotedString)
-		{
-			if(strcmp(Token->StringValue, "num_runs") == 0)
-			{
-				Stream.ExpectToken(TokenType_Colon);
-				size_t NumRuns = Stream.ExpectUInt();
-				if(NumRuns == 0)
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Expected at least 1 run." << std::endl;
-					exit(0);
-				}
-				Setup->NumRuns = NumRuns;
-			}
-			else if(strcmp(Token->StringValue, "num_threads") == 0)
-			{
-				Stream.ExpectToken(TokenType_Colon);
-				size_t NumThreads = (size_t)Stream.ExpectUInt();
-				if(NumThreads == 0)
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Expected at least 1 thread." << std::endl;
-					exit(0);
-				}
-				Setup->NumThreads = NumThreads;
-			}
-			else if(strcmp(Token->StringValue, "parameter_calibration") == 0)
-			{
-				Stream.ExpectToken(TokenType_Colon);
-				Mode = 0;
-			}
-			else if(strcmp(Token->StringValue, "objectives") == 0)
-			{
-				Stream.ExpectToken(TokenType_Colon);
-				Mode = 1;
-			}
-			else if(strcmp(Token->StringValue, "quantiles") == 0)
-			{
-				Stream.ExpectToken(TokenType_Colon);
-				Mode = 2;
-			}
-		}
-		else if(Mode == 0)
-		{
-			glue_parameter_calibration ParSetting;
-			if(Token->Type != TokenType_QuotedString)
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "Expected the quoted name of a parameter" << std::endl;
-				exit(0);
-			}
-			ParSetting.ParameterName = CopyString(Token->StringValue);  //NOTE: Leaks!!
-			Stream.ExpectToken(TokenType_OpenBrace);
-			while(true)
-			{
-				Token = Stream.ReadToken();
-				if(Token->Type == TokenType_CloseBrace)
-				{
-					break;
-				}
-				else if(Token->Type == TokenType_QuotedString)
-				{
-					ParSetting.Indexes.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
-				}
-				else
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Expected the quoted name of an index" << std::endl;
-					exit(0);
-				}
-			}
-			
-			Token = Stream.ExpectToken(TokenType_UnquotedString);
-			if(strcmp(Token->StringValue, "uniform") == 0)
-			{
-				ParSetting.Distribution = GLUE_ParameterDistribution_Uniform;
-			}
-			//else if ...
-			else
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "The name " << Token->StringValue << " is not recognized as an implemented random distribution." << std::endl;
-				exit(0);
-			}
-			//TODO: Other parameter types?
-			ParSetting.Min.ValDouble = Stream.ExpectDouble();
-			ParSetting.Max.ValDouble = Stream.ExpectDouble();
-			
-			Setup->CalibrationSettings.push_back(ParSetting);
 
-		}
-		else if(Mode == 1)
+		const char *Section = Stream.ExpectUnquotedString();
+		Stream.ExpectToken(TokenType_Colon);
+
+		if(strcmp(Section, "num_runs") == 0)
 		{
+			size_t NumRuns = Stream.ExpectUInt();
+			if(NumRuns == 0)
+			{
+				Stream.PrintErrorHeader();
+				std::cout << "Expected at least 1 run." << std::endl;
+				exit(0);
+			}
+			Setup->NumRuns = NumRuns;
+		}
+		else if(strcmp(Section, "num_threads") == 0)
+		{
+			size_t NumThreads = (size_t)Stream.ExpectUInt();
+			if(NumThreads == 0)
+			{
+				Stream.PrintErrorHeader();
+				std::cout << "Expected at least 1 thread." << std::endl;
+				exit(0);
+			}
+			Setup->NumThreads = NumThreads;
+		}
+		else if(strcmp(Section, "parameter_calibration") == 0)
+		{
+			ReadParameterCalibration(Stream, Setup->Calibration, ParameterCalibrationReadDistribution);
+		}
+		else if(strcmp(Section, "objectives") == 0)
+		{
+			ReadObs = true;
+		}
+		else if(strcmp(Section, "quantiles") == 0)
+		{
+			ReadDoubleSeries(Stream, Setup->Quantiles);
+		}
+
+		if(ReadObs)
+		{
+			//TODO: This currently just reads exactly one objective. We may allow for multiple objectives later.
+			
 			glue_objective Objective;
+			Token = Stream.ReadToken();
 			if(Token->Type != TokenType_QuotedString)
 			{
 				Stream.PrintErrorHeader();
@@ -119,46 +70,14 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 				exit(0);
 			}
 			Objective.Modeled = CopyString(Token->StringValue); //NOTE: Leaks!
-			Stream.ExpectToken(TokenType_OpenBrace);
-			while(true)
-			{
-				Token = Stream.ReadToken();
-				if(Token->Type == TokenType_CloseBrace)
-				{
-					break;
-				}
-				else if(Token->Type == TokenType_QuotedString)
-				{
-					Objective.IndexesModeled.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
-				}
-				else
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Expected the quoted name of an index" << std::endl;
-					exit(0);
-				}
-			}
+			
+			ReadQuotedStringList(Stream, Objective.IndexesModeled, true);
+			
 			Token = Stream.ExpectToken(TokenType_QuotedString);
 			Objective.Observed = CopyString(Token->StringValue); //NOTE: Leaks!
-			Stream.ExpectToken(TokenType_OpenBrace);
-			while(true)
-			{
-				Token = Stream.ReadToken();
-				if(Token->Type == TokenType_CloseBrace)
-				{
-					break;
-				}
-				else if(Token->Type == TokenType_QuotedString)
-				{
-					Objective.IndexesObserved.push_back(CopyString(Token->StringValue)); //NOTE: Leaks!
-				}
-				else
-				{
-					Stream.PrintErrorHeader();
-					std::cout << "Expected the quoted name of an index" << std::endl;
-					exit(0);
-				}
-			}
+			
+			ReadQuotedStringList(Stream, Objective.IndexesObserved, true);
+			
 			Token = Stream.ExpectToken(TokenType_UnquotedString);
 			if(strcmp(Token->StringValue, "mean_average_error") == 0)
 			{
@@ -180,28 +99,14 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 			
 			Setup->Objectives.push_back(Objective);
 		}
-		else if(Mode == 2)
-		{
-			if(Token->Type != TokenType_Numeric)
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "Expected either a quantile (a number) or a command word to start a new section of the file." << std::endl;
-				exit(0);
-			}
-			double Val = Token->GetDoubleValue();
-			Setup->Quantiles.push_back(Val);
-		}
-		else
-		{
-			Stream.PrintErrorHeader();
-			std::cout << "Unexpected token." << std::endl;
-			exit(0);
-		}
 	}
 	
 	//TODO: Check that the file contained enough data?
 }
 
+#if 0
+
+//TODO: This format does not support having linked parameters, so we have to rething it!!
 
 static void
 WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *Results, inca_data_set *DataSet)
@@ -253,17 +158,17 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 	
 	sqlite3_stmt *InsertParameterInfoStmt;
 	rc = sqlite3_prepare_v2(Db, InsertParameterInfo, -1, &InsertParameterInfoStmt, 0);
-	for(size_t Par = 0; Par < Setup->CalibrationSettings.size(); ++Par)
+	for(size_t Par = 0; Par < Setup->Calibration.size(); ++Par)
 	{
 		int ParID = (int)Par + 1;
 		
 		//TODO: Instead having the indexes as text (which is difficult to parse in an automatic system later), we should maybe instead hook the parameter ID to the structure ID you get when you export it using WriteParametersToDatabase from inca_database_io.cpp, however that is complicated..
-		const char *ParameterName = Setup->CalibrationSettings[Par].ParameterName;
+		const char *ParameterName = Setup->Calibration[Par].ParameterName;
 		rc = sqlite3_bind_int(InsertParameterInfoStmt, 1, ParID);
 		rc = sqlite3_bind_text(InsertParameterInfoStmt, 2, ParameterName, -1, SQLITE_STATIC);
 		char Indexes[4096];
 		char *Pos = Indexes;
-		for(const char *Index : Setup->CalibrationSettings[Par].Indexes)
+		for(const char *Index : Setup->Calibration[Par].Indexes)
 		{
 			Pos += sprintf(Pos, " \"%s\"", Index);
 		}
@@ -297,7 +202,7 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 		rc = sqlite3_step(InsertRunInfoStmt);
 		rc = sqlite3_reset(InsertRunInfoStmt);
 		
-		for(size_t Par = 0; Par < Setup->CalibrationSettings.size(); ++Par)
+		for(size_t Par = 0; Par < Setup->Calibration.size(); ++Par)
 		{
 			int ParID = (int)Par + 1;
 			double Value = Results->RunData[Run].RandomParameters[Par].ValDouble;
@@ -354,3 +259,4 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 	
 	sqlite3_close(Db);
 }
+#endif

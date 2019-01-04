@@ -11,24 +11,20 @@
 #include <boost/accumulators/statistics/variance.hpp>
 
 
-static parameter_value
-GetParameterRandomlyFromDistribution(glue_parameter_calibration &ParSetting, std::mt19937_64 &Generator)
+static double
+GetParameterRandomlyFromDistribution(parameter_calibration &ParSetting, std::mt19937_64 &Generator)
 {
 	//TODO: Other parameter types later
 	double NewValue;
 	//TODO: Allow other types of distributions
-	if(ParSetting.Distribution == GLUE_ParameterDistribution_Uniform)
+	if(ParSetting.Distribution == ParameterDistribution_Uniform)
 	{
-		std::uniform_real_distribution<double> Distribution(ParSetting.Min.ValDouble, ParSetting.Max.ValDouble);
+		std::uniform_real_distribution<double> Distribution(ParSetting.Min, ParSetting.Max);
 		NewValue = Distribution(Generator);
 	}
-	else
-	{
-		std::cout << "ERROR: (GLUE) Somehow ended up with an unrecognized distribution for the parameter " << ParSetting.ParameterName << std::endl;
-		exit(0); //Oops, bad for parallellized stuff. Should use a better exit function.
-	}
+	// else if..
 	
-	return {NewValue};
+	return NewValue;
 }
 
 typedef boost::accumulators::accumulator_set<double, boost::accumulators::stats<boost::accumulators::tag::weighted_extended_p_square>, double> quantile_accumulator;
@@ -151,25 +147,15 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	Results->RunData.resize(Setup->NumRuns);
 	for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
 	{
-		Results->RunData[Run].RandomParameters.resize(Setup->CalibrationSettings.size());
+		Results->RunData[Run].RandomParameters.resize(Setup->Calibration.size());
 		Results->RunData[Run].PerformanceMeasures.resize(Setup->Objectives.size());
 	}
 	
 	//NOTE: It is important that the loops are in this order so that we don't get any weird dependence between the parameter values (I think).
 	//TODO: We should probably have a better generation scheme for parameter values (such as Latin Cube?).
-	for(size_t ParIdx = 0; ParIdx < Setup->CalibrationSettings.size(); ++ParIdx)
+	for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
 	{
-		glue_parameter_calibration &ParSetting = Setup->CalibrationSettings[ParIdx];
-		
-		{ //TODO: Make it work with other parameter types later?
-			entity_handle Handle = GetParameterHandle(DataSet->Model, ParSetting.ParameterName);
-			parameter_type Type = DataSet->Model->ParameterSpecs[Handle].Type;
-			if(Type != ParameterType_Double)
-			{
-				std::cout << "Sorry, we only support calibrating parameters of type double at the moment. " << ParSetting.ParameterName << " is of another type." << std::endl;
-				exit(0);
-			}
-		}
+		parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
 
 		for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
 		{	
@@ -191,9 +177,9 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	auto RunFunc =
 		[&] (size_t RunID, inca_data_set *DataSet)
 		{
-			for(size_t ParIdx = 0; ParIdx < Setup->CalibrationSettings.size(); ++ParIdx)
+			for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
 			{
-				glue_parameter_calibration &ParSetting = Setup->CalibrationSettings[ParIdx];
+				glue_parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
 				
 				//TODO: Other value types later
 				double NewValue = Results->RunData[RunID].RandomParameters[ParIdx].ValDouble;
@@ -263,16 +249,17 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 #if GLUE_PRINT_DEBUG_INFO
 		std::cout << "Run number: " << Run << std::endl;
 #endif
-		for(size_t ParIdx = 0; ParIdx < Setup->CalibrationSettings.size(); ++ParIdx)
+		for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
 		{
-			glue_parameter_calibration &ParSetting = Setup->CalibrationSettings[ParIdx];
+			parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
 			
 			//TODO: Other value types later
-			double NewValue = Results->RunData[Run].RandomParameters[ParIdx].ValDouble;
-#if GLUE_PRINT_DEBUG_INFO		
-			std::cout << "Setting " << ParSetting.ParameterName << " to " << NewValue << std::endl;
+			double NewValue = Results->RunData[Run].RandomParameters[ParIdx];
+#if GLUE_PRINT_DEBUG_INFO
+			//TODO: Print multiple names (in case of link) and indexes?
+			std::cout << "Setting " << ParSetting.ParameterNames[0] << " to " << NewValue << std::endl;
 #endif
-			SetParameterValue(DataSet, ParSetting.ParameterName, ParSetting.Indexes, NewValue);
+			SetCalibrationValue(DataSet, ParSetting, NewValue);
 		}
 		
 		RunModel(DataSet);

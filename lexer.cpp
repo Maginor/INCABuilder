@@ -523,6 +523,11 @@ ReadQuotedStringList(token_stream &Stream, std::vector<const char *> &ListOut, b
 		{
 			break;
 		}
+		else if(Token->Type == TokenType_EOF)
+		{
+			Stream.PrintErrorHeader();
+			std::cout << "End of file before list was ended." << std::endl;
+		}
 		else
 		{
 			Stream.PrintErrorHeader();
@@ -532,3 +537,79 @@ ReadQuotedStringList(token_stream &Stream, std::vector<const char *> &ListOut, b
 	}
 }
 
+static void
+ReadDoubleSeries(token_stream &Stream, std::vector<double> &ListOut)
+{
+	while(true)
+	{
+		token *Token = Stream.PeekToken();
+		if(Token->Type != TokenType_Numeric) break;
+		Token = Stream.ReadToken(); //NOTE: Consume the token we peeked.
+		ListOut.push_back(Token->GetDoubleValue());
+	}
+}
+
+static void
+ReadUIntSeries(token_stream &Stream, std::vector<u64> &ListOut)
+{
+	while(true)
+	{
+		token *Token = Stream.PeekToken();
+		if(Token->Type != TokenType_Numeric) break;
+		Token = Stream.ReadToken(); //NOTE: Consume the token we peeked.
+		ListOut.push_back(Token->GetUIntValue());
+	}
+}
+
+static void
+ReadBoolSeries(token_stream &Stream, std::vector<bool> &ListOut)      //NOOOO! We run into the std::vector<bool> template specialisation!! It is probably not too big of a deal though.
+{
+	while(true)
+	{
+		token *Token = Stream.PeekToken();
+		if(Token->Type != TokenType_Bool) break;
+		Token = Stream.ReadToken(); //NOTE: Consume the token we peeked.
+		ListOut.push_back(Token->BoolValue);
+	}
+}
+
+static void
+ReadParameterSeries(token_stream &Stream, std::vector<parameter_value> &ListOut, parameter_type Type)
+{
+	parameter_value Value;
+	
+	if(Type == ParameterType_Double)
+	{
+		while(true)
+		{
+			token *Token = Stream.PeekToken();
+			if(Token->Type != TokenType_Numeric) break;
+			Value.ValDouble = Stream.ExpectDouble();
+			ListOut.push_back(Value);
+		}
+	}
+	else if(Type == ParameterType_UInt)
+	{
+		while(true)
+		{
+			token *Token = Stream.PeekToken();
+			if(Token->Type != TokenType_Numeric) break;
+			Value.ValUInt = Stream.ExpectUInt();
+			ListOut.push_back(Value);
+		}
+	}
+	else if(Type == ParameterType_Bool)
+	{
+		while(true)
+		{
+			token *Token = Stream.PeekToken();
+			if(Token->Type != TokenType_Bool) break;
+			Value.ValBool = Stream.ExpectBool();
+			ListOut.push_back(Value);
+		}
+	}
+	else assert(0);  //NOTE: This should be caught by the library implementer. Signifies that a new parameter type was added without being handled here
+	
+	//NOTE: Date values have to be handled separately since we can't distinguish them from quoted strings...
+	// TODO: Make separate format for dates?
+}

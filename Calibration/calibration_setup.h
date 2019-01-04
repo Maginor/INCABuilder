@@ -1,20 +1,28 @@
 
 //NOTE: This file is for common functionality between all calibration/uncertainty analysis
 
-
+enum parameter_distribution
+{
+	ParameterDistribution_Uniform,
+	//TODO: Support a few more!!!!
+};
 
 //NOTE: Specification of calibration of one (or several linked) parameter(s).
 struct parameter_calibration
 {
 	std::vector<const char *> ParameterNames;
 	std::vector<std::vector<const char *>> ParameterIndexes;
+	parameter_distribution Distribution;
 	double Min;
 	double Max;
 	double InitialGuess;
 };
 
+const u64 ParameterCalibrationReadDistribution   = 0x1;
+const u64 ParameterCalibrationReadInitialGuesses = 0x2;
+
 static void
-ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration> &CalibOut)
+ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration> &CalibOut, u64 Flags = 0)
 {
 	//NOTE: This function assumes that the Stream has been opened and has already consumed the tokens 'parameter_calibration' and ':'
 	
@@ -28,7 +36,9 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 			token *Token = Stream.PeekToken();
 			if(Token->Type == TokenType_QuotedString)
 			{
-				Calib.ParameterNames.push_back(CopyString(Token->StringValue));  //NOTE: The copied string leaks unless somebody frees it later
+				const char *ParameterName = CopyString(Token->StringValue); //NOTE: The copied string leaks unless somebody frees it later
+				
+				Calib.ParameterNames.push_back(ParameterName);  
 				Stream.ReadToken(); //NOTE: Consumes the token we peeked.
 				
 				std::vector<const char *> Indexes;
@@ -84,9 +94,28 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 		}
 		WeAreInLink = false;
 		
+		if(Flags & ParameterCalibrationReadDistribution)
+		{
+			const char *DistrName = Stream.ExpectUnquotedString();
+			if(strcmp(DistrName, "uniform") == 0)
+			{
+				Calib.Distribution = ParameterDistribution_Uniform;
+			}
+			//else if ...
+			else
+			{
+				Stream.PrintErrorHeader();
+				std::cout << "Unsupported distribution: " << DistrName << std::endl;
+				exit(0);
+			}
+		}
+		
 		Calib.Min = Stream.ExpectDouble();
 		Calib.Max = Stream.ExpectDouble();
-		Calib.InitialGuess = Stream.ExpectDouble(); //TODO: Maybe we should not always require this..
+		if(Flags & ParameterCalibrationReadInitialGuesses)
+		{
+			Calib.InitialGuess = Stream.ExpectDouble();
+		}
 		//TODO: Optional distribution?
 		
 		CalibOut.push_back(Calib);
@@ -99,6 +128,6 @@ SetCalibrationValue(inca_data_set *DataSet, parameter_calibration &Calibration, 
 {
 	for(size_t ParIdx = 0; ParIdx < Calibration.ParameterNames.size(); ++ParIdx)
 	{
-		SetParameterDouble(DataSet, Calibration.ParameterNames[ParIdx], Calibration.ParameterIndexes[ParIdx], Value);
+		SetParameterValue(DataSet, Calibration.ParameterNames[ParIdx], Calibration.ParameterIndexes[ParIdx], Value);
 	}
 }

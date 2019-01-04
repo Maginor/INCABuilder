@@ -147,7 +147,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			{
 				Stream.ExpectToken(TokenType_Colon);
 				
-				ReadParameterCalibration(Stream, Setup->Calibration);
+				ReadParameterCalibration(Stream, Setup->Calibration, ParameterCalibrationReadInitialGuesses); //TODO: We should also read distributions here!
 			}
 			else if(strcmp(Token->StringValue, "objective") == 0)
 			{

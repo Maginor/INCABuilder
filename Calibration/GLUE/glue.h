@@ -1,20 +1,8 @@
 
 #if !defined(INCA_GLUE_H)
 
-enum glue_parameter_distribution
-{
-	GLUE_ParameterDistribution_Uniform,
-};
 
-struct glue_parameter_calibration
-{
-	const char *ParameterName;
-	std::vector<const char *> Indexes;
-	glue_parameter_distribution Distribution;
-	
-	parameter_value Min;
-	parameter_value Max;
-};
+#include "../calibration_setup.h"
 
 enum glue_performance_measure
 {
@@ -45,7 +33,7 @@ struct glue_setup
 	
 	size_t NumThreads;
 	
-	std::vector<glue_parameter_calibration> CalibrationSettings;
+	std::vector<parameter_calibration> Calibration;
 	
 	std::vector<glue_objective> Objectives;
 	
@@ -54,7 +42,7 @@ struct glue_setup
 
 struct glue_run_data
 {
-	std::vector<parameter_value> RandomParameters;                //NOTE: Values for parameters that we want to vary only.
+	std::vector<double> RandomParameters;                         //NOTE: Values for parameters that we want to vary only.
 	std::vector<std::pair<double, double>> PerformanceMeasures;   //NOTE: One per objective.
 };
 

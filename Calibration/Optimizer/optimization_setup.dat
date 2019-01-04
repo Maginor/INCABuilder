@@ -9,7 +9,7 @@ parameter_calibration :
 
 # Format:
 #           "name" {"index1" "index2" ..etc..}
-#           min max   initial_guess
+#           min max
 # OR
 #           link {
 #                "name1" {"index1" "index2" ..etc.. }

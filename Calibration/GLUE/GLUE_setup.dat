@@ -46,7 +46,7 @@ link {
 objectives :
 
 # Format:
-# Modeled    {Indexes} Observed    {Indexes} PerformanceMeasure Threshold OptimalValue Maximize
+# Modeled    {Indexes} Observed    {Indexes} PerformanceMeasure Threshold OptimalValue
 
 #"Reach flow" {"Tveitvatn"}    "Discharge" {"Tveitvatn"}        mean_average_error 0.01      0.0
 "Reach flow" {"Tveitvatn"}    "Discharge" {"Tveitvatn"}        nash_sutcliffe     0.0       1.0

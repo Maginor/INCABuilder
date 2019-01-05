@@ -14,8 +14,8 @@
 
 #include "../../Modules/PersistModel.h"
 
-#define GLUE_PRINT_DEBUG_INFO 1
-#define GLUE_MULTITHREAD 0
+#define CALIBRATION_PRINT_DEBUG_INFO 0
+#define GLUE_MULTITHREAD 1
 
 #include "glue.h"
 

@@ -204,213 +204,174 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 }
 
 static void
-SetAllValuesForParameter(inca_data_set *DataSet, entity_handle ParameterHandle, parameter_value *Values, size_t Count)
-{
-	//TODO: Should this function be in inca_data_set.cpp instead?
-	
-	//NOTE: There are almost no safety checks in this function. The caller of the function is responsible for the checks!
-	
-	if(!DataSet->ParameterData)
-	{
-		AllocateParameterStorage(DataSet); //NOTE: Will fail if not all indexes have been set.
-	}
-	
-	//TODO: Check that the values are in the Min-Max range? (issue warning only)
-	
-	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];	
-	size_t Stride = DataSet->ParameterStorageStructure.Units[UnitIndex].Handles.size();
-	
-	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
-	parameter_value *Base = DataSet->ParameterData + Offset;
-	
-	for(size_t Idx = 0; Idx < Count; ++Idx)
-	{
-		*Base = Values[Idx];
-		Base += Stride;
-	}
-}
-
-static void
 ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
 	const inca_model *Model = DataSet->Model;
 	
-	int Mode = -1; // 0: index set mode, 1: parameter mode
-	
 	token *Token;
 	
 	while(true)
 	{
-		Token = Stream.ReadToken();
+		Token = Stream.PeekToken();
 		
 		if(Token->Type == TokenType_EOF)
-		{
 			break;
-		}
 		
-		if(Token->Type == TokenType_UnquotedString)
+		const char *Section = Stream.ExpectUnquotedString();
+		Stream.ExpectToken(TokenType_Colon);
+		
+		int Mode = -1;
+
+		if(strcmp(Section, "index_sets") == 0)
 		{
-			if(!strcmp(Token->StringValue, "index_sets"))
-			{
-				Mode = 0;
-			}
-			else if(!strcmp(Token->StringValue, "parameters"))
-			{
-				Mode = 1;
-			}
-			else
-			{
-				Stream.PrintErrorHeader();
-				std::cout << "Unknown command word: " << Token->StringValue << std::endl;
-				exit(0);
-			}
-			Stream.ExpectToken(TokenType_Colon);
-			
-			Token = Stream.ReadToken();
-			if(Token->Type == TokenType_EOF) break;
+			Mode = 0;
 		}
-		
-		if(Mode == -1)
+		else if(strcmp(Section, "parameters") == 0)
+		{
+			Mode = 1;
+		}
+		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << " Expected initialization of an input mode using either the of the command words index_sets or parmeters" << std::endl;
+			std::cout << "Unrecognized section type: " << Section << std::endl;
 			exit(0);
 		}
-		else if(Mode == 0)
+		
+		if(Mode == 0)
 		{
-			if(Token->Type != TokenType_QuotedString)
+			while(true)
 			{
-				Stream.PrintErrorHeader();
-				std::cout << "Expected the quoted name of an index set." << std::endl;
-				exit(0);
-			}
-			const char *IndexSetName = Token->StringValue;
-			index_set_h IndexSet = GetIndexSetHandle(Model, IndexSetName);
-			Stream.ExpectToken(TokenType_Colon);
-			if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Basic)
-			{
-				std::vector<const char *> Indexes;
-				ReadQuotedStringList(Stream, Indexes);
-				SetIndexes(DataSet, IndexSetName, Indexes);
-			}
-			else if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Branched)
-			{
-				//TODO: Make a helper function for this too!
-				std::vector<std::pair<const char *, std::vector<const char *>>> Indexes;
-				Stream.ExpectToken(TokenType_OpenBrace);
-				while(true)
+				Token = Stream.PeekToken();
+				if(Token->Type != TokenType_QuotedString) break;
+				
+				const char *IndexSetName = Stream.ExpectQuotedString();
+				index_set_h IndexSet = GetIndexSetHandle(Model, IndexSetName);
+				Stream.ExpectToken(TokenType_Colon);
+				if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Basic)
 				{
-					Token = Stream.ReadToken();
-					if(Token->Type == TokenType_CloseBrace)
+					std::vector<const char *> Indexes;
+					ReadQuotedStringList(Stream, Indexes);
+					SetIndexes(DataSet, IndexSetName, Indexes);
+				}
+				else if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Branched)
+				{
+					//TODO: Make a helper function for this too!
+					std::vector<std::pair<const char *, std::vector<const char *>>> Indexes;
+					Stream.ExpectToken(TokenType_OpenBrace);
+					while(true)
 					{
-						if(Indexes.empty())
+						Token = Stream.ReadToken();
+						if(Token->Type == TokenType_CloseBrace)
 						{
-							Stream.PrintErrorHeader();
-							std::cout << "Expected one or more indexes for index set " << IndexSetName << std::endl;
-							exit(0);
-						}
-						else
-						{
-							SetBranchIndexes(DataSet, IndexSetName, Indexes);
-						}
-						break;
-					}				
-					else if(Token->Type == TokenType_QuotedString)
-					{
-						Indexes.push_back({Token->StringValue, {}});
-					}
-					else if(Token->Type == TokenType_OpenBrace)
-					{
-						const char *IndexName = 0;
-						std::vector<const char*> Inputs;
-						while(true)
-						{
-							Token = Stream.ReadToken();
-							if(Token->Type == TokenType_CloseBrace)
+							if(Indexes.empty())
 							{
-								if(!IndexName || Inputs.empty())
-								{
-									Stream.PrintErrorHeader();
-									std::cout << "No inputs in the braced list for one of the indexes of index set " << IndexSetName << std::endl;
-									exit(0);
-								}
-								break;
-							}
-							else if(Token->Type == TokenType_QuotedString)
-							{
-								if(!IndexName) IndexName = Token->StringValue;
-								else Inputs.push_back(Token->StringValue);
+								Stream.PrintErrorHeader();
+								std::cout << "Expected one or more indexes for index set " << IndexSetName << std::endl;
+								exit(0);
 							}
 							else
 							{
-								Stream.PrintErrorHeader();
-								std::cout << "Expected either the quoted name of an index or a }" << std::endl;
-								exit(0);
+								SetBranchIndexes(DataSet, IndexSetName, Indexes);
 							}
+							break;
+						}				
+						else if(Token->Type == TokenType_QuotedString)
+						{
+							Indexes.push_back({Token->StringValue, {}});
 						}
-						Indexes.push_back({IndexName, Inputs});
-					}
-					else
-					{
-						Stream.PrintErrorHeader();
-						std::cout << "Expected either the quoted name of an index or a }" << std::endl;
-						exit(0);
+						else if(Token->Type == TokenType_OpenBrace)
+						{
+							const char *IndexName = 0;
+							std::vector<const char*> Inputs;
+							while(true)
+							{
+								Token = Stream.ReadToken();
+								if(Token->Type == TokenType_CloseBrace)
+								{
+									if(!IndexName || Inputs.empty())
+									{
+										Stream.PrintErrorHeader();
+										std::cout << "No inputs in the braced list for one of the indexes of index set " << IndexSetName << std::endl;
+										exit(0);
+									}
+									break;
+								}
+								else if(Token->Type == TokenType_QuotedString)
+								{
+									if(!IndexName) IndexName = Token->StringValue;
+									else Inputs.push_back(Token->StringValue);
+								}
+								else
+								{
+									Stream.PrintErrorHeader();
+									std::cout << "Expected either the quoted name of an index or a }" << std::endl;
+									exit(0);
+								}
+							}
+							Indexes.push_back({IndexName, Inputs});
+						}
+						else
+						{
+							Stream.PrintErrorHeader();
+							std::cout << "Expected either the quoted name of an index or a }" << std::endl;
+							exit(0);
+						}
 					}
 				}
 			}
 		}
 		else if(Mode == 1)
-		{	
-			if(Token->Type != TokenType_QuotedString)
+		{
+			while(true)
 			{
-				Stream.PrintErrorHeader();
-				std::cout << "Expected the quoted name of a parameter" << std::endl;
-				exit(0);
-			}
-			
-			if(!DataSet->ParameterData)
-			{
-				AllocateParameterStorage(DataSet);
-			}
-			
-			const char *ParameterName = Token->StringValue;
-			entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName);
-			parameter_type Type = Model->ParameterSpecs[ParameterHandle].Type;
-			size_t ExpectedCount = 1;
-			size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
-			for(index_set_h IndexSet : DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets)
-			{
-				ExpectedCount *= DataSet->IndexCounts[IndexSet.Handle];
-			}
-
-			Stream.ExpectToken(TokenType_Colon);
-
-			if(Type == ParameterType_Time)
-			{
-				//NOTE: Since we can't distinguish date identifiers from quoted string identifiers, we have to handle them separately. Perhaps we should have a separate format for dates so that the parsing could be handled entirely by the lexer??
-				std::vector<parameter_value> Values;
-				Values.resize(ExpectedCount);
-				
-				for(size_t ValIdx = 0; ValIdx < ExpectedCount; ++ValIdx)
+				Token = Stream.PeekToken();
+				if(Token->Type != TokenType_QuotedString) break;
+					
+				if(!DataSet->ParameterData)
 				{
-					Values[ValIdx].ValTime = ParseSecondsSinceEpoch(Stream.ExpectQuotedString());
+					AllocateParameterStorage(DataSet);
 				}
-				SetAllValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
-			}
-			else
-			{
-				std::vector<parameter_value> Values;
-				Values.reserve(ExpectedCount);
-				ReadParameterSeries(Stream, Values, Type);
-				if(Values.size() != ExpectedCount)                                                                   
-				{                                                                                                    
-					Stream.PrintErrorHeader();                                                                       
-					std::cout << "Did not get the expected number of values for " << ParameterName << std::endl;     
-					exit(0);                                                                                         
-				}                                                                                                    
-				SetAllValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
+				
+				const char *ParameterName = Stream.ExpectQuotedString();
+				Stream.ExpectToken(TokenType_Colon);
+				
+				entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName);
+				parameter_type Type = Model->ParameterSpecs[ParameterHandle].Type;
+				size_t ExpectedCount = 1;
+				size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+				for(index_set_h IndexSet : DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets)
+				{
+					ExpectedCount *= DataSet->IndexCounts[IndexSet.Handle];
+				}
+
+				//TODO: Check that the values are in the Min-Max range? (issue warning only)
+				if(Type == ParameterType_Time)
+				{
+					//NOTE: Since we can't distinguish date identifiers from quoted string identifiers, we have to handle them separately. Perhaps we should have a separate format for dates so that the parsing could be handled entirely by the lexer??
+					std::vector<parameter_value> Values;
+					Values.resize(ExpectedCount);
+					
+					for(size_t ValIdx = 0; ValIdx < ExpectedCount; ++ValIdx)
+					{
+						Values[ValIdx].ValTime = ParseSecondsSinceEpoch(Stream.ExpectQuotedString());
+					}
+					SetMultipleValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
+				}
+				else
+				{
+					std::vector<parameter_value> Values;
+					Values.reserve(ExpectedCount);
+					ReadParameterSeries(Stream, Values, Type);
+					if(Values.size() != ExpectedCount)                                                                   
+					{                                                                                                    
+						Stream.PrintErrorHeader();                                                                       
+						std::cout << "Did not get the expected number of values for " << ParameterName << std::endl;     
+						exit(0);                                                                                         
+					}                                                                                                    
+					SetMultipleValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
+				}
 			}
 		}
 	}

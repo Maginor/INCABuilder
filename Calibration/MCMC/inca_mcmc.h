@@ -14,7 +14,7 @@
 #include <omp.h>
 
 
-#include "../calibration_setup.h"
+#include "../calibration.h"
 
 enum mcmc_algorithm
 {
@@ -145,38 +145,20 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 }
 
 double
-TargetLogKernel(const arma::vec& CalibrationIn, void* Data, size_t ChainIdx = 0)
+TargetLogKernel(const arma::vec& Par, void* Data, size_t ChainIdx = 0)
 {
+	
 	mcmc_run_data *RunData = (mcmc_run_data *)Data;
 	
 	inca_data_set *DataSet = RunData->DataSets[ChainIdx];
 	
-	size_t Dimensions = RunData->Calibration.size();
+	double LogLikelyhood = EvaluateObjective(DataSet, RunData->Calibration, RunData->Objective, Par.memptr(), RunData->DiscardTimesteps);
 	
-	//Write the new parameter set sample to the dataset
-	for(size_t CalIdx = 0; CalIdx < Dimensions; ++CalIdx)
-	{
-		double ParamVal = CalibrationIn[CalIdx];
-		parameter_calibration &Cal = RunData->Calibration[CalIdx];
-		
-		SetCalibrationValue(DataSet, Cal, ParamVal);
-	}
-	
-	double M = CalibrationIn[Dimensions]; //NOTE: The last parameter estimates the random perturbation.
-	
-	timer RunModelTimer = BeginTimer();
-	RunModel(DataSet);
-	
-	std::cout << "Time to run a single model: " << GetTimerMilliseconds(&RunModelTimer) << " milliseconds." << std::endl;
-	
-	double LogLikelyhood = EvaluateObjective(DataSet, RunData->Objective, RunData->DiscardTimesteps, M);
-	
-	//TODO: When we have bounds turned on, it looks like de returns adds a log_jacobian for the priors. Find out what that is for!
-	double LogPriors = 0.0; //NOTE: This assumes normal distributed priors and that the MCMC driving algorithm discards draws outside the parameter min-max boundaries on its own.
+	//TODO: When we have bounds turned on, it looks like de algorithm adds a log_jacobian for the priors. Find out what that is for!
+	double LogPriors = 0.0; //NOTE: This assumes uniformly distributed priors and that the MCMC driving algorithm discards draws outside the parameter min-max boundaries on its own.
 	//TODO: implement other priors.
 	
 	return LogPriors + LogLikelyhood;
-	//Do logarithm stuff (and random perturbations?).
 }
 
 
@@ -207,7 +189,7 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	}
 	
 	//NOTE: The final parameter is the parameter for random perturbation.
-	//TODO: Don't hard code these:
+	//TODO: Don't hard code these, they should be in the setup file!
 	InitialGuess[Dimensions] = 0.5;
 	LowerBounds [Dimensions] = 0.0;
 	UpperBounds [Dimensions] = 1.0;

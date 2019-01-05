@@ -6,6 +6,8 @@
 #include "../../inca.h"
 #include "../../Modules/PersistModel.h"
 
+#define CALIBRATION_PRINT_DEBUG_INFO 0
+
 #include "optimizer.h"
 
 int main()

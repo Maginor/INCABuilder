@@ -1,11 +1,19 @@
 
-//NOTE: This file is for common functionality between all calibration/uncertainty analysis
+//NOTE: This file contains common functionality between all calibration/uncertainty analysis algorithms that want to work with our models.
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/mean.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
+
+
+
+#if !defined(CALIBRATION_PRINT_DEBUG_INFO)
+#define CALIBRATION_PRINT_DEBUG_INFO 0
+#endif
+
+
 
 enum parameter_distribution_type
 {
@@ -22,6 +30,7 @@ struct parameter_calibration
 	double Min;
 	double Max;
 	double InitialGuess;
+	//TODO: Mean, StandardDeviation etc. in case of other distributions.
 };
 
 enum performance_measure_type
@@ -216,9 +225,41 @@ ReadCalibrationObjectives(token_stream &Stream, std::vector<calibration_objectiv
 }
 
 static double
-EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, size_t DiscardTimesteps = 0, double M = 0.0)
+EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, calibration_objective &Objective, const double *ParameterValues, size_t DiscardTimesteps = 0)
 {
-	size_t Timesteps = (size_t)GetTimesteps(DataSet);
+	//TODO: Evaluate multiple objectives?
+	
+#if CALIBRATION_PRINT_DEBUG_INFO
+	std::cout << "Starting an objective evaluation" << std::endl;
+#endif
+	
+	size_t Dimensions = Calibrations.size();
+	
+	for(size_t CalibIdx = 0; CalibIdx < Dimensions; ++ CalibIdx)
+	{
+		double Value = ParameterValues[CalibIdx];
+		parameter_calibration &Calibration = Calibrations[CalibIdx];
+		
+		for(size_t ParIdx = 0; ParIdx < Calibration.ParameterNames.size(); ++ParIdx)
+		{
+			SetParameterValue(DataSet, Calibration.ParameterNames[ParIdx], Calibration.ParameterIndexes[ParIdx], Value);
+		}
+		
+#if CALIBRATION_PRINT_DEBUG_INFO
+		std::cout << "Setting " << Calibration.ParameterNames[0] << " to " << Value << std::endl;
+#endif
+	}
+
+#if CALIBRATION_PRINT_DEBUG_INFO
+	timer Timer = BeginTimer();
+	RunModel(DataSet);
+	u64 Ms = GetTimerMilliseconds(&Timer);
+	std::cout << "Running the model took " << Ms << " milliseconds" << std::endl;
+#else
+	RunModel(DataSet);
+#endif
+	
+	size_t Timesteps = (size_t)DataSet->TimestepsLastRun;
 	std::vector<double> ModeledSeries(Timesteps);
 	std::vector<double> ObservedSeries(Timesteps);
 	
@@ -284,6 +325,12 @@ EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, size
 	}
 	else if(Objective.PerformanceMeasure == PerformanceMeasure_LogLikelyhood_ProportionalNormal)
 	{
+		//NOTE: M is an extra parameter that is not a model parameter, so it is placed at the end of the ParameterValues vector. It is important that the caller of the function sets this up correctly..
+		double M = ParameterValues[Dimensions];
+#if CALIBRATION_PRINT_DEBUG_INFO
+		std::cout << "M was set to " << M << std::endl;
+#endif
+		
 		accumulator_set<double, stats<tag::sum>> LogLikelyhoodAccum;
 	
 		for(size_t Timestep = DiscardTimesteps; Timestep < Timesteps; ++Timestep)
@@ -302,14 +349,13 @@ EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, size
 	}
 	else assert(0);
 	
+#if CALIBRATION_PRINT_DEBUG_INFO
+	std::cout << "Performance: " << Performance << std::endl << std::endl;
+#endif
+	
 	return Performance;
 }
 
-inline void
-SetCalibrationValue(inca_data_set *DataSet, parameter_calibration &Calibration, double Value)
-{
-	for(size_t ParIdx = 0; ParIdx < Calibration.ParameterNames.size(); ++ParIdx)
-	{
-		SetParameterValue(DataSet, Calibration.ParameterNames[ParIdx], Calibration.ParameterIndexes[ParIdx], Value);
-	}
-}
+
+//static double
+//ObjectiveDerivative(inca_data_set *DataSet, calibration_objective &Objective, size_t Direction, size_t DiscardTimesteps = 0, double M = 0.0)

@@ -2,7 +2,7 @@
 #if !defined(INCA_GLUE_H)
 
 
-#include "../calibration_setup.h"
+#include "../calibration.h"
 
 struct glue_setup
 {

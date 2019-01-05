@@ -113,9 +113,9 @@ struct token_stream
 		}			
 	}
 	
-	//NOTE! Any pointer to a previously read token may be invalidated if you read a new one.
+	//NOTE! Any pointer to a previously read token may be invalidated if you read or peek a new one.
 	token * ReadToken();
-	token * PeekToken();
+	token * PeekToken(size_t PeekAhead = 1);
 	token * ExpectToken(token_type);
 	
 	double ExpectDouble();
@@ -435,18 +435,20 @@ token_stream::ReadToken()
 	AtToken++;
 	if(AtToken >= Tokens.size())
 	{
-		return ReadTokenInternal_(this);
+		ReadTokenInternal_(this);
 	}
-	else
-	{
-		return &Tokens[AtToken];
-	}
+
+	return &Tokens[AtToken];
 }
 
 token *
-token_stream::PeekToken()
+token_stream::PeekToken(size_t PeekAhead)
 {
-	return ReadTokenInternal_(this);;
+	while(AtToken + PeekAhead >= Tokens.size())
+	{
+		ReadTokenInternal_(this);
+	}
+	return &Tokens[AtToken + 1];
 }
 
 token *

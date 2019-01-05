@@ -380,6 +380,27 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 	return OffsetForUnit + InstanceOffset * NumHandlesInUnitInstance + LocationOfHandleInUnit;
 }
 
+static void
+SetMultipleValuesForParameter(inca_data_set *DataSet, entity_handle ParameterHandle, parameter_value *Values, size_t Count)
+{
+	//NOTE: There are almost no safety checks in this function. The caller of the function is responsible for the checks!
+	// It was designed to be used with the default text input for parameters. If you want to use it for anything else, you should make sure you understand how it works.
+	
+	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];	
+	size_t Stride = DataSet->ParameterStorageStructure.Units[UnitIndex].Handles.size();
+	
+	size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
+	parameter_value *Base = DataSet->ParameterData + Offset;
+	
+	for(size_t Idx = 0; Idx < Count; ++Idx)
+	{
+		*Base = Values[Idx];
+		Base += Stride;
+	}
+}
+
+
+
 static s64
 GetStartDate(inca_data_set *DataSet)
 {

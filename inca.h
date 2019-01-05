@@ -14,6 +14,8 @@ Important TODOs:
 	- Give warning if not all input series received values?
 	- Maybe just use fscanf for reading numbers in inca_io, but it is actually a little complicated since we have to figure out the type in any case.
 	- Register units with inputs too? They are after all expected to be in a certain unit.
+	- Refactor the dependency system to be able to understand explicitly indexed lookups better.
+	- Refactor the input system to separate input reading from processing and standardize the format.
 	
 Bugs:
 	- Check the dependency system with maximumnitrogenuptake in incan-classic again.. I may have misread it, but there is a potential bug there.

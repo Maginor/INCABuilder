@@ -36,11 +36,9 @@ std::mutex AccumulatorLock;
 #endif
 
 static std::pair<double, double>
-EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, std::vector<quantile_accumulator>& QuantileAccumulators, size_t DiscardTimesteps)
+ComputeWeightedPerformance(inca_data_set *DataSet, double Performance, calibration_objective &Objective, std::vector<quantile_accumulator>& QuantileAccumulators, size_t DiscardTimesteps)
 {
 	using namespace boost::accumulators;
-	
-	double Performance = EvaluateObjective(DataSet, Objective, DiscardTimesteps);
 	
 	double WeightedPerformance;
 	if(ShouldMaximize(Objective.PerformanceMeasure))
@@ -52,10 +50,9 @@ EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, std:
 		WeightedPerformance = (Objective.Threshold - Performance) / (Objective.Threshold - Objective.OptimalValue);
 	}
 	
-	
-	//TODO: The other EvaluateObjective we call above already extracts this series, so it is kind of stupid to do it twice. Maybe we could make an optional version of it that gives us back the modeled series?
 	size_t Timesteps = (size_t)DataSet->TimestepsLastRun;
 	
+	//TODO: The other EvaluateObjective we call before this already extracts this series, so it is kind of stupid to do it twice. Maybe we could make an optional version of it that gives us back the modeled series?
 	std::vector<double> ModeledSeries(Timesteps);
 	GetResultSeries(DataSet, Objective.ModeledName, Objective.ModeledIndexes, ModeledSeries.data(), ModeledSeries.size());
 	
@@ -71,11 +68,6 @@ EvaluateObjective(inca_data_set *DataSet, calibration_objective &Objective, std:
 	
 	return {Performance, WeightedPerformance};
 }
-
-
-#if !defined(GLUE_PRINT_DEBUG_INFO)
-#define GLUE_PRINT_DEBUG_INFO 0
-#endif
 
 static void
 RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
@@ -102,7 +94,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
 	{
 		Results->RunData[Run].RandomParameters.resize(Setup->Calibration.size());
-		Results->RunData[Run].PerformanceMeasures.resize(Setup->Objectives.size());
+		Results->RunData[Run].PerformanceMeasures.resize(1);
 	}
 	
 	//NOTE: It is important that the loops are in this order so that we don't get any weird dependence between the parameter values (I think).
@@ -131,26 +123,29 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	auto RunFunc =
 		[&] (size_t RunID, inca_data_set *DataSet)
 		{
+			/*
 			for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
 			{
 				glue_parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
 				
 				//TODO: Other value types later
-				double NewValue = Results->RunData[RunID].RandomParameters[ParIdx].ValDouble;
+				double NewValue = Results->RunData[RunID].RandomParameters[ParIdx];
 
 				SetParameterValue(DataSet, ParSetting.ParameterName, ParSetting.Indexes, NewValue);
 			}
 			
 			RunModel(DataSet);
+			*/
+			calibration_objective &Objective = Setup->Objectives[0];
 			
-			for(size_t ObjIdx = 0; ObjIdx < Setup->Objectives.size(); ++ObjIdx)
-			{
-				glue_objective &Objective = Setup->Objectives[ObjIdx];
-				
-				auto Perf = EvaluateObjective(DataSet, Objective, QuantileAccumulators);
+			const double *ParValues = Results->RunData[RunID].RandomParameters.data();
+			
+			double Performance = EvaluateObjective(DataSet, Setup->Calibration, Objective, ParValues, Setup->DiscardTimesteps);
 
-				Results->RunData[RunID].PerformanceMeasures[ObjIdx] = Perf;
-			}
+			auto Perf = ComputeWeightedPerformance(DataSet, Performance, Objective, QuantileAccumulators, Setup->DiscardTimesteps);
+
+			Results->RunData[RunID].PerformanceMeasures[0] = Perf;
+
 		};
 	
 	size_t NumThreads = Setup->NumThreads;
@@ -198,38 +193,23 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	
 #else
 	
-	for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
+	for(size_t RunID = 0; RunID < Setup->NumRuns; ++RunID)
 	{
-#if GLUE_PRINT_DEBUG_INFO
-		std::cout << "Run number: " << Run << std::endl;
+#if CALIBRATION_PRINT_DEBUG_INFO
+		std::cout << "Run number: " << RunID << std::endl;
 #endif
-		for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
-		{
-			parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
+		calibration_objective &Objective = Setup->Objectives[0];
+
+		const double *ParValues = Results->RunData[RunID].RandomParameters.data();
 			
-			//TODO: Other value types later
-			double NewValue = Results->RunData[Run].RandomParameters[ParIdx];
-#if GLUE_PRINT_DEBUG_INFO
-			//TODO: Print multiple names (in case of link) and indexes?
-			std::cout << "Setting " << ParSetting.ParameterNames[0] << " to " << NewValue << std::endl;
-#endif
-			SetCalibrationValue(DataSet, ParSetting, NewValue);
-		}
-		
-		RunModel(DataSet);
-		
-		for(size_t ObjIdx = 0; ObjIdx < Setup->Objectives.size(); ++ObjIdx)
-		{
-			calibration_objective &Objective = Setup->Objectives[ObjIdx];
-			
-			auto Perf = EvaluateObjective(DataSet, Objective, QuantileAccumulators, Setup->DiscardTimesteps);
-#if GLUE_PRINT_DEBUG_INFO		
-			std::cout << "Performance and weighted performance for " << Objective.ModeledName << " vs " << Objective.ObservedName << " was " << std::endl << Perf.first << ", " << Perf.second << std::endl;
-#endif
-			Results->RunData[Run].PerformanceMeasures[ObjIdx] = Perf;
-		}
-#if GLUE_PRINT_DEBUG_INFO	
-		std::cout << std::endl;
+		double Performance = EvaluateObjective(DataSet, Setup->Calibration, Objective, ParValues, Setup->DiscardTimesteps);
+
+		auto Perf = ComputeWeightedPerformance(DataSet, Performance, Objective, QuantileAccumulators, Setup->DiscardTimesteps);
+
+		Results->RunData[RunID].PerformanceMeasures[0] = Perf;
+
+#if CALIBRATION_PRINT_DEBUG_INFO		
+		std::cout << "Performance and weighted performance for " << Objective.ModeledName << " vs " << Objective.ObservedName << " was " << std::endl << Perf.first << ", " << Perf.second << std::endl;
 #endif
 	}
 #endif

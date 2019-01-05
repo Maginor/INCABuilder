@@ -1,7 +1,7 @@
 
 #if !defined(OPTIMIZER_H)
 
-#include "../calibration_setup.h"
+#include "../calibration.h"
 
 #include "Dlib/optimization.h"
 #include "Dlib/global_optimization.h"
@@ -73,16 +73,10 @@ public:
 	
 	double operator()(const column_vector& Par)
 	{
-		for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
-		{
-			SetCalibrationValue(DataSet, Setup->Calibration[ParIdx], Par(ParIdx));
-		}
-		
-		RunModel(DataSet);
-		
-		// TODO: Multiobjectives?
+		//TODO: Allow multiple objectives
 		calibration_objective &Objective = Setup->Objectives[0];
-		double Performance = EvaluateObjective(DataSet, Objective, Setup->DiscardTimesteps);
+		
+		double Performance = EvaluateObjective(DataSet, Setup->Calibration, Objective, Par.begin(), Setup->DiscardTimesteps);
 		
 		return ShouldMaximize(Objective.PerformanceMeasure) ? -Performance : Performance;
 	}

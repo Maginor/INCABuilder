@@ -246,7 +246,7 @@ EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 		}
 		
 #if CALIBRATION_PRINT_DEBUG_INFO
-		std::cout << "Setting " << Calibration.ParameterNames[0] << " to " << Value << std::endl;
+		std::cout << "Setting " << Calibration.ParameterNames[0] << " to " << Value << std::endl; //TODO: This does not print enough info when we are setting a linked set of parameters
 #endif
 	}
 
@@ -357,5 +357,13 @@ EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 }
 
 
-//static double
-//ObjectiveDerivative(inca_data_set *DataSet, calibration_objective &Objective, size_t Direction, size_t DiscardTimesteps = 0, double M = 0.0)
+static double
+EvaluateObjectiveAndGradient(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, calibration_objective &Objective, const double *ParameterValues, size_t DiscardTimesteps, double *GradientOut)
+{
+	double Performance = EvaluateObjective(DataSet, Calibrations, Objective, ParameterValues, DiscardTimesteps);
+	
+	//IMPLEMENTME
+	
+	return Performance;
+}
+

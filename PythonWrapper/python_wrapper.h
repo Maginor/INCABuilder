@@ -5,38 +5,38 @@
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
 DLLEXPORT void
-RunModel(void *DataSetPtr)
+DllRunModel(void *DataSetPtr)
 {
 	RunModel((inca_data_set *)DataSetPtr);
 }
 
 DLLEXPORT void *
-CopyDataSet(void *DataSetPtr)
+DllCopyDataSet(void *DataSetPtr)
 {
 	return (void *)CopyDataSet((inca_data_set *)DataSetPtr);
 }
 
 DLLEXPORT void
-DeleteDataSet(void *DataSetPtr)
+DllDeleteDataSet(void *DataSetPtr)
 {
 	delete (inca_data_set *)DataSetPtr;
 }
 
 DLLEXPORT u64
-GetTimesteps(void *DataSetPtr)
+DllGetTimesteps(void *DataSetPtr)
 {
 	return GetTimesteps((inca_data_set *)DataSetPtr);
 }
 
 DLLEXPORT u64
-GetInputTimesteps(void *DataSetPtr)
+DllGetInputTimesteps(void *DataSetPtr)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	return DataSet->InputDataTimesteps;
 }
 
 DLLEXPORT void
-GetResultSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *WriteTo)
+DllGetResultSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *WriteTo)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	
@@ -46,7 +46,7 @@ GetResultSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount,
 }
 
 DLLEXPORT void
-GetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *WriteTo, bool AlignWithResults)
+DllGetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *WriteTo, bool AlignWithResults)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	
@@ -60,7 +60,7 @@ GetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, 
 }
 
 DLLEXPORT void
-SetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double Val)
+DllSetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double Val)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	parameter_value Value;
@@ -69,7 +69,7 @@ SetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCou
 }
 
 DLLEXPORT void
-SetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, u64 Val)
+DllSetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, u64 Val)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	parameter_value Value;
@@ -78,7 +78,7 @@ SetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount
 }
 
 DLLEXPORT void
-SetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, bool Val)
+DllSetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, bool Val)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	parameter_value Value;
@@ -87,7 +87,7 @@ SetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount
 }
 
 DLLEXPORT void
-SetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, char *Val)
+DllSetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, char *Val)
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	parameter_value Value;
@@ -96,25 +96,25 @@ SetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount
 }
 
 DLLEXPORT double
-GetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount)
+DllGetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount)
 {
 	return GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_Double).ValDouble;
 }
 
 DLLEXPORT u64
-GetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount)
+DllGetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount)
 {
 	return GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_UInt).ValUInt;
 }
 
 DLLEXPORT bool
-GetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount)
+DllGetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount)
 {
 	return GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_Bool).ValBool;
 }
 
 DLLEXPORT void
-GetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, char *WriteTo)
+DllGetParameterTime(void *DataSetPtr, const char *Name, char **IndexNames, u64 IndexCount, char *WriteTo)
 {
 	//IMPORTANT: This assumes that WriteTo is a char* buffer that is long enough (i.e. at least 11-12-ish bytes)
 	//IMPORTANT: This is NOT thread safe since TimeString is not thread safe.
@@ -125,7 +125,32 @@ GetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount
 }
 
 DLLEXPORT void
-WriteParametersToFile(void *DataSetPtr, char *Filename)
+DllGetInputStartDate(void *DataSetPtr, char *WriteTo)
+{
+	//IMPORTANT: This assumes that WriteTo is a char* buffer that is long enough (i.e. at least 11-12-ish bytes)
+	//IMPORTANT: This is NOT thread safe since TimeString is not thread safe.
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	
+	if(DataSet->InputDataHasSeparateStartDate)
+	{
+		s64 SecondsSinceEpoch = DataSet->InputDataStartDate;
+		char *TimeStr = TimeString(SecondsSinceEpoch);
+		strcpy(WriteTo, TimeStr);
+	}
+	else
+	{
+		DllGetParameterTime(DataSetPtr, "Start date", 0, 0, WriteTo);
+	}
+}
+
+DLLEXPORT void
+DllWriteParametersToFile(void *DataSetPtr, char *Filename)
 {
 	WriteParametersToFile((inca_data_set *)DataSetPtr, (const char *)Filename);
+}
+
+DLLEXPORT void
+DllSetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *InputData, u64 InputDataLength)
+{
+	SetInputSeries((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, InputData, (size_t)InputDataLength);
 }

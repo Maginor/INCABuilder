@@ -918,9 +918,8 @@ CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h Cumulate
 
 
 //TODO: There is so much code doubling between input / result access. Could it be merged?
-
 static void
-SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char *> &IndexNames, const double *InputSeries, size_t InputSeriesSize)
+SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *IndexNames, size_t IndexCount, const double *InputSeries, size_t InputSeriesSize)
 {
 	if(!DataSet->InputData)
 	{
@@ -942,9 +941,9 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
 	std::vector<index_set_h> &IndexSets = Units[StorageUnitIndex].IndexSets;
 	
-	if(IndexNames.size() != IndexSets.size())
+	if(IndexCount != IndexSets.size())
 	{
-		std::cout << "ERROR: Got the wrong amount of indexes when setting the input series for " << GetName(Model, Input) << ". Got " << IndexNames.size() << ", expected " << IndexSets.size() << std::endl;
+		std::cout << "ERROR: Got the wrong amount of indexes when setting the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl;
 		exit(0);
 	}
 	index_t Indexes[256];
@@ -961,6 +960,12 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 		*At = InputSeries[Idx];
 		At += DataSet->InputStorageStructure.TotalCount;
 	}
+}
+
+inline void
+SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char *> &IndexNames, const double *InputSeries, size_t InputSeriesSize)
+{
+	SetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), InputSeries, InputSeriesSize);
 }
 
 // NOTE: The caller of this function has to allocate the space that the result series should be written to and pass a pointer to it as WriteTo.

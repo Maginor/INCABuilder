@@ -12,7 +12,7 @@
 
 
 DLLEXPORT void *
-SetupModel(char *ParameterFilename, char *InputFilename) {
+DllSetupModel(char *ParameterFilename, char *InputFilename) {
     
 	inca_model *Model = BeginModelDefinition("PERSiST", "1.0");
 	

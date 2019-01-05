@@ -95,16 +95,9 @@ for idx, cal in enumerate(calibration) :
 
 
 
-
-# If you want to do a real optimization run, read a real observation series as your obs instead. Here is one way if the series was provided in the input file:
-# obs = dataset.get_input_series('Discharge', ['Tveitvatn'], alignwithresults=True)
-
 # NOTE: If you do a real optimization run, this is how you can write the optimal values back to the dataset and then generate a new parameter file that has these values.
-# dataset.set_parameter_double('a', ['Tveitvatn'], param_est[0])
-# dataset.set_parameter_double('b', ['Tveitvatn'], param_est[1])
+# set_values(dataset, param_est, calibration)
 # dataset.write_parameters_to_file('optimal_parameters.dat')
-
-
 
 
 dataset.delete() # You can optionally do this at the end. It is not necessary if your python process closes down, because then the operating system will do it for you. Also, this will not delete the model itself, only the dataset (I have not exposed any functionality for deleting the model atm.)

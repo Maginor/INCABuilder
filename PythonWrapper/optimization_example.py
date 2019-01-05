@@ -16,8 +16,6 @@ def check_min_max(params, min, max):
 	return True
 
 def sum_squares_error(params, dataset, min, max, calibration, objective):
-	a, b = params
-	
 	# NOTE: This version of the Nelder-Mead algorithm does not allow for bounds, so we have to hack them in
 	if not check_min_max(params, min, max):
 		return -np.inf

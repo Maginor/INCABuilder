@@ -15,7 +15,7 @@ def check_min_max(params, min, max):
 			return False
 	return True
 
-def sum_squares_error(params, dataset, min, max, calibration, objective):
+def sum_squares_error(params, dataset, min, max, calibration, objective, skiptimesteps):
 	# NOTE: This version of the Nelder-Mead algorithm does not allow for bounds, so we have to hack them in
 	if not check_min_max(params, min, max):
 		return -np.inf
@@ -31,9 +31,7 @@ def sum_squares_error(params, dataset, min, max, calibration, objective):
 	fn, simname, simindexes, obsname, obsindexes = objective
     
 	sim = dataset.get_result_series(simname, simindexes)
-	obs = dataset.get_input_series(obsname, obsindexes)
-    
-	skiptimesteps = 365 #NOTE: Skip these many of the first timesteps when evaluating the objective
+	obs = dataset.get_input_series(obsname, obsindexes)    #It would be more efficient to do this extraction just once, not at every evaluation, since the observation series is not going to change
 	
 	sse = np.sum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
     
@@ -42,10 +40,12 @@ def sum_squares_error(params, dataset, min, max, calibration, objective):
 	
 	return sse
 
-def run_optimization(dataset, min, max, initial_guess, calibration, objective) :
+def run_optimization(dataset, min, max, initial_guess, calibration, objective, skiptimesteps) :
 	objective_fun, *_ = objective
 
-	return optimize.fmin(objective_fun, initial_guess, args=(dataset, min, max, calibration, objective))
+	#TODO: Check that the skiptimesteps are not larger than the amount of timesteps in the model run.
+	
+	return optimize.fmin(objective_fun, initial_guess, args=(dataset, min, max, calibration, objective, skiptimesteps))
 	
 def default_initial_guess(dataset, calibration) :
 	#NOTE: Just reads the values that were provided in the file
@@ -74,7 +74,7 @@ max = [.7, .9]
 
 objective = (sum_squares_error, 'Reach flow', ['Tveitvatn'], 'Discharge', ['Tveitvatn'])
 
-
+skiptimesteps = 365   # Skip these many of the first timesteps in the objective evaluation
 
 #NOTE: We test the optimizer by running the model with "fake real parameters" and set that as the observation series to see if the optimizer can recover the "real" parameters.
 fake_real_parameters = [0.41, 0.6]
@@ -84,7 +84,7 @@ dataset.run_model()
 fake_discharge = dataset.get_result_series('Reach flow', ['Tveitvatn'])
 dataset.set_input_series('Discharge', ['Tveitvatn'], fake_discharge)    # Overwrites the existing input series
 	
-param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective)
+param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, skiptimesteps)
 
 print('\n')
 for idx, cal in enumerate(calibration) :

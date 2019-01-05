@@ -4,6 +4,7 @@ from scipy import optimize
 
 
 def set_values(dataset, values, calibration):
+	#TODO: Allow for linking parameters across indexes (say you want the Time constant for soil water to be the same across all landscape units)
 	for idx, cal in enumerate(calibration):
 		parname, parindexes = cal
 		dataset.set_parameter_double(parname, parindexes, values[idx])
@@ -65,8 +66,7 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/Inc
 # dataset.set_parameter_uint('Timesteps', [], 1000)
 # dataset.set_parameter_time('Start date', [], '1999-12-7')
 
-	
-#TODO: Allow for linking parameters?
+
 calibration = [('a', ['Tveitvatn']),  ('b', ['Tveitvatn'])]
 
 # initial_guess = default_initial_guess(dataset, calibration)    --- oops, this starting point is not good for this setup

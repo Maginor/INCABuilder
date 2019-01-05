@@ -18,7 +18,7 @@ def check_min_max(params, min, max):
 def sum_squares_error(params, dataset, min, max, calibration, objective, skiptimesteps):
 	# NOTE: This version of the Nelder-Mead algorithm does not allow for bounds, so we have to hack them in
 	if not check_min_max(params, min, max):
-		return -np.inf
+		return np.inf
 	
 	# NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
 	# (in that case, only use the copy when setting parameter values, running the model, and extracting results below)

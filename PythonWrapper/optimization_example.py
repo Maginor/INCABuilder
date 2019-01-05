@@ -54,9 +54,9 @@ def default_initial_guess(dataset, calibration) :
 	
 
 # NOTE: Example for optimizing the a and b values in the equation V = aQ^b (reach flow - velocity relationship)
-# This is just a toy setup, a proper calibration run probably needs to set up more parameters to modify and maybe use a better algorithm, such as the one  in dlib.
+# This is just a toy setup, a proper calibration run probably needs to set up more parameters to modify and maybe use a better algorithm, such as the one in dlib.
 
-#TODO: The reach flow doesn't seem to be very sensitive to these parameters in particular, choose some better ones to illustrate this example
+#TODO: The reach flow doesn't seem to be very sensitive to these parameters in particular, choose some better ones to illustrate this example!
 
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/IncaN/tovdalparametersPersistOnly.dat', '../Applications/IncaN/tovdalinputs.dat')
 
@@ -65,7 +65,10 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/Inc
 # dataset.set_parameter_time('Start date', [], '1999-12-7')
 
 
-calibration = [('a', ['Tveitvatn']),  ('b', ['Tveitvatn'])]
+calibration = [
+	('a', ['Tveitvatn']),
+	('b', ['Tveitvatn'])
+]
 
 # initial_guess = default_initial_guess(dataset, calibration)    --- oops, this starting point is not good for this setup
 initial_guess = [0.5, 0.7]

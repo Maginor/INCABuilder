@@ -358,12 +358,39 @@ EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 
 
 static double
-EvaluateObjectiveAndGradient(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, calibration_objective &Objective, const double *ParameterValues, size_t DiscardTimesteps, double *GradientOut)
+EvaluateObjectiveAndGradientSingleForwardDifference(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, calibration_objective &Objective, const double *ParameterValues, size_t DiscardTimesteps, double *GradientOut)
 {
-	double Performance = EvaluateObjective(DataSet, Calibrations, Objective, ParameterValues, DiscardTimesteps);
+	//NOTE: This is a very cheap and probably not that good estimation of the gradient. It should only be used if you need the estimation to be very fast (such as if you are going to use it for each step of an MCMC run).
+	size_t Dimensions = Calibrations.size();
 	
-	//IMPLEMENTME
+	double F0 = EvaluateObjective(DataSet, Calibrations, Objective, ParameterValues, DiscardTimesteps);
 	
-	return Performance;
+	double *XD = malloc(sizeof(double) * Dimensions);
+	
+	const double Epsilon = 1e-6;
+	
+	for(size_t Dim = 0; Dim < Dimensions; ++Dim)
+	{
+		memcpy(XD, ParameterValues, sizeof(double) * Dimensions);
+		
+		double H;
+		if(abs(XD[Dim]) > 1e-6)
+			H = sqrt(XD[Dim])*Epsilon;
+		else
+			H = 1e-9; //TODO: This was just completely arbitrary, it should be done properly
+		
+		volatile double Temp = XD[Dim] + H;  //Volatile so that the compiler does not optimize it away
+		double HX = Temp - XD[Dim];
+		
+		XD[Dim] += HX;
+		
+		FD = EvaluateObjective(DataSet, Calibrations, Objective, XD, DiscardTimesteps);
+		
+		GradientOut[Dim] = (FD - F0) / HX;
+	}
+	
+	free(EvalPoint);
+	
+	return F0;
 }
 

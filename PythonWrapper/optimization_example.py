@@ -16,7 +16,7 @@ def check_min_max(params, min, max):
 			return False
 	return True
 
-def sum_squares_error(params, dataset, calibration, objective, skiptimesteps, obs):	
+def sum_squares_error(params, dataset, calibration, objective, obs):	
 	# NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
 	# (in that case, only use the copy when setting parameter values, running the model, and extracting results below)
 	# datasetcopy = dataset.copy()
@@ -25,7 +25,7 @@ def sum_squares_error(params, dataset, calibration, objective, skiptimesteps, ob
 	
 	dataset.run_model()
 	
-	fn, simname, simindexes, obsname, obsindexes = objective
+	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
     
 	sim = dataset.get_result_series(simname, simindexes)
 	
@@ -36,28 +36,30 @@ def sum_squares_error(params, dataset, calibration, objective, skiptimesteps, ob
 	
 	return sse
 
-def run_optimization(dataset, min, max, initial_guess, calibration, objective, skiptimesteps) :
-	objective_fun, simname, simindexes, obsname, obsindexes = objective
+def run_optimization(dataset, min, max, initial_guess, calibration, objective) :
+	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 	
 	#NOTE: We extract the observation series just once here so that it does not have to be extracted at every evaluation (it will not change during optimization)
 	obsseries = dataset.get_input_series(obsname, obsindexes)
 
-	#TODO: Check that the skiptimesteps are not larger than the amount of timesteps in the model run.
+	if skiptimesteps >= dataset.get_parameter_uint('Timesteps', []) :
+		raise ValueError('We were told to skip more timesteps in the evaluation of the objective than the amount of timesteps we run the model for.')
 	
 	def eval(params) :
 		# NOTE: This version of the Nelder-Mead algorithm does not allow for bounds, so we have to hack them in
 		if not check_min_max(params, min, max):
 			return np.inf
-		return objective_fun(params, dataset, calibration, objective, skiptimesteps, obsseries)
+		return objective_fun(params, dataset, calibration, objective, obsseries)
 	
 	return optimize.fmin(eval, initial_guess)
 
 	
-def compute_hessian(dataset, params, calibration, objective, skiptimesteps) :
-	objective_fun, simname, simindexes, obsname, obsindexes = objective
+def compute_hessian(dataset, params, calibration, objective) :
+	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 	obsseries = dataset.get_input_series(obsname, obsindexes)
 	
-	def eval(par) : return objective_fun(par, dataset, calibration, objective, skiptimesteps, obsseries)
+	#WARNING: This may be dangerous if we are close to the parameter bounds. The algorithm may evaluate outside the bounds and maybe crash the model.
+	def eval(par) : return objective_fun(par, dataset, calibration, objective, obsseries)
 	
 	return nd.Hessian(eval)(params)
 	
@@ -79,6 +81,7 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/Inc
 # dataset.set_parameter_time('Start date', [], '1999-12-7')
 
 
+#NOTE: The 'calibration' structure is a tuple of (indexed) parameters that we want to calibrate
 calibration = [
 	('a', ['Tveitvatn']),
 	('b', ['Tveitvatn']),
@@ -89,9 +92,10 @@ initial_guess = [0.5, 0.7]
 min = [.001, .1]
 max = [.7, .9]
 
-objective = (sum_squares_error, 'Reach flow', ['Tveitvatn'], 'Discharge', ['Tveitvatn'])
-
 skiptimesteps = 365   # Skip these many of the first timesteps in the objective evaluation
+
+#NOTE: The 'objective' structure contains information about how to evaluate the objective.
+objective = (sum_squares_error, 'Reach flow', ['Tveitvatn'], 'Discharge', ['Tveitvatn'], skiptimesteps)
 
 #NOTE: We test the optimizer by running the model with "fake real parameters" and set that as the observation series to see if the optimizer can recover the "real" parameters.
 fake_real_parameters = [0.41, 0.6]
@@ -99,9 +103,9 @@ set_values(dataset, fake_real_parameters, calibration)
 
 dataset.run_model()
 fake_discharge = dataset.get_result_series(objective[1], objective[2])
-dataset.set_input_series(objective[3], objective[4], fake_discharge)    # Overwrites the existing input series
+dataset.set_input_series(objective[3], objective[4], fake_discharge)    # Overwrites the existing input series with our result series as the fake real input.
 	
-param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, skiptimesteps)
+param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective)
 
 
 print('\n')
@@ -111,7 +115,7 @@ for idx, cal in enumerate(calibration) :
 
 	
 # Computing the Hessian at the optimal point:
-hess = compute_hessian(dataset, param_est, calibration, objective, skiptimesteps)
+hess = compute_hessian(dataset, param_est, calibration, objective)
 print('Hessian matrix at optimal parameters:')
 print(hess)
 

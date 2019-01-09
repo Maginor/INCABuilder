@@ -44,6 +44,9 @@ int main()
 	PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);
 	//PrintInputStorageStructure(DataSet);
+	
+	
+	//SetParameterValue(DataSet, "Timesteps", {}, (u64)10);
 
 	RunModel(DataSet);
 #endif

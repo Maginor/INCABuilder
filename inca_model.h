@@ -79,7 +79,8 @@ struct value_set_accessor;
 typedef std::function<double(value_set_accessor *)> inca_equation;
 
 typedef std::function<void(double *, double *)> inca_solver_equation_function;
-#define INCA_SOLVER_FUNCTION(Name) void Name(double h, u32 n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction)
+//#define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction)
+#define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction, const inca_solver_equation_function &JacobiFunction, double AbsErr, double RelErr)
 typedef INCA_SOLVER_FUNCTION(inca_solver_function);
 
 struct parameter_group_spec
@@ -148,8 +149,15 @@ struct equation_spec
 struct solver_spec
 {
 	const char *Name;
+	
 	double h;
+	double RelErr;
+	double AbsErr;
+	
 	inca_solver_function *SolverFunction;
+	
+	bool UsesErrorControl;
+	bool UsesJacobian;
 	
 	//NOTE: These are built during EndModelDefinition:
 	std::set<index_set_h> IndexSetDependencies;
@@ -908,8 +916,11 @@ ResetEveryTimestep(inca_model *Model, equation_h Equation)
 	Spec.ResetEveryTimestep = true;
 }
 
+#define INCA_SOLVER_SETUP_FUNCTION(Name) void Name(solver_spec *SolverSpec)
+typedef INCA_SOLVER_SETUP_FUNCTION(inca_solver_setup_function);
+
 static solver_h
-RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_function *SolverFunction)
+RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_setup_function *SetupFunction)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -922,8 +933,29 @@ RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_functi
 		exit(0);
 	}
 	
-	Model->SolverSpecs[Solver.Handle].h = h;
-	Model->SolverSpecs[Solver.Handle].SolverFunction = SolverFunction;
+	solver_spec &Spec = Model->SolverSpecs[Solver.Handle];
+	
+	SetupFunction(&Spec);
+	
+	Spec.h = h;
+	
+	return Solver;
+}
+
+static solver_h
+RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_setup_function *SetupFunction, double RelErr, double AbsErr)
+{
+	solver_h Solver = RegisterSolver(Model, Name, h, SetupFunction);
+	
+	solver_spec &Spec = Model->SolverSpecs[Solver.Handle];
+	
+	if(!Spec.UsesErrorControl)
+	{
+		std::cout << "WARNING: Registered error tolerances with the solver " << Name << ", but the attached solver function does not support error control." << std::endl;
+	}
+	
+	Spec.RelErr = RelErr;
+	Spec.AbsErr = AbsErr;
 	
 	return Solver;
 }

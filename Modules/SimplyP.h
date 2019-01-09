@@ -4,6 +4,9 @@
 // https://github.com/LeahJB/SimplyP
 // Currently it lacks phosphorous processes in newly-converted land, and one of the equations behaves badly wrt. the solver.
 
+#include "../boost_solvers.h"
+
+
 inline double
 ConvertMmPerDayToM3PerDay(double MmPerDay, double CatchmentArea)
 {
@@ -142,7 +145,9 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return (1.0 - PARAMETER(ProportionToQuickFlow)) * RESULT(HydrologicalInputToSoilBox);
 	)
 	
-	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
+	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
+	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
+	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.1, BoostRosenbrock4, 1e-6, 1e-6);
 	
 	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
 	

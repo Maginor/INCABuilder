@@ -860,13 +860,13 @@ ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_
 #endif
 
 inline void
-NaNTest(inca_model *Model, value_set_accessor *ValueSet, double ResultValue, equation_h Equation)
+NaNTest(const inca_model *Model, value_set_accessor *ValueSet, double ResultValue, equation_h Equation)
 {
 	if(std::isnan(ResultValue) || std::isinf(ResultValue))
 	{
 		//TODO: We should be able to report the timestep here.
 		std::cout << "ERROR: Got a NaN or Inf value as the result of the equation " << GetName(Model, Equation) << " at timestep " << ValueSet->Timestep << std::endl;
-		equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
+		const equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
 		std::cout << "Indexes:" << std::endl;
 		for(index_set_h IndexSet : Spec.IndexSetDependencies)
 		{
@@ -876,7 +876,7 @@ NaNTest(inca_model *Model, value_set_accessor *ValueSet, double ResultValue, equ
 		for(entity_handle Par : Spec.ParameterDependencies )
 		{
 			//Ugh, it is cumbersome to print parameter values when we don't know the type a priori....
-			parameter_spec &ParSpec = Model->ParameterSpecs[Par];
+			const parameter_spec &ParSpec = Model->ParameterSpecs[Par];
 			if(ParSpec.Type == ParameterType_Double)
 			{
 				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValDouble << std::endl;
@@ -915,6 +915,70 @@ CallEquation(const inca_model *Model, value_set_accessor *ValueSet, equation_h E
 	ValueSet->EquationTotalCycles[Equation.Handle] += (End - Begin);
 #endif
 	return ResultValue;
+}
+
+static void
+EstimateJacobian(double *X, double *J, const inca_model *Model, value_set_accessor *ValueSet, const equation_batch &Batch)
+{
+	//NOTE: This is not a very numerically accurate estimation of the Jacobian, it is mostly optimized for speed. We'll see if it is good enough..
+	
+	//TODO: We should maybe move this out to its own file.
+
+	size_t N = Batch.EquationsODE.size();
+	
+	double *FBaseVec = (double *)malloc(sizeof(double)*N); //TODO: Should be preallocated instead...
+	
+	for(size_t Idx = 0; Idx < N; ++Idx)
+	{
+		equation_h Equation = Batch.EquationsODE[Idx];
+		ValueSet->CurResults[Equation.Handle] = X[Idx];
+	}
+	
+	//NOTE: Evaluation of the ODE system at base point. TODO: We should find a way to reuse the calculation we already do at the basepoint, however it is done by a separate callback, so that is tricky..
+	for(equation_h Equation : Batch.Equations)
+	{
+		double ResultValue = CallEquation(Model, ValueSet, Equation);
+		ValueSet->CurResults[Equation.Handle] = ResultValue;
+	}
+	
+	for(size_t Idx = 0; Idx < N; ++Idx)
+	{
+		equation_h EquationToCall = Batch.EquationsODE[Idx];
+		FBaseVec[Idx] = CallEquation(Model, ValueSet, EquationToCall);
+	}
+	
+	//TODO: This is a naive way of doing it. We should instead use pre-recorded info about which equations depend on which and skip evaluation in the case where there is no dependency.
+	for(size_t Col = 0; Col < N; ++Col)
+	{
+		equation_h EquationToPermute = Batch.EquationsODE[Col];
+		
+		//Hmm. here we assume we can use the same H for all Fs which may not be a good idea?? But it makes things significantly faster because then we don't have to recompute the non-odes in all cases.
+		double H = 1e-6;  //TODO: This should definitely be sensitive to the size of the base values!!
+		ValueSet->CurResults[EquationToPermute.Handle] = X[Col] + H; //TODO: Do it numerically correct
+		
+		//TODO: Do some pre-analysis to weed out exactly which of the non-ode equations we need to call.
+		for(equation_h Equation : Batch.Equations)
+		{
+			double ResultValue = CallEquation(Model, ValueSet, Equation);
+			ValueSet->CurResults[Equation.Handle] = ResultValue;
+		}
+		
+		for(size_t Row = 0; Row < N; ++Row)
+		{
+			equation_h EquationToCall = Batch.EquationsODE[Row];
+		
+			double FBase = FBaseVec[Row]; //NOTE: The value of the EquationToCall at the base point.
+			
+			double FPermute = CallEquation(Model, ValueSet, EquationToCall);
+			
+			//NOTE: Assumes row major storage (this is the default for the boost solver use case. If we need column major for another use case we have to figure out how to do that)
+			J[N*Row + Col] = (FPermute - FBase) / H; //TODO: Numerical correctness
+		}
+		
+		ValueSet->CurResults[EquationToPermute.Handle] = X[Col];  //NOTE: Reset the value so that it is correct for the next column.
+	}
+	
+	free(FBaseVec); //Obviously remove this line if we preallocate FBaseVec.
 }
 
 
@@ -1016,9 +1080,9 @@ INNER_LOOP_BODY(RunInnerLoop)
 				
 				const solver_spec &SolverSpec = Model->SolverSpecs[Batch.Solver.Handle];
 				
-				SolverSpec.SolverFunction(SolverSpec.h, Batch.EquationsODE.size(), DataSet->x0, DataSet->wk,
-					//NOTE: This lambda is the "equation function" of the solver. It solves the set of equations once given the values in the working sets x0 and wk. It can be run by the SolverFunction many times.
-					[ValueSet, Model, &Batch](double *x0, double* wk)
+				//NOTE: This lambda is the "equation function" of the solver. It solves the set of equations once given the values in the working sets x0 and wk. It can be run by the SolverFunction many times.
+				auto EquationFunction =
+				[ValueSet, Model, &Batch](double *x0, double* wk)
 					{	
 						size_t EquationIdx = 0;
 						//NOTE: Read in initial values of the ODE equations to the CurResults buffer to be accessible from within the batch equations using RESULT(H).
@@ -1035,7 +1099,7 @@ INNER_LOOP_BODY(RunInnerLoop)
 						//NOTE: Solving basic equations tied to the solver. Values should NOT be written to the working set. They can instead be accessed from inside other equations in the solver batch using RESULT(H)
 						for(equation_h Equation : Batch.Equations)
 						{
-							double ResultValue = CallEquation(Model, ValueSet, Equation);;
+							double ResultValue = CallEquation(Model, ValueSet, Equation);
 #if INCA_TEST_FOR_NAN
 							NaNTest(Model, ValueSet, ResultValue, Equation);
 #endif
@@ -1051,8 +1115,20 @@ INNER_LOOP_BODY(RunInnerLoop)
 							
 							++EquationIdx;
 						}
-					}
-				);
+					};
+				
+				inca_solver_equation_function JacobiFunction = nullptr;
+				if(SolverSpec.UsesJacobian)
+				{
+					JacobiFunction =
+					[ValueSet, Model, &Batch](double *X, double *J)
+					{
+						EstimateJacobian(X, J, Model, ValueSet, Batch);
+					};
+				}
+				
+				//NOTE: Solve the system using the provided solver
+				SolverSpec.SolverFunction(SolverSpec.h, Batch.EquationsODE.size(), DataSet->x0, DataSet->wk, EquationFunction, JacobiFunction, SolverSpec.RelErr, SolverSpec.AbsErr);
 				
 				//NOTE: Store out the final results from this solver to the ResultData set.
 				for(equation_h Equation : Batch.Equations)

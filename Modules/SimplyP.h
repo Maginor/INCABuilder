@@ -147,10 +147,33 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
-	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.1, BoostRosenbrock4, 1e-6, 1e-6);
+	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-6, 1e-6);
 	
 	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
 	
+#if 0
+	auto AgriculturalSoilWaterFlow = RegisterEquation(Model, "Agricultural soil water flow", MmPerDay);
+	SetSolver(Model, AgriculturalSoilWaterFlow, SimplyPSolver);
+	
+	auto AgriculturalSoilWaterVolume = RegisterEquationODE(Model, "Agricultural soil water volume", Mm);
+	SetInitialValue(Model, AgriculturalSoilWaterVolume, SoilFieldCapacity);
+	SetSolver(Model, AgriculturalSoilWaterVolume, SimplyPSolver);
+	
+	EQUATION(Model, AgriculturalSoilWaterFlow,
+		double smd = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
+		return - smd / (PARAMETER(SoilWaterTimeConstant, Arable) * (1.0 + exp(smd)));
+	)
+	
+	EQUATION(Model, AgriculturalSoilWaterVolume,
+		// mu = -np.log(0.01)/p['fc']
+		//P*(1-f_quick) - alpha*E*(1 - np.exp(-mu*VsA_i)) - QsA_i
+		return
+			  RESULT(Infiltration)
+			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(log(0.01) * RESULT(AgriculturalSoilWaterVolume) / PARAMETER(SoilFieldCapacity))) //NOTE: Should 0.01 be a parameter?
+			- RESULT(AgriculturalSoilWaterFlow);	
+	)
+	
+#else
 	auto DAgriculturalSoilWaterVolumeDt = RegisterEquation(Model, "d(Agricultural soil water volume)/dt", MmPerDay);
 	SetSolver(Model, DAgriculturalSoilWaterVolumeDt, SimplyPSolver);
 	
@@ -161,24 +184,28 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto DAgriculturalSoilWaterFlowDV = RegisterEquation(Model, "d(Agricultural soil water flow)/dV", Dimensionless); //TODO: Find the actual unit
 	SetSolver(Model, DAgriculturalSoilWaterFlowDV, SimplyPSolver);
 	
-	auto InitialAgriculturalSoilWaterFlow = RegisterEquationInitialValue(Model, "Initial agricultural soil water flow", MmPerDay);
-	auto AgriculturalSoilWaterFlow   = RegisterEquationODE(Model, "Agricultural soil water flow", MmPerDay);
-	SetInitialValue(Model, AgriculturalSoilWaterFlow, InitialAgriculturalSoilWaterFlow);
+	//auto InitialAgriculturalSoilWaterFlow = RegisterEquationInitialValue(Model, "Initial agricultural soil water flow", MmPerDay);
+	auto AgriculturalSoilWaterFlow  = RegisterEquationODE(Model, "Agricultural soil water flow", MmPerDay);
+	//SetInitialValue(Model, AgriculturalSoilWaterFlow, InitialAgriculturalSoilWaterFlow);
+	SetInitialValue(Model, AgriculturalSoilWaterFlow, 0.0);
 	SetSolver(Model, AgriculturalSoilWaterFlow, SimplyPSolver);
 	
+/*
 	EQUATION(Model, InitialAgriculturalSoilWaterFlow,
 		//(VsA0 - p['fc'])/(p_LU['A']['T_s']*(1 + np.exp(p['fc'] - VsA0)))
 		return 
 			(RESULT(AgriculturalSoilWaterVolume) - PARAMETER(SoilFieldCapacity))
 			/ (PARAMETER(SoilWaterTimeConstant, Arable)*(1.0 + exp(PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume))));
 	)
-	
+*/
+
 	EQUATION(Model, DAgriculturalSoilWaterVolumeDt,
 		// mu = -np.log(0.01)/p['fc']
 		//P*(1-f_quick) - alpha*E*(1 - np.exp(-mu*VsA_i)) - QsA_i
+		double mu = -log(0.01) / PARAMETER(SoilFieldCapacity); //NOTE: Should 0.01 be a parameter?
 		return
 			  RESULT(Infiltration)
-			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(log(0.01) * RESULT(AgriculturalSoilWaterVolume) / PARAMETER(SoilFieldCapacity))) //NOTE: Should 0.01 be a parameter?
+			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(-mu * RESULT(AgriculturalSoilWaterVolume)) )
 			- RESULT(AgriculturalSoilWaterFlow);	
 	)
 	
@@ -187,8 +214,12 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DAgriculturalSoilWaterFlowDV,
-		//dQsA_dV = ((((VsA_i - fc)*np.exp(fc - VsA_i))/(T_s['A']*((np.exp(fc-VsA_i) + 1)**2)))
-                //+(1/(T_s['A']*(np.exp(fc-VsA_i) + 1))))
+	/*
+		dQsA_dV = (
+		(    ((VsA_i - fc)*np.exp(fc - VsA_i))  /  (T_s['A']*((np.exp(fc-VsA_i) + 1)**2))    )
+                +(1/(T_s['A']*(np.exp(fc-VsA_i) + 1)))
+		)
+	*/
 		double soilmoisturedeficit = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
 		double expsmd = exp(soilmoisturedeficit);
 		double soilwatertimeconst = PARAMETER(SoilWaterTimeConstant, Arable);
@@ -201,7 +232,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, AgriculturalSoilWaterFlow,
 		return RESULT(DAgriculturalSoilWaterFlowDV) * RESULT(DAgriculturalSoilWaterVolumeDt);
 	)
-	
+#endif
 	
 	
 	auto DSeminaturalSoilWaterVolumeDt = RegisterEquation(Model, "d(Seminatural soil water volume)/dt", MmPerDay);

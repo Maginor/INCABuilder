@@ -116,7 +116,7 @@ true
 
 ###################### "Landscape units" ######################
 "Soil water time constant" :     #(days) [0.05, 20]
-2 2 2
+1 10 1
 
 "Vegetation cover factor" :     #(dimensionless) [0, 1] Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Sourced from (R)USLE literature.
 0.2 0.021 0.09

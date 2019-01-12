@@ -42,6 +42,8 @@ struct ode_system_jacobi
     {
 		//NOTE: We are banking on not having to clear DFDT each time. We assume it is inputed as 0 from the solver.. However I don't know if this is documented functionality
 		
+		J.clear(); //NOTE: Unfortunately it seems like J contains garbage values at the start of each run unless we clear it. And we have to clear it since we only set the nonzero values in the JacobiEstimation.
+		
 		JacobiFunction((double *)X.data().begin(), (double *)J.data().begin());
 	}
 };
@@ -111,6 +113,35 @@ INCA_SOLVER_SETUP_FUNCTION(BoostRK4)
 }
 
 
+INCA_SOLVER_FUNCTION(BoostCashCarp54Impl_)
+{
+	using namespace boost::numeric::odeint;
+	solver_vector_type X(n);
+	for(size_t Idx = 0; Idx < n; ++Idx)
+	{
+		X[Idx] = x0[Idx];
+	}
+
+	size_t NSteps = integrate_adaptive( 
+			controlled_runge_kutta<runge_kutta_cash_karp54<solver_vector_type>>(AbsErr, RelErr),
+			ode_system(EquationFunction),
+			X, 0.0 , 1.0 , h 
+			/*TODO: add an observer to handle errors? */);
+			
+	//std::cout << "N steps : " << NSteps << std::endl;
+	
+	for(size_t Idx = 0; Idx < n; ++Idx)
+	{
+		x0[Idx] = X[Idx];
+	}
+}
+
+INCA_SOLVER_SETUP_FUNCTION(BoostCashCarp54)
+{
+	SolverSpec->SolverFunction = BoostRK4Impl_;
+	SolverSpec->UsesJacobian = false;
+	SolverSpec->UsesErrorControl = true;
+}
 
 #define BOOST_SOLVERS_H
 #endif

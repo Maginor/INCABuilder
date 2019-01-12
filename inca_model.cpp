@@ -788,6 +788,11 @@ EndModelDefinition(inca_model *Model)
 	}
 	
 	free(EquationBelongsToBatchGroup);
+	
+	
+	//////////////////////// Gather about (in-) direct equation dependencies to be used by the Jacobian estimation used by some implicit solvers //////////////////////////////////
+	BuildJacobianInfo(Model);
+	
 
 	Model->Finalized = true;
 	
@@ -901,86 +906,6 @@ NaNTest(const inca_model *Model, value_set_accessor *ValueSet, double ResultValu
 		exit(0);
 	}
 }
-
-inline double
-CallEquation(const inca_model *Model, value_set_accessor *ValueSet, equation_h Equation)
-{
-#if INCA_EQUATION_PROFILING
-	u64 Begin = __rdtsc();
-#endif
-	double ResultValue = Model->Equations[Equation.Handle](ValueSet);
-#if INCA_EQUATION_PROFILING
-	u64 End = __rdtsc();
-	ValueSet->EquationHits[Equation.Handle]++;
-	ValueSet->EquationTotalCycles[Equation.Handle] += (End - Begin);
-#endif
-	return ResultValue;
-}
-
-static void
-EstimateJacobian(double *X, double *J, const inca_model *Model, value_set_accessor *ValueSet, const equation_batch &Batch)
-{
-	//NOTE: This is not a very numerically accurate estimation of the Jacobian, it is mostly optimized for speed. We'll see if it is good enough..
-	
-	//TODO: We should maybe move this out to its own file.
-
-	size_t N = Batch.EquationsODE.size();
-	
-	double *FBaseVec = (double *)malloc(sizeof(double)*N); //TODO: Should be preallocated instead...
-	
-	for(size_t Idx = 0; Idx < N; ++Idx)
-	{
-		equation_h Equation = Batch.EquationsODE[Idx];
-		ValueSet->CurResults[Equation.Handle] = X[Idx];
-	}
-	
-	//NOTE: Evaluation of the ODE system at base point. TODO: We should find a way to reuse the calculation we already do at the basepoint, however it is done by a separate callback, so that is tricky..
-	for(equation_h Equation : Batch.Equations)
-	{
-		double ResultValue = CallEquation(Model, ValueSet, Equation);
-		ValueSet->CurResults[Equation.Handle] = ResultValue;
-	}
-	
-	for(size_t Idx = 0; Idx < N; ++Idx)
-	{
-		equation_h EquationToCall = Batch.EquationsODE[Idx];
-		FBaseVec[Idx] = CallEquation(Model, ValueSet, EquationToCall);
-	}
-	
-	//TODO: This is a naive way of doing it. We should instead use pre-recorded info about which equations depend on which and skip evaluation in the case where there is no dependency.
-	for(size_t Col = 0; Col < N; ++Col)
-	{
-		equation_h EquationToPermute = Batch.EquationsODE[Col];
-		
-		//Hmm. here we assume we can use the same H for all Fs which may not be a good idea?? But it makes things significantly faster because then we don't have to recompute the non-odes in all cases.
-		double H = 1e-6;  //TODO: This should definitely be sensitive to the size of the base values!!
-		ValueSet->CurResults[EquationToPermute.Handle] = X[Col] + H; //TODO: Do it numerically correct
-		
-		//TODO: Do some pre-analysis to weed out exactly which of the non-ode equations we need to call.
-		for(equation_h Equation : Batch.Equations)
-		{
-			double ResultValue = CallEquation(Model, ValueSet, Equation);
-			ValueSet->CurResults[Equation.Handle] = ResultValue;
-		}
-		
-		for(size_t Row = 0; Row < N; ++Row)
-		{
-			equation_h EquationToCall = Batch.EquationsODE[Row];
-		
-			double FBase = FBaseVec[Row]; //NOTE: The value of the EquationToCall at the base point.
-			
-			double FPermute = CallEquation(Model, ValueSet, EquationToCall);
-			
-			//NOTE: Assumes row major storage (this is the default for the boost solver use case. If we need column major for another use case we have to figure out how to do that)
-			J[N*Row + Col] = (FPermute - FBase) / H; //TODO: Numerical correctness
-		}
-		
-		ValueSet->CurResults[EquationToPermute.Handle] = X[Col];  //NOTE: Reset the value so that it is correct for the next column.
-	}
-	
-	free(FBaseVec); //Obviously remove this line if we preallocate FBaseVec.
-}
-
 
 INNER_LOOP_BODY(RunInnerLoop)
 {
@@ -1121,9 +1046,11 @@ INNER_LOOP_BODY(RunInnerLoop)
 				if(SolverSpec.UsesJacobian)
 				{
 					JacobiFunction =
-					[ValueSet, Model, &Batch](double *X, double *J)
+					[ValueSet, Model, DataSet, &Batch](double *X, double *J)
 					{
-						EstimateJacobian(X, J, Model, ValueSet, Batch);
+						//TODO: Have to see if it is safe to use DataSet->wk here. It is ok for the boost solvers since they use their own working memory.
+						// It is not really safe design to do this, and so we should instead preallocate different working memory for the Jacobian estimation..
+						EstimateJacobian(X, J, DataSet->wk, Model, ValueSet, Batch);
 					};
 				}
 				
@@ -1297,7 +1224,7 @@ RunModel(inca_data_set *DataSet)
 	s64 ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	
 #if INCA_PRINT_TIMING_INFO
-		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " Timesteps, starting at " << TimeString(ModelStartTime) << std::endl;
+		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " timesteps, starting at " << TimeString(ModelStartTime) << std::endl;
 #endif
 	
 	//NOTE: Allocate input storage in case it was not allocated during setup.
@@ -1598,7 +1525,7 @@ PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet)
 {
 #if INCA_EQUATION_PROFILING
 	const inca_model *Model = DataSet->Model;
-	std::cout << std::endl << "**** Equation profiles (Average cycles per evaluation) ****" << std::endl;
+	std::cout << std::endl << "**** Equation profiles - Average cycles per evaluation (number of evaluations) ****" << std::endl;
 	//std::cout << "Number of batches: " << Model->ResultStructure.size() << std::endl;
 	u64 SumCc = 0;
 	u64 TotalHits = 0;
@@ -1622,7 +1549,7 @@ PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet)
 				int PrintCount = 0;
 				printf("\n\t");
 				if(Model->EquationSpecs[Equation.Handle].Type == EquationType_Cumulative) PrintCount += printf("(Cumulative) ");
-				else if(Model->EquationSpecs[Equation.Handle].Type == EquationType_Cumulative) PrintCount += printf("(ODE) ");
+				else if(Model->EquationSpecs[Equation.Handle].Type == EquationType_ODE) PrintCount += printf("(ODE) ");
 				PrintCount += printf("%s: ", GetName(Model, Equation));
 				
 				u64 Cc = ValueSet->EquationTotalCycles[Equation.Handle];
@@ -1633,6 +1560,7 @@ PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet)
 				sprintf(FormatString, "%s%dlf", "%", 55-PrintCount);
 				//printf("%s", FormatString);
 				printf(FormatString, CcPerHit);
+				printf(" (%llu)", Hits);
 				
 				TotalHits += (u64)Hits;
 				SumCc += Cc;

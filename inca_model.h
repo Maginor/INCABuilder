@@ -202,6 +202,10 @@ struct equation_batch
 	std::vector<equation_h> EquationsODE; //NOTE: Only for Type==BatchType_Solver.
 	
 	std::vector<equation_h> InitialValueOrder; //NOTE: The initial value setup of equations happens in a different order than the execution order during model run because the intial value equations may have different dependencies than the equations they are initial values for.
+	
+	//NOTE: These are used for optimizing estimation of the Jacobian in case that is needed by a solver.
+	std::vector<std::vector<size_t>> ODEIsDependencyOfODE;
+	std::vector<std::vector<equation_h>> ODEIsDependencyOfNonODE;
 };
 
 struct equation_batch_group
@@ -489,6 +493,22 @@ struct value_set_accessor
 		}
 	}
 };
+
+inline double
+CallEquation(const inca_model *Model, value_set_accessor *ValueSet, equation_h Equation)
+{
+#if INCA_EQUATION_PROFILING
+	u64 Begin = __rdtsc();
+#endif
+	double ResultValue = Model->Equations[Equation.Handle](ValueSet);
+#if INCA_EQUATION_PROFILING
+	u64 End = __rdtsc();
+	ValueSet->EquationHits[Equation.Handle]++;
+	ValueSet->EquationTotalCycles[Equation.Handle] += (End - Begin);
+#endif
+	return ResultValue;
+}
+
 
 
 #define GET_ENTITY_NAME(Type, NType) \

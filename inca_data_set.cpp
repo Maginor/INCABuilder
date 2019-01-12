@@ -19,6 +19,11 @@ GenerateDataSet(inca_model *Model)
 	
 	DataSet->BranchInputs = AllocClearedArray(branch_inputs *, Model->FirstUnusedIndexSetHandle);
 	
+	if(Model->FirstUnusedIndexSetHandle == 1) // NOTE: In case there are no index sets, all index sets have had their indexes set.
+	{
+		DataSet->AllIndexesHaveBeenSet = true;
+	}
+	
 	return DataSet;
 }
 

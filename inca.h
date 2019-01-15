@@ -12,10 +12,12 @@ Important TODOs:
 	- Better logging / error handling system
 	- In the equation placement optimization, try to move entire batches to reduce the number of batch groups if possible.
 	- Give warning if not all input series received values?
-	- Maybe just use fscanf for reading numbers in inca_io, but it is actually a little complicated since we have to figure out the type in any case.
+	- Clean up the input tokenizer. Maybe just use fscanf for reading numbers, but it is actually a little complicated since we have to figure out the type in any case.
 	- Register units with inputs too? They are after all expected to be in a certain unit.
 	- Refactor the dependency system to be able to understand explicitly indexed lookups better.
-	- Refactor the input system to separate input reading from processing and standardize the format.
+	- Standardize the input format. Includes finding a better format for dates.
+	- Add in pre-processing options: Tests on parameter values. Pre-compute parameter values.
+	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	
 Bugs:
 	- Check the dependency system with maximumnitrogenuptake in incan-classic again.. I may have misread it, but there is a potential bug there.

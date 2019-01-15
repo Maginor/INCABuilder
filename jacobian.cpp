@@ -66,7 +66,7 @@ BuildJacobianInfo(inca_model *Model)
 }
 
 
-#define USE_JACOBIAN_OPTIMIZATION 1
+#define USE_JACOBIAN_OPTIMIZATION 0
 
 static void
 EstimateJacobian(double *X, double *J, double *FBaseVec, const inca_model *Model, value_set_accessor *ValueSet, const equation_batch &Batch)
@@ -97,6 +97,8 @@ EstimateJacobian(double *X, double *J, double *FBaseVec, const inca_model *Model
 #if USE_JACOBIAN_OPTIMIZATION
 	double *Backup = (double *)malloc(sizeof(double) * Model->FirstUnusedEquationHandle);
 #endif
+	
+	//printf("begin matrix\n");
 	
 	//TODO: This is a naive way of doing it. We should instead use pre-recorded info about which equations depend on which and skip evaluation in the case where there is no dependency.
 	for(size_t Col = 0; Col < N; ++Col)
@@ -138,9 +140,9 @@ EstimateJacobian(double *X, double *J, double *FBaseVec, const inca_model *Model
 			//NOTE: Assumes row major storage (this is the default for the boost solver use case. If we need column major for another use case we have to figure out how to do that)
 			J[N*Row + Col] = Derivative;
 			
-			//std::cout << Derivative << " ";
+			//printf("%.2f\t", Derivative);
 		}
-		//std::cout << std::endl;
+		//printf("\n");
 		
 		ValueSet->CurResults[EquationToPermute.Handle] = X[Col];  //NOTE: Reset the value so that it is correct for the next column.
 		
@@ -155,5 +157,5 @@ EstimateJacobian(double *X, double *J, double *FBaseVec, const inca_model *Model
 #if USE_JACOBIAN_OPTIMIZATION
 	free(Backup);
 #endif
-	//std::cout << "end matrix" << std::endl;
+	//printf("end matrix\n");
 }

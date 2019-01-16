@@ -2,9 +2,13 @@
 
 //NOTE: This is an adaption of
 // https://github.com/LeahJB/SimplyP
-// Currently it lacks phosphorous processes in newly-converted land, and one of the equations behaves badly wrt. the solver.
 
-#include "../boost_solvers.h"
+//NOTE: There are still a few quirks that causes this version to produce slightly (but not that significantly) different results.
+
+
+//NOTE: Only include these if you are going to use them (they cause long compile times):
+//#include "../boost_solvers.h"
+//#include "../mtl_solvers.h"
 
 
 inline double
@@ -93,7 +97,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto LandUseSubcatchment = RegisterParameterGroup(Model, "Land use for subcatchment", LandscapeUnits);
 	SetParentGroup(Model, LandUseSubcatchment, Reaches);
 	
-	auto LandUseProportionExcludingNC  = RegisterParameterDouble(Model, LandUseSubcatchment, "Land use proportion excluding newly-converted", Dimensionless, 0.5, 0.0, 1.0);
+	auto LandUseProportions   = RegisterParameterDouble(Model, LandUseSubcatchment, "Land use proportions", Dimensionless, 0.5, 0.0, 1.0);
 	
 	auto Precipitation  = RegisterInput(Model, "Precipitation");
 	auto AirTemperature = RegisterInput(Model, "Air temperature");
@@ -148,7 +152,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostCashCarp54, 1e-6, 1e-6);
-	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.0001, BoostRosenbrock4, 1e-6, 1e-6);
+	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
+	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.0025, Mtl4ImplicitEuler);   //NOTE: Being a first order method, this one is not that good..
 	
 	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
 	
@@ -291,8 +296,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	SetSolver(Model, TotalSoilWaterFlow, SimplyPSolver);
 	
 	EQUATION(Model, TotalSoilWaterFlow,
-		double agrproportion = PARAMETER(LandUseProportionExcludingNC, Arable) + PARAMETER(LandUseProportionExcludingNC, ImprovedGrassland);
-		double snproportion  = PARAMETER(LandUseProportionExcludingNC, Seminatural);
+		double agrproportion = PARAMETER(LandUseProportions, Arable) + PARAMETER(LandUseProportions, ImprovedGrassland);
+		double snproportion  = PARAMETER(LandUseProportions, Seminatural);
 		return agrproportion * RESULT(AgriculturalSoilWaterFlow) + snproportion * RESULT(SeminaturalSoilWaterFlow);
 	)
 	
@@ -457,7 +462,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	auto DynamicOptions = GetParameterGroupHandle(Model, "Dynamic options");
 	auto DynamicErodibility                      = RegisterParameterBool(Model, DynamicOptions, "Dynamic erodibility", true);
 	
-	auto LandUseProportionExcludingNC = GetParameterDoubleHandle(Model, "Land use proportion excluding newly-converted");
+	auto LandUseProportions = GetParameterDoubleHandle(Model, "Land use proportions");
 	
 	
 	
@@ -484,7 +489,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	SetSolver(Model, DailyMeanSuspendedSedimentFlux, SimplyPSolver);
 	ResetEveryTimestep(Model, DailyMeanSuspendedSedimentFlux);
 	
-	auto SuspendedSedimentConcentration = RegisterEquation(Model, "Suspended sediment concentration", MgPerL);
+	auto SuspendedSedimentConcentration = RegisterEquation(Model, "Suspended sediment concentration (volume weighted daily mean)", MgPerL);
 	
 	EQUATION(Model, TimeDependentVegetationCoverFactor,
 		
@@ -584,7 +589,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 			* (1.0 - PARAMETER(ReductionOfLoadInSediment));
 		
 		return Esus_i  
-			* PARAMETER(LandUseProportionExcludingNC); //NOTE: This is to make them sum up correctly for use later
+			* PARAMETER(LandUseProportions); //NOTE: This is to make them sum up correctly for use later
 	)
 	
 	EQUATION(Model, SuspendedSedimentFlux,
@@ -664,14 +669,14 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto DynamicOptions = GetParameterGroupHandle(Model, "Dynamic options");
 	auto DynamicEPC0                    = RegisterParameterBool(Model, DynamicOptions, "Dynamic EPC0", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it varies with labile P content");
 	
-	auto LandUseProportionsNC           = RegisterParameterDouble(Model, Phosphorous, "Land use proportions from newly-converted", Dimensionless, 0.0, 0.0, 1.0);
+	auto LandUseProportionsNC           = RegisterParameterDouble(Model, PhosphorousLand, "Land use proportions from newly-converted", Dimensionless, 0.0, 0.0, 1.0);
 	auto NCType                         = RegisterParameterUInt(Model, Phosphorous, "Newly-converted type", Dimensionless, 2, 0, 2, "0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None");
 	
 	
 	auto SimplyPSolver               = GetSolverHandle(Model, "SimplyP solver");
 	auto CatchmentArea               = GetParameterDoubleHandle(Model, "Catchment area");
 	auto InstreamEntrainmentNonlinearCoefficient = GetParameterDoubleHandle(Model, "Instream entrainment non-linear coefficient");
-	auto LandUseProportionExcludingNC = GetParameterDoubleHandle(Model, "Land use proportion excluding newly-converted");
+	auto LandUseProportions          = GetParameterDoubleHandle(Model, "Land use proportions");
 	auto BaseflowIndex               = GetParameterDoubleHandle(Model, "Baseflow index");
 	auto AgriculturalSoilWaterVolume = GetEquationHandle(Model, "Agricultural soil water volume");
 	auto SeminaturalSoilWaterVolume  = GetEquationHandle(Model, "Seminatural soil water volume");
@@ -930,19 +935,20 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 			upstreamflux += RESULT(DailyMeanStreamTDPFlux, *Input);
 		)
 		
-		double f_A = PARAMETER(LandUseProportionExcludingNC, Arable) + PARAMETER(LandUseProportionExcludingNC, ImprovedGrassland);
+		double f_A = PARAMETER(LandUseProportions, Arable) + PARAMETER(LandUseProportions, ImprovedGrassland);
+		double f_S = PARAMETER(LandUseProportions, Seminatural);
+		double f_NC_A = PARAMETER(LandUseProportionsNC, Arable) + PARAMETER(LandUseProportionsNC, ImprovedGrassland);
+		double f_NC_S = PARAMETER(LandUseProportionsNC, Seminatural);
 		
 		double fromAgriculturalSoil =
-			    f_A
+			    f_A * (1.0 - f_NC_A)
 			  * (RESULT(AgriculturalSoilTDPMass)  / RESULT(AgriculturalSoilWaterVolume))
 			  * ((1.0-PARAMETER(BaseflowIndex)) * RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess));
 		
 		double fromNewlyConvertedSoil = 0.0;
-		/*
-				f_NC
+				(f_A * f_NC_A + f_S * f_NC_S)      //NOTE: at least one of f_NC_A or f_NC_S will always be 0.
 			  * (RESULT(NewlyConvertedSoilTDPMass) / RESULT(NewlyConvertedSoilWaterVolume))
 			  * ((1.0-PARAMETER(BaseflowIndex)) * RESULT(NewlyConvertedSoilWaterFlow) + RESULT(InfiltrationExcess));
-		*/
 		
 		return
 			  fromAgriculturalSoil
@@ -969,18 +975,29 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
 		double P_inactive = 1e-6*PARAMETER(InitialSoilPConcentration, Seminatural)*Msoil;
 		double E_PP  = PARAMETER(PPEnrichmentFactor);
-		double Ar = (RESULT(AgriculturalSoilLabilePMass)+P_inactive) / Msoil;
+		double Ag = (RESULT(AgriculturalSoilLabilePMass)+P_inactive) / Msoil;
 		double Sn = P_inactive / Msoil;
+		
+		double f_NC_Ar = PARAMETER(LandUseProportionsNC, Arable);
+		double f_NC_IG = PARAMETER(LandUseProportionsNC, ImprovedGrassland);
+		double f_NC_S  = PARAMETER(LandUseProportionsNC, Seminatural);
+		
+		double Nc = (RESULT(NewlyConvertedSoilLabilePMass) + P_inactive) / Msoil;
+		
+		//NOTE: These are already multiplied with f_X. I.e. Msus_in_Ar is actually Msus_in_i['Ar']*f_Ar
+		double Msus_in_Ar = RESULT(ReachSedimentInputFromLand, Arable);
+		double Msus_in_IG = RESULT(ReachSedimentInputFromLand, ImprovedGrassland);
+		double Msus_in_S  = RESULT(ReachSedimentInputFromLand, Seminatural);
 		
 		//NOTE: RESULT(ReachSedimentInputFromLand, Arable) = Esus_i['A']*f_A   etc.
 		// Msus_in_i = Esus_i * Qr_i**k_M
 		double coeff = pow(RESULT(ReachFlow), PARAMETER(InstreamEntrainmentNonlinearCoefficient));
 		double sedimentinput =
 			E_PP * (
-			  (RESULT(ReachSedimentInputFromLand, Arable) + RESULT(ReachSedimentInputFromLand, ImprovedGrassland))*Ar
-		     + RESULT(ReachSedimentInputFromLand, Seminatural) * Sn
+			  (Msus_in_Ar*(1.0 - f_NC_Ar) + Msus_in_IG*(1.0 - f_NC_IG))*Ag
+		     + Msus_in_S * (1.0 - f_NC_S) * Sn
+			 + (Msus_in_Ar * f_NC_Ar + Msus_in_IG * f_NC_IG + Msus_in_S * f_NC_S) * Nc
 			) * coeff;
-		//TODO: lacks input from newly-converted
 		
 		double upstreamflux = 0.0;
 		FOREACH_INPUT(Reach,
@@ -992,9 +1009,9 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 			- RESULT(StreamPPFlux);
 	)
 	
-	auto TDPConcentration = RegisterEquation(Model, "TDP concentration", MgPerL);
-	auto PPConcentration  = RegisterEquation(Model, "PP concentration", MgPerL);
-	auto TPConcentration  = RegisterEquation(Model, "TP concentration", MgPerL);
+	auto TDPConcentration = RegisterEquation(Model, "TDP concentration (volume weighted daily mean)", MgPerL);
+	auto PPConcentration  = RegisterEquation(Model, "PP concentration (volume weighted daily mean)", MgPerL);
+	auto TPConcentration  = RegisterEquation(Model, "TP concentration (volume weighted daily mean)", MgPerL);
 	
 	EQUATION(Model, TDPConcentration,
 		return ConvertKgPerMmToMgPerL(RESULT(DailyMeanStreamTDPFlux) / RESULT(DailyMeanReachFlow), PARAMETER(CatchmentArea));

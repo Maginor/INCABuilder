@@ -95,15 +95,16 @@ true
 "Reach effluent TDP inputs" :     #(kg/day) [0, 10]
 0.1
 
-"Land use proportions from newly-converted" :     #(dimensionless) [0, 1]
-0
-
 "Newly-converted type" :     #(dimensionless) [0, 2] 0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None
 2
 
 ###################### "Reaches" "Landscape units" ######################
-"Land use proportion excluding newly-converted" :     #(dimensionless) [0, 1]
+
+"Land use proportions" :     #(dimensionless) [0, 1]
 0.2 0.5 0.3
+
+"Land use proportions from newly-converted" :     #(dimensionless) [0, 1]
+0 0 0
 
 "Mean slope of land in the subcatchment" :     #(°) [0, 90]
 4 10 4

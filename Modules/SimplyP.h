@@ -7,7 +7,7 @@
 
 
 //NOTE: Only include these if you are going to use them (they cause long compile times):
-//#include "../boost_solvers.h"
+#include "../boost_solvers.h"
 //#include "../mtl_solvers.h"
 
 
@@ -46,6 +46,22 @@ ConvertMmToLitres(double Mm, double CatchmentArea)
 {
 	return Mm * 1e6 * CatchmentArea;
 }
+
+inline double
+ActivationControl0(double X)
+{
+	return (3.0 - 2.0*X)*X*X;
+}
+
+inline double
+ActivationControl(double X, double Threshold, double RelativeActivationDistance)
+{
+	if(X < Threshold) return 0.0;
+	double Dist = Threshold * RelativeActivationDistance;
+	if(X > Threshold + Dist) return 1.0;
+	return ActivationControl0( (X - Threshold) / Dist );
+}
+
 
 static void
 AddSimplyPHydrologyModule(inca_model *Model)
@@ -149,15 +165,15 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return (1.0 - PARAMETER(ProportionToQuickFlow)) * RESULT(HydrologicalInputToSoilBox);
 	)
 	
-	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
+	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostCashCarp54, 1e-6, 1e-6);
-	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
+	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.0025, Mtl4ImplicitEuler);   //NOTE: Being a first order method, this one is not that good..
 	
 	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
 	
-#if 0
+
 	auto AgriculturalSoilWaterFlow = RegisterEquation(Model, "Agricultural soil water flow", MmPerDay);
 	SetSolver(Model, AgriculturalSoilWaterFlow, SimplyPSolver);
 	
@@ -168,6 +184,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, AgriculturalSoilWaterFlow,
 		double smd = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
 		return - smd / (PARAMETER(SoilWaterTimeConstant, Arable) * (1.0 + exp(smd)));
+		//return -smd * ActivationControl(RESULT(AgriculturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
 	)
 	
 	EQUATION(Model, AgriculturalSoilWaterVolume,
@@ -179,128 +196,42 @@ AddSimplyPHydrologyModule(inca_model *Model)
 			- RESULT(AgriculturalSoilWaterFlow);	
 	)
 	
-#else
-	auto DAgriculturalSoilWaterVolumeDt = RegisterEquation(Model, "d(Agricultural soil water volume)/dt", MmPerDay);
-	SetSolver(Model, DAgriculturalSoilWaterVolumeDt, SimplyPSolver);
-	
-	auto AgriculturalSoilWaterVolume = RegisterEquationODE(Model, "Agricultural soil water volume", Mm);
-	SetInitialValue(Model, AgriculturalSoilWaterVolume, SoilFieldCapacity);
-	SetSolver(Model, AgriculturalSoilWaterVolume, SimplyPSolver);
-	
-	auto DAgriculturalSoilWaterFlowDV = RegisterEquation(Model, "d(Agricultural soil water flow)/dV", Dimensionless); //TODO: Find the actual unit
-	SetSolver(Model, DAgriculturalSoilWaterFlowDV, SimplyPSolver);
-	
-	auto InitialAgriculturalSoilWaterFlow = RegisterEquationInitialValue(Model, "Initial agricultural soil water flow", MmPerDay);
-	auto AgriculturalSoilWaterFlow  = RegisterEquationODE(Model, "Agricultural soil water flow", MmPerDay);
-	SetInitialValue(Model, AgriculturalSoilWaterFlow, InitialAgriculturalSoilWaterFlow);
-	//SetInitialValue(Model, AgriculturalSoilWaterFlow, 0.0);
-	SetSolver(Model, AgriculturalSoilWaterFlow, SimplyPSolver);
-	
-
-	EQUATION(Model, InitialAgriculturalSoilWaterFlow,
-		//(VsA0 - p['fc'])/(p_LU['A']['T_s']*(1 + np.exp(p['fc'] - VsA0)))
-		return 
-			(RESULT(AgriculturalSoilWaterVolume) - PARAMETER(SoilFieldCapacity))
-			/ (PARAMETER(SoilWaterTimeConstant, Arable)*(1.0 + exp(PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume))));
-	)
-
-
-	EQUATION(Model, DAgriculturalSoilWaterVolumeDt,
-		// mu = -np.log(0.01)/p['fc']
-		//P*(1-f_quick) - alpha*E*(1 - np.exp(-mu*VsA_i)) - QsA_i
-		double mu = -log(0.01) / PARAMETER(SoilFieldCapacity); //NOTE: Should 0.01 be a parameter?
-		return
-			  RESULT(Infiltration)
-			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(-mu * RESULT(AgriculturalSoilWaterVolume)) )
-			- RESULT(AgriculturalSoilWaterFlow);	
-	)
-	
-	EQUATION(Model, AgriculturalSoilWaterVolume,
-		return RESULT(DAgriculturalSoilWaterVolumeDt);
-	)
-	
-	EQUATION(Model, DAgriculturalSoilWaterFlowDV,
-	/*
-		dQsA_dV = (
-		(    ((VsA_i - fc)*np.exp(fc - VsA_i))  /  (T_s['A']*((np.exp(fc-VsA_i) + 1)**2))    )
-                +(1/(T_s['A']*(np.exp(fc-VsA_i) + 1)))
-		)
-	*/
-		double soilmoisturedeficit = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
-		double expsmd = exp(soilmoisturedeficit);
-		double soilwatertimeconst = PARAMETER(SoilWaterTimeConstant, Arable);
-		//std::cout << soilwatertimeconst << std::endl;
-		return
-			-soilmoisturedeficit * expsmd / (soilwatertimeconst * (expsmd+1.0)*(expsmd+1.0) )
-			+ 1.0 / ( soilwatertimeconst * (expsmd + 1.0));
-	)
-	
-	EQUATION(Model, AgriculturalSoilWaterFlow,
-		return RESULT(DAgriculturalSoilWaterFlowDV) * RESULT(DAgriculturalSoilWaterVolumeDt);
-	)
-#endif
 	
 	
-	auto DSeminaturalSoilWaterVolumeDt = RegisterEquation(Model, "d(Seminatural soil water volume)/dt", MmPerDay);
-	SetSolver(Model, DSeminaturalSoilWaterVolumeDt, SimplyPSolver);
+	auto SeminaturalSoilWaterFlow = RegisterEquation(Model, "Semi-natural soil water flow", MmPerDay);
+	SetSolver(Model, SeminaturalSoilWaterFlow, SimplyPSolver);
 	
-	auto SeminaturalSoilWaterVolume = RegisterEquationODE(Model, "Seminatural soil water volume", Mm);
+	auto SeminaturalSoilWaterVolume = RegisterEquationODE(Model, "Semi-natural soil water volume", Mm);
 	SetInitialValue(Model, SeminaturalSoilWaterVolume, SoilFieldCapacity);
 	SetSolver(Model, SeminaturalSoilWaterVolume, SimplyPSolver);
 	
-	auto DSeminaturalSoilWaterFlowDV = RegisterEquation(Model, "d(Seminatural soil water flow)/dV", Dimensionless); //TODO: Find the actual unit
-	SetSolver(Model, DSeminaturalSoilWaterFlowDV, SimplyPSolver);
-	
-	auto InitialSeminaturalSoilWaterFlow = RegisterEquationInitialValue(Model, "Initial seminatural soil water flow", MmPerDay);
-	auto SeminaturalSoilWaterFlow   = RegisterEquationODE(Model, "Seminatural soil water flow", MmPerDay);
-	SetInitialValue(Model, SeminaturalSoilWaterFlow, InitialSeminaturalSoilWaterFlow);
-	SetSolver(Model, SeminaturalSoilWaterFlow, SimplyPSolver);
-	
-	EQUATION(Model, InitialSeminaturalSoilWaterFlow,
-		//(VsA0 - p['fc'])/(p_LU['A']['T_s']*(1 + np.exp(p['fc'] - VsA0)))
-		return 
-			(RESULT(SeminaturalSoilWaterVolume) - PARAMETER(SoilFieldCapacity))
-			/ (PARAMETER(SoilWaterTimeConstant, Seminatural)*(1.0 + exp(PARAMETER(SoilFieldCapacity) - RESULT(SeminaturalSoilWaterVolume))));
+	EQUATION(Model, SeminaturalSoilWaterFlow,
+		double smd = PARAMETER(SoilFieldCapacity) - RESULT(SeminaturalSoilWaterVolume);
+		return - smd / (PARAMETER(SoilWaterTimeConstant, Seminatural) * (1.0 + exp(smd)));
+		// return - smd * ActivationControl(RESULT(SeminaturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
 	)
 	
-	EQUATION(Model, DSeminaturalSoilWaterVolumeDt,
+	EQUATION(Model, SeminaturalSoilWaterVolume,
 		// mu = -np.log(0.01)/p['fc']
 		//P*(1-f_quick) - alpha*E*(1 - np.exp(-mu*VsA_i)) - QsA_i
 		return
 			  RESULT(Infiltration)
-			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(log(0.01) * RESULT(SeminaturalSoilWaterVolume) / PARAMETER(SoilFieldCapacity))) //NOTE: Should 0.01 be a parameter?
-			- RESULT(SeminaturalSoilWaterFlow);
+			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(log(0.01) * RESULT(AgriculturalSoilWaterVolume) / PARAMETER(SoilFieldCapacity))) //NOTE: Should 0.01 be a parameter?
+			- RESULT(SeminaturalSoilWaterFlow);	
 	)
 	
-	EQUATION(Model, SeminaturalSoilWaterVolume,
-		return RESULT(DSeminaturalSoilWaterVolumeDt);
-	)
 	
-	EQUATION(Model, DSeminaturalSoilWaterFlowDV,
-		//dQsA_dV = ((((VsA_i - fc)*np.exp(fc - VsA_i))/(T_s['A']*((np.exp(fc-VsA_i) + 1)**2)))
-                //+(1/(T_s['A']*(np.exp(fc-VsA_i) + 1))))
-		double soilmoisturedeficiency = PARAMETER(SoilFieldCapacity) - RESULT(SeminaturalSoilWaterVolume);
-		double expsmd = exp(soilmoisturedeficiency);
-		double soilwatertimeconst = PARAMETER(SoilWaterTimeConstant, Seminatural);
-		//std::cout << soilwatertimeconst << std::endl;
-		return
-			-soilmoisturedeficiency * expsmd / (soilwatertimeconst * (expsmd+1.0)*(expsmd+1.0) )
-			+ 1.0 / ( soilwatertimeconst * (expsmd + 1.0));
-	)
-	
-	EQUATION(Model, SeminaturalSoilWaterFlow,
-		return RESULT(DSeminaturalSoilWaterFlowDV) * RESULT(DSeminaturalSoilWaterVolumeDt);
-	)
 	
 	auto TotalSoilWaterFlow       = RegisterEquation(Model, "Total soil water flow", MmPerDay);
 	SetSolver(Model, TotalSoilWaterFlow, SimplyPSolver);
 	
 	EQUATION(Model, TotalSoilWaterFlow,
-		double agrproportion = PARAMETER(LandUseProportions, Arable) + PARAMETER(LandUseProportions, ImprovedGrassland);
-		double snproportion  = PARAMETER(LandUseProportions, Seminatural);
-		return agrproportion * RESULT(AgriculturalSoilWaterFlow) + snproportion * RESULT(SeminaturalSoilWaterFlow);
+		double f_A = PARAMETER(LandUseProportions, Arable) + PARAMETER(LandUseProportions, ImprovedGrassland);
+		double f_S  = PARAMETER(LandUseProportions, Seminatural);
+		return f_A * RESULT(AgriculturalSoilWaterFlow) + f_S * RESULT(SeminaturalSoilWaterFlow);
 	)
 	
+#if 0
 	auto DGroundwaterVolumeDt     = RegisterEquation(Model, "d(Groundwater volume)/dt", MmPerDay);
 	SetSolver(Model, DGroundwaterVolumeDt, SimplyPSolver);
 	
@@ -346,15 +277,59 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, Control,
 		//NOTE: We create this equation to put in the code that allow us to "hack" certain values to always have a minimum.
 		// The return value of this equation does not mean anything.
-	
+		CURRENT_INDEX(Reach);
+		double tc = PARAMETER(GroundwaterTimeConstant);
 		if(RESULT(GroundwaterFlow) < PARAMETER(MinimumGroundwaterFlow))
 		{
 			SET_RESULT(GroundwaterFlow, PARAMETER(MinimumGroundwaterFlow));
+			SET_RESULT(GroundwaterVolume, PARAMETER(MinimumGroundwaterFlow)*tc);
 		}
 		
 		return 0.0;
 	)
+#else
+	auto InitialGroundwaterVolume = RegisterEquationInitialValue(Model, "Initial groundwater volume", Mm);
+	auto GroundwaterVolume        = RegisterEquationODE(Model, "Groundwater volume", Mm);
+	SetInitialValue(Model, GroundwaterVolume, InitialGroundwaterVolume);
+	SetSolver(Model, GroundwaterVolume, SimplyPSolver);
 	
+	auto GroundwaterFlow          = RegisterEquation(Model, "Groundwater flow", MmPerDay);
+	SetSolver(Model, GroundwaterFlow, SimplyPSolver);
+	
+	EQUATION(Model, GroundwaterFlow,
+		double flow0   = RESULT(GroundwaterVolume) / PARAMETER(GroundwaterTimeConstant);
+		double flowmin = PARAMETER(MinimumGroundwaterFlow);
+		double t = ActivationControl(flow0, flowmin, 0.01);
+		return (1.0 - t)*flowmin + t*flow0;
+	)
+	
+	EQUATION(Model, GroundwaterVolume,
+		// f_A = f_IG + f_Ar
+		// dVg_dt = beta*(f_A*QsA_i + f_S*QsS_i) - Qg_i
+		
+		return PARAMETER(BaseflowIndex) * RESULT(TotalSoilWaterFlow)
+			- RESULT(GroundwaterFlow);
+	)
+	
+	EQUATION(Model, InitialGroundwaterVolume,
+		//Vg0 = Qg0 *p['T_g']     # Groundwater vol (mm)
+		double initialflow = PARAMETER(BaseflowIndex) * ConvertM3PerSecondToMmPerDay(PARAMETER(InitialInStreamFlow), PARAMETER(CatchmentArea));
+		return initialflow * PARAMETER(GroundwaterTimeConstant);
+	)
+	
+	auto Control = RegisterEquation(Model, "Control", Dimensionless);
+	
+	EQUATION(Model, Control,
+		//NOTE: We create this equation to put in the code that allow us to "hack" certain values.
+		// The return value of this equation does not mean anything.
+		
+		double volume = RESULT(GroundwaterFlow)*PARAMETER(GroundwaterTimeConstant);  //Wow, somehow this does not register index sets correctly if it is passed directly inside the macro below! May want to debug that.
+		SET_RESULT(GroundwaterVolume, volume);
+		
+		return 0.0;
+	)
+
+#endif
 	
 	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MmPerDay);
 	SetSolver(Model, ReachFlowInput, SimplyPSolver);
@@ -679,10 +654,10 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto LandUseProportions          = GetParameterDoubleHandle(Model, "Land use proportions");
 	auto BaseflowIndex               = GetParameterDoubleHandle(Model, "Baseflow index");
 	auto AgriculturalSoilWaterVolume = GetEquationHandle(Model, "Agricultural soil water volume");
-	auto SeminaturalSoilWaterVolume  = GetEquationHandle(Model, "Seminatural soil water volume");
+	auto SeminaturalSoilWaterVolume  = GetEquationHandle(Model, "Semi-natural soil water volume");
 	auto InfiltrationExcess          = GetEquationHandle(Model, "Infiltration excess");
 	auto AgriculturalSoilWaterFlow   = GetEquationHandle(Model, "Agricultural soil water flow");
-	auto SeminaturalSoilWaterFlow    = GetEquationHandle(Model, "Seminatural soil water flow");
+	auto SeminaturalSoilWaterFlow    = GetEquationHandle(Model, "Semi-natural soil water flow");
 	auto ReachVolume                 = GetEquationHandle(Model, "Reach volume");
 	auto ReachFlow                   = GetEquationHandle(Model, "Reach flow");
 	auto DailyMeanReachFlow          = GetEquationHandle(Model, "Daily mean reach flow");
@@ -984,19 +959,19 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		
 		double Nc = (RESULT(NewlyConvertedSoilLabilePMass) + P_inactive) / Msoil;
 		
-		//NOTE: These are already multiplied with f_X. I.e. Msus_in_Ar is actually Msus_in_i['Ar']*f_Ar
-		double Msus_in_Ar = RESULT(ReachSedimentInputFromLand, Arable);
-		double Msus_in_IG = RESULT(ReachSedimentInputFromLand, ImprovedGrassland);
-		double Msus_in_S  = RESULT(ReachSedimentInputFromLand, Seminatural);
+		//NOTE: These are already multiplied with f_X. I.e. Esus_in_Ar is actually Esus_in_i['Ar']*f_Ar
+		double Esus_in_Ar = RESULT(ReachSedimentInputFromLand, Arable);
+		double Esus_in_IG = RESULT(ReachSedimentInputFromLand, ImprovedGrassland);
+		double Esus_in_S  = RESULT(ReachSedimentInputFromLand, Seminatural);
 		
 		//NOTE: RESULT(ReachSedimentInputFromLand, Arable) = Esus_i['A']*f_A   etc.
 		// Msus_in_i = Esus_i * Qr_i**k_M
 		double coeff = pow(RESULT(ReachFlow), PARAMETER(InstreamEntrainmentNonlinearCoefficient));
 		double sedimentinput =
 			E_PP * (
-			  (Msus_in_Ar*(1.0 - f_NC_Ar) + Msus_in_IG*(1.0 - f_NC_IG))*Ag
-		     + Msus_in_S * (1.0 - f_NC_S) * Sn
-			 + (Msus_in_Ar * f_NC_Ar + Msus_in_IG * f_NC_IG + Msus_in_S * f_NC_S) * Nc
+			  (Esus_in_Ar*(1.0 - f_NC_Ar) + Esus_in_IG*(1.0 - f_NC_IG))*Ag
+		     + Esus_in_S * (1.0 - f_NC_S) * Sn
+			 + (Esus_in_Ar * f_NC_Ar + Esus_in_IG * f_NC_IG + Esus_in_S * f_NC_S) * Nc
 			) * coeff;
 		
 		double upstreamflux = 0.0;

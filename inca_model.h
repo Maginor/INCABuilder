@@ -79,8 +79,10 @@ struct value_set_accessor;
 typedef std::function<double(value_set_accessor *)> inca_equation;
 
 typedef std::function<void(double *, double *)> inca_solver_equation_function;
+typedef std::function<void(size_t, size_t, double)> inca_matrix_insertion_function;
+typedef std::function<void(double *, inca_matrix_insertion_function &)> inca_solver_jacobi_function;
 //#define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction)
-#define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction, const inca_solver_equation_function &JacobiFunction, double AbsErr, double RelErr)
+#define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction, const inca_solver_jacobi_function &JacobiFunction, double AbsErr, double RelErr)
 typedef INCA_SOLVER_FUNCTION(inca_solver_function);
 
 struct parameter_group_spec

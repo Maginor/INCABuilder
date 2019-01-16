@@ -66,10 +66,10 @@ BuildJacobianInfo(inca_model *Model)
 }
 
 
-#define USE_JACOBIAN_OPTIMIZATION 0
+#define USE_JACOBIAN_OPTIMIZATION 1
 
 static void
-EstimateJacobian(double *X, double *J, double *FBaseVec, const inca_model *Model, value_set_accessor *ValueSet, const equation_batch &Batch)
+EstimateJacobian(double *X, inca_matrix_insertion_function & MatrixInserter, double *FBaseVec, const inca_model *Model, value_set_accessor *ValueSet, const equation_batch &Batch)
 {
 	//NOTE: This is not a very numerically accurate estimation of the Jacobian, it is mostly optimized for speed. We'll see if it is good enough..
 
@@ -137,8 +137,7 @@ EstimateJacobian(double *X, double *J, double *FBaseVec, const inca_model *Model
 			
 			double Derivative = (FPermute - FBase) / H; //TODO: Numerical correctness
 			
-			//NOTE: Assumes row major storage (this is the default for the boost solver use case. If we need column major for another use case we have to figure out how to do that)
-			J[N*Row + Col] = Derivative;
+			MatrixInserter(Row, Col, Derivative);
 			
 			//printf("%.2f\t", Derivative);
 		}

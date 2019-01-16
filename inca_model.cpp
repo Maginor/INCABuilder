@@ -1042,15 +1042,15 @@ INNER_LOOP_BODY(RunInnerLoop)
 						}
 					};
 				
-				inca_solver_equation_function JacobiFunction = nullptr;
+				inca_solver_jacobi_function JacobiFunction = nullptr;
 				if(SolverSpec.UsesJacobian)
 				{
 					JacobiFunction =
-					[ValueSet, Model, DataSet, &Batch](double *X, double *J)
+					[ValueSet, Model, DataSet, &Batch](double *X, inca_matrix_insertion_function & MatrixInserter)
 					{
 						//TODO: Have to see if it is safe to use DataSet->wk here. It is ok for the boost solvers since they use their own working memory.
 						// It is not really safe design to do this, and so we should instead preallocate different working memory for the Jacobian estimation..
-						EstimateJacobian(X, J, DataSet->wk, Model, ValueSet, Batch);
+						EstimateJacobian(X, MatrixInserter, DataSet->wk, Model, ValueSet, Batch);
 					};
 				}
 				

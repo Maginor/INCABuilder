@@ -13,38 +13,40 @@
 
 #include <boost/numeric/odeint.hpp>
 
-typedef boost::numeric::ublas::vector< double > solver_vector_type;
-typedef boost::numeric::ublas::matrix< double > solver_matrix_type;
+typedef boost::numeric::ublas::vector< double > vec_boost;
+typedef boost::numeric::ublas::matrix< double > mat_boost;
 
-struct ode_system
+struct boost_ode_system
 {
 	const inca_solver_equation_function &EquationFunction;
 	
-	ode_system(const inca_solver_equation_function &EquationFunction) : EquationFunction(EquationFunction)
+	boost_ode_system(const inca_solver_equation_function &EquationFunction) : EquationFunction(EquationFunction)
 	{
 	}
 	
-	void operator()( const solver_vector_type &X , solver_vector_type &DXDT , double /* t */ )
+	void operator()( const vec_boost &X , vec_boost &DXDT , double /* t */ )
     {
         EquationFunction((double *)X.data().begin(), (double *)DXDT.data().begin());
     }
 };
 
-struct ode_system_jacobi
+struct boost_ode_system_jacobi
 {
-	const inca_solver_equation_function &JacobiFunction;
+	const inca_solver_jacobi_function &JacobiFunction;
 	
-	ode_system_jacobi(const inca_solver_equation_function &JacobiFunction) : JacobiFunction(JacobiFunction)
+	boost_ode_system_jacobi(const inca_solver_jacobi_function &JacobiFunction) : JacobiFunction(JacobiFunction)
 	{
 	}
 	
-	void operator()( const solver_vector_type &X, solver_matrix_type &J , const double & /* t */ , solver_vector_type /* &DFDT */ )
+	void operator()( const vec_boost &X, mat_boost &J , const double & /* t */ , vec_boost /* &DFDT */ )
     {
 		//NOTE: We are banking on not having to clear DFDT each time. We assume it is inputed as 0 from the solver.. However I don't know if this is documented functionality
 		
 		J.clear(); //NOTE: Unfortunately it seems like J contains garbage values at the start of each run unless we clear it. And we have to clear it since we only set the nonzero values in the JacobiEstimation.
 		
-		JacobiFunction((double *)X.data().begin(), (double *)J.data().begin());
+		inca_matrix_insertion_function MatrixInserter = [&](size_t Row, size_t Col, double Value){ J(Row, Col) = Value; };
+		
+		JacobiFunction((double *)X.data().begin(), MatrixInserter);
 	}
 };
 
@@ -53,7 +55,7 @@ INCA_SOLVER_FUNCTION(BoostRosenbrock4Impl_)
 	using namespace boost::numeric::odeint;
 	
 	//It is a little stupid that we have to copy the state back and forth, but it seems like we can't create a ublas vector that has an existing pointer as its data (or correct me if I'm wrong!)
-	solver_vector_type X(n);
+	vec_boost X(n);
 	for(size_t Idx = 0; Idx < n; ++Idx)
 	{
 		X[Idx] = x0[Idx];
@@ -61,7 +63,7 @@ INCA_SOLVER_FUNCTION(BoostRosenbrock4Impl_)
 
 	size_t NSteps = integrate_adaptive( 
 			make_controlled< rosenbrock4< double > >( AbsErr, RelErr ),
-			std::make_pair( ode_system(EquationFunction), ode_system_jacobi(JacobiFunction) ),
+			std::make_pair( boost_ode_system(EquationFunction), boost_ode_system_jacobi(JacobiFunction) ),
 			X, 0.0 , 1.0 , h 
 			/*TODO: add an observer to handle errors? */);
 			
@@ -85,15 +87,15 @@ INCA_SOLVER_SETUP_FUNCTION(BoostRosenbrock4)
 INCA_SOLVER_FUNCTION(BoostRK4Impl_)
 {
 	using namespace boost::numeric::odeint;
-	solver_vector_type X(n);
+	vec_boost X(n);
 	for(size_t Idx = 0; Idx < n; ++Idx)
 	{
 		X[Idx] = x0[Idx];
 	}
 
 	size_t NSteps = integrate_adaptive( 
-			runge_kutta4<solver_vector_type>(),
-			ode_system(EquationFunction),
+			runge_kutta4<vec_boost>(),
+			boost_ode_system(EquationFunction),
 			X, 0.0 , 1.0 , h 
 			/*TODO: add an observer to handle errors? */);
 			
@@ -116,15 +118,15 @@ INCA_SOLVER_SETUP_FUNCTION(BoostRK4)
 INCA_SOLVER_FUNCTION(BoostCashCarp54Impl_)
 {
 	using namespace boost::numeric::odeint;
-	solver_vector_type X(n);
+	vec_boost X(n);
 	for(size_t Idx = 0; Idx < n; ++Idx)
 	{
 		X[Idx] = x0[Idx];
 	}
 
 	size_t NSteps = integrate_adaptive( 
-			controlled_runge_kutta<runge_kutta_cash_karp54<solver_vector_type>>(AbsErr, RelErr),
-			ode_system(EquationFunction),
+			controlled_runge_kutta<runge_kutta_cash_karp54<vec_boost>>(AbsErr, RelErr),
+			boost_ode_system(EquationFunction),
 			X, 0.0 , 1.0 , h 
 			/*TODO: add an observer to handle errors? */);
 			

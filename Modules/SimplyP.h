@@ -7,7 +7,7 @@
 
 
 //NOTE: Only include these if you are going to use them (they cause long compile times):
-#include "../boost_solvers.h"
+//#include "../boost_solvers.h"
 //#include "../mtl_solvers.h"
 
 
@@ -165,10 +165,10 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return (1.0 - PARAMETER(ProportionToQuickFlow)) * RESULT(HydrologicalInputToSoilBox);
 	)
 	
-	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 1.0/20000.0, IncaDascru);
+	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.01, IncaDascru);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostCashCarp54, 1e-6, 1e-6);
-	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
+	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.0025, Mtl4ImplicitEuler);   //NOTE: Being a first order method, this one is not that good..
 	
 	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
@@ -668,6 +668,38 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto AgriculturalSoilWaterEPC0   = RegisterEquation(Model, "Agricultural soil water EPC0", KgPerMm);
 	SetInitialValue(Model, AgriculturalSoilWaterEPC0, InitialAgriculturalSoilWaterEPC0);
 	
+#define DISCRETISE_SOIL_P 1
+	
+#if DISCRETISE_SOIL_P
+	auto InitialAgriculturalSoilTDPMass     = RegisterEquationInitialValue(Model, "Initial agricultural soil TDP mass", Kg);
+	auto AgriculturalSoilTDPMass            = RegisterEquation(Model, "Agricultural soil TDP mass", Kg);
+	SetInitialValue(Model, AgriculturalSoilTDPMass, InitialAgriculturalSoilTDPMass);
+	
+	auto InitialAgriculturalSoilLabilePMass = RegisterEquationInitialValue(Model, "Initial agricultural soil labile P mass", Kg);
+	auto AgriculturalSoilLabilePMass = RegisterEquation(Model, "Agricultural soil labile P mass", Kg);
+	SetInitialValue(Model, AgriculturalSoilLabilePMass, InitialAgriculturalSoilLabilePMass);
+	
+	EQUATION(Model, InitialAgriculturalSoilTDPMass,
+		return RESULT(AgriculturalSoilWaterEPC0) * RESULT(AgriculturalSoilWaterVolume);
+	)
+	
+	EQUATION(Model, AgriculturalSoilTDPMass,
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(AgriculturalSoilWaterFlow)) / LAST_RESULT(AgriculturalSoilWaterVolume);
+		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(AgriculturalSoilWaterEPC0);
+		return a / b + (LAST_RESULT(AgriculturalSoilTDPMass) - a / b) * exp(-b);
+	)
+	
+	EQUATION(Model, InitialAgriculturalSoilLabilePMass,
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		return 1e-6 * (PARAMETER(InitialSoilPConcentration, Arable) - PARAMETER(InitialSoilPConcentration, Seminatural)) * Msoil;
+	)
+	
+	EQUATION(Model, AgriculturalSoilLabilePMass,
+		return LAST_RESULT(AgriculturalSoilLabilePMass) + (LAST_RESULT(AgriculturalSoilTDPMass) - RESULT(AgriculturalSoilTDPMass));
+	)
+	
+#else
 	auto AgriculturalSoilNetPSorption = RegisterEquation(Model, "Agricultural soil net P sorption", KgPerDay);
 	SetSolver(Model, AgriculturalSoilNetPSorption, SimplyPSolver);
 	
@@ -684,28 +716,6 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	SetInitialValue(Model, AgriculturalSoilTDPMass, InitialAgriculturalSoilTDPMass);
 	SetSolver(Model, AgriculturalSoilTDPMass, SimplyPSolver);
 	
-	
-	
-	EQUATION(Model, InitialAgriculturalSoilWaterEPC0,
-		 //p_LU.ix['EPC0_0',LU] = UC_Cinv(p_LU[LU]['EPC0_init_mgl'], p_SC.ix['A_catch',SC])
-		 return ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, Arable), PARAMETER(CatchmentArea));
-	)
-	
-	EQUATION(Model, AgriculturalSoilWaterEPC0,
-		/*
-		if dynamic_options['Dynamic_EPC0'] == 'y':
-			EPC0_A_i = Plab0_A/(Kf*Msoil) # Agricultural EPC0; equals EPC0_0 on the 1st timestep
-		else:
-			EPC0_A_i = p_LU['A']['EPC0_0']
-		*/
-		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
-		double Kf = PARAMETER(PhosphorousSorptionCoefficient);
-		double Plab_A = LAST_RESULT(AgriculturalSoilLabilePMass);
-		
-		if(PARAMETER(DynamicEPC0)) return Plab_A / (Kf * Msoil);
-		
-		return LAST_RESULT(AgriculturalSoilWaterEPC0);
-	)
 	
 	EQUATION(Model, AgriculturalSoilNetPSorption,
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
@@ -746,7 +756,30 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 			- RESULT(AgriculturalSoilNetPSorption)
 			- RESULT(AgriculturalSoilTDPFlux);
 	)
+#endif
 
+	EQUATION(Model, InitialAgriculturalSoilWaterEPC0,
+		 //p_LU.ix['EPC0_0',LU] = UC_Cinv(p_LU[LU]['EPC0_init_mgl'], p_SC.ix['A_catch',SC])
+		 return ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, Arable), PARAMETER(CatchmentArea));
+	)
+	
+	EQUATION(Model, AgriculturalSoilWaterEPC0,
+		/*
+		if dynamic_options['Dynamic_EPC0'] == 'y':
+			EPC0_A_i = Plab0_A/(Kf*Msoil) # Agricultural EPC0; equals EPC0_0 on the 1st timestep
+		else:
+			EPC0_A_i = p_LU['A']['EPC0_0']
+		*/
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double Kf = PARAMETER(PhosphorousSorptionCoefficient);
+		double Plab_A = LAST_RESULT(AgriculturalSoilLabilePMass);
+		
+		if(PARAMETER(DynamicEPC0)) return Plab_A / (Kf * Msoil);
+		
+		return LAST_RESULT(AgriculturalSoilWaterEPC0);
+	)
+	
+	
 	
 #if 1
 	auto NewlyConvertedSoilWaterVolume = RegisterEquation(Model, "Newly-converted soil water volume", Mm);
@@ -758,6 +791,37 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto InitialNewlyConvertedSoilWaterEPC0 = RegisterEquationInitialValue(Model, "Initial newly-converted soil water EPC0", KgPerMm);
 	auto NewlyConvertedSoilWaterEPC0   = RegisterEquation(Model, "Newly-converted soil water EPC0", KgPerMm);
 	SetInitialValue(Model, NewlyConvertedSoilWaterEPC0, InitialNewlyConvertedSoilWaterEPC0);
+	
+#if DISCRETISE_SOIL_P
+	auto InitialNewlyConvertedSoilTDPMass     = RegisterEquationInitialValue(Model, "Initial newly-converted soil TDP mass", Kg);
+	auto NewlyConvertedSoilTDPMass            = RegisterEquation(Model, "Newly-converted soil TDP mass", Kg);
+	SetInitialValue(Model, NewlyConvertedSoilTDPMass, InitialNewlyConvertedSoilTDPMass);
+	
+	auto InitialNewlyConvertedSoilLabilePMass = RegisterEquationInitialValue(Model, "Initial newly-converted soil labile P mass", Kg);
+	auto NewlyConvertedSoilLabilePMass = RegisterEquation(Model, "Newly-converted soil labile P mass", Kg);
+	SetInitialValue(Model, NewlyConvertedSoilLabilePMass, InitialNewlyConvertedSoilLabilePMass);
+	
+	EQUATION(Model, InitialNewlyConvertedSoilTDPMass,
+		return RESULT(AgriculturalSoilWaterEPC0) * RESULT(AgriculturalSoilWaterVolume);
+	)
+	
+	EQUATION(Model, NewlyConvertedSoilTDPMass,
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(NewlyConvertedSoilWaterFlow)) / LAST_RESULT(NewlyConvertedSoilWaterVolume);
+		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(NewlyConvertedSoilWaterEPC0);
+		return a / b + (LAST_RESULT(NewlyConvertedSoilTDPMass) - a / b) * exp(-b);
+	)
+	
+	EQUATION(Model, InitialNewlyConvertedSoilLabilePMass,
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		return 1e-6 * (PARAMETER(InitialSoilPConcentration, Arable) - PARAMETER(InitialSoilPConcentration, Seminatural)) * Msoil;
+	)
+	
+	EQUATION(Model, NewlyConvertedSoilLabilePMass,
+		return LAST_RESULT(NewlyConvertedSoilLabilePMass) + (LAST_RESULT(NewlyConvertedSoilTDPMass) - RESULT(NewlyConvertedSoilTDPMass));
+	)
+
+#else
 	
 	auto NewlyConvertedSoilNetPSorption = RegisterEquation(Model, "Newly-converted soil net P sorption", KgPerDay);
 	SetSolver(Model, NewlyConvertedSoilNetPSorption, SimplyPSolver);
@@ -774,40 +838,6 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto NewlyConvertedSoilTDPMass     = RegisterEquationODE(Model, "Newly-converted soil TDP mass", Kg);
 	SetInitialValue(Model, NewlyConvertedSoilTDPMass, InitialNewlyConvertedSoilTDPMass);
 	SetSolver(Model, NewlyConvertedSoilTDPMass, SimplyPSolver);
-	
-	
-	
-	EQUATION(Model, NewlyConvertedSoilWaterVolume,
-		u64 nctype = PARAMETER(NCType);
-		double ag = RESULT(AgriculturalSoilWaterVolume);
-		double sn = RESULT(SeminaturalSoilWaterVolume);
-		if(nctype == Arable) return ag;
-		return sn;
-	)
-	
-	EQUATION(Model, NewlyConvertedSoilWaterFlow,
-		u64 nctype = PARAMETER(NCType);
-		double ag = RESULT(AgriculturalSoilWaterFlow);
-		double sn = RESULT(SeminaturalSoilWaterFlow);
-		if(nctype == Arable) return ag;
-		return sn;
-	)
-	
-	
-	EQUATION(Model, InitialNewlyConvertedSoilWaterEPC0,
-		u64 nctype = PARAMETER(NCType);
-		return ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, nctype), PARAMETER(CatchmentArea));
-	)
-	
-	EQUATION(Model, NewlyConvertedSoilWaterEPC0,
-		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
-		double Kf = PARAMETER(PhosphorousSorptionCoefficient);
-		double Plab_A = LAST_RESULT(NewlyConvertedSoilLabilePMass);
-		
-		if(PARAMETER(DynamicEPC0)) return Plab_A / (Kf * Msoil);
-		
-		return LAST_RESULT(NewlyConvertedSoilWaterEPC0);
-	)
 	
 	EQUATION(Model, NewlyConvertedSoilNetPSorption,
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
@@ -843,8 +873,40 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 			  PARAMETER(NetAnnualPInputNewlyConverted) * 100.0 * PARAMETER(CatchmentArea) / 365.0
 			- RESULT(NewlyConvertedSoilNetPSorption)
 			- RESULT(NewlyConvertedSoilTDPFlux);
-	)	
+	)
+#endif
 	
+	EQUATION(Model, NewlyConvertedSoilWaterVolume,
+		u64 nctype = PARAMETER(NCType);
+		double ag = RESULT(AgriculturalSoilWaterVolume);
+		double sn = RESULT(SeminaturalSoilWaterVolume);
+		if(nctype == Arable) return ag;
+		return sn;
+	)
+	
+	EQUATION(Model, NewlyConvertedSoilWaterFlow,
+		u64 nctype = PARAMETER(NCType);
+		double ag = RESULT(AgriculturalSoilWaterFlow);
+		double sn = RESULT(SeminaturalSoilWaterFlow);
+		if(nctype == Arable) return ag;
+		return sn;
+	)
+	
+	
+	EQUATION(Model, InitialNewlyConvertedSoilWaterEPC0,
+		u64 nctype = PARAMETER(NCType);
+		return ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, nctype), PARAMETER(CatchmentArea));
+	)
+	
+	EQUATION(Model, NewlyConvertedSoilWaterEPC0,
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double Kf = PARAMETER(PhosphorousSorptionCoefficient);
+		double Plab_A = LAST_RESULT(NewlyConvertedSoilLabilePMass);
+		
+		if(PARAMETER(DynamicEPC0)) return Plab_A / (Kf * Msoil);
+		
+		return LAST_RESULT(NewlyConvertedSoilWaterEPC0);
+	)
 #endif
 	
 	

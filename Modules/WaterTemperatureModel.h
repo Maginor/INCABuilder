@@ -8,12 +8,12 @@ AddWaterTemperatureModel(inca_model *Model)
 	
 	auto Reach = RegisterIndexSetBranched(Model, "Reaches");
 	
-	auto Streams = RegisterParameterGroup(Model, "Streams", Reach);
+	auto Reaches = RegisterParameterGroup(Model, "Reaches", Reach);
 	
 	
-	auto InitialWaterTemperature     = RegisterParameterDouble(Model, Streams, "Initial water temperature",    DegreesCelsius, 20.0);
-	auto MinimumWaterTemperature     = RegisterParameterDouble(Model, Streams, "Minimum water temperature",    DegreesCelsius,  0.0);
-	auto WaterTemperatureLagFactor   = RegisterParameterDouble(Model, Streams, "Water temperature lag factor", Dimensionless,   3.0);
+	auto InitialWaterTemperature     = RegisterParameterDouble(Model, Reaches, "Initial water temperature",    DegreesCelsius, 20.0);
+	auto MinimumWaterTemperature     = RegisterParameterDouble(Model, Reaches, "Minimum water temperature",    DegreesCelsius,  0.0);
+	auto WaterTemperatureLagFactor   = RegisterParameterDouble(Model, Reaches, "Water temperature lag factor", Dimensionless,   3.0);
 	
 	auto AirTemperature = GetInputHandle(Model, "Air temperature"); //NOTE: Is registered in the snow melt model
 	

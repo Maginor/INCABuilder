@@ -18,19 +18,21 @@ AddSoilTemperatureModel(inca_model *Model)
 	
 	auto ThermalConductivitySoil 			= RegisterParameterDouble(Model, Land, "Thermal conductivity of soil", 				WattsPerMetrePerDegreeCelsius,			 0.7);
 	auto SpecificHeatCapacityFreezeThaw	    = RegisterParameterDouble(Model, Land, "Specific heat capacity due to freeze/thaw", MegaJoulesPerCubicMetrePerDegreeCelsius, 6.6, 1.0, 200.0, "Controls the energy released when water is frozen and energy consumed under melting");
-	
+	auto WaterEquivalentFactor	            = RegisterParameterDouble(Model, Land, "Water equivalent factor", 	   Dimensionless, 	  0.3,  0.01,   1.0, "1mm of snow would produce this amount of water when melted");
 	auto SnowDepthSoilTemperatureFactor	    = RegisterParameterDouble(Model, Land, "Snow depth / soil temperature factor", 		PerCm, 								    -0.02, -0.03, -0.001, "Defines an empirical relationship between snow pack depth and its insulating effect on soils");
 	auto SpecificHeatCapacitySoil			= RegisterParameterDouble(Model, Land, "Specific heat capacity of soil",			MegaJoulesPerCubicMetrePerDegreeCelsius, 1.1);
 	auto SoilDepth							= RegisterParameterDouble(Model, Land, "Soil depth",								Metres,									 0.2);
 	auto InitialSoilTemperature		    	= RegisterParameterDouble(Model, Land, "Initial soil temperature",					DegreesCelsius,							20.0);
-
+	
 	auto AirTemperature = GetInputHandle(Model, "Air temperature");  //NOTE: This should be declared by the main model
-	auto SnowDepth = GetEquationHandle(Model, "Snow depth");
 	
 	auto Da                  = RegisterEquation(Model, "Da",                    Dimensionless);
 	auto COUPSoilTemperature = RegisterEquation(Model, "COUP soil temperature", DegreesCelsius);
 	SetInitialValue(Model, COUPSoilTemperature, InitialSoilTemperature);
 	auto SoilTemperature     = RegisterEquation(Model, "Soil temperature",      DegreesCelsius);
+	auto SnowDepth = RegisterEquation(Model, "Snow depth", Cm);
+	
+	auto SnowAsWaterEquivalent = GetEquationHandle(Model, "Snow as water equivalent");
 	
 	EQUATION(Model, Da,
 		if ( LAST_RESULT(COUPSoilTemperature) > 0.0)
@@ -53,6 +55,11 @@ AddSoilTemperatureModel(inca_model *Model)
 	EQUATION(Model, SoilTemperature,
 		return RESULT(COUPSoilTemperature)
 			* std::exp(PARAMETER(SnowDepthSoilTemperatureFactor) * RESULT(SnowDepth));
+	)
+	
+	EQUATION(Model, SnowDepth,
+		return RESULT(SnowAsWaterEquivalent)
+					/ 10.0 / PARAMETER(WaterEquivalentFactor);
 	)
 }
 

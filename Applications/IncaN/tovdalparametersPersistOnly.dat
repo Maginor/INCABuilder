@@ -23,9 +23,6 @@ parameters:
 "Degree day melt factor" :     #(mm/°C/day) [1, 4] Describes the dependency of snow melt rates on temperature. The parameter represents the number of millimetres water melted per degree celcius above the snow melt temperature
 3 3 3 3 3 3
 
-"Water equivalent factor" :     #(dimensionless) [0.01, 1] 1mm of snow would produce this amount of water when melted
-0.3 0.3 0.3 0.3 0.3 0.3
-
 "Rain multiplier" :     #(dimensionless) [0.5, 1.5] Adjustment factor used to account for bias in the relationship between rain measured in the gauge and effective rainfall amounts falling
 1 1 1 1 1 1
 

@@ -47,6 +47,8 @@ Other TODOs (low priority):
 #include <assert.h>
 #include <float.h>
 #include <cmath>
+#include <sstream>
+#include <iomanip>
 
 //TODO: Does this intrinsic header exist for all compilers? We only use it for __rdtsc();
 #include <x86intrin.h>

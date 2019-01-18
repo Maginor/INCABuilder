@@ -25,7 +25,6 @@ AddPersistModel(inca_model *Model)
 	auto SnowMultiplier              = RegisterParameterDouble(Model, Land, "Snow multiplier",             Dimensionless,     1.0,  0.5,    1.5, "Adjustment factor used to account for bias in the relationship between snow measured in the gauge and effective snowfall amounts falling");
 	auto SnowMeltTemperature         = RegisterParameterDouble(Model, Land, "Snow melt temperature",       DegreesCelsius,    0.0, -4.0,    4.0, "The temperature at or above which snow can melt");
 	auto DegreeDayMeltFactor         = RegisterParameterDouble(Model, Land, "Degree day melt factor",      MmPerDegreePerDay, 3.0,  1.0,    4.0, "Describes the dependency of snow melt rates on temperature. The parameter represents the number of millimetres water melted per degree celcius above the snow melt temperature");
-    auto WaterEquivalentFactor	     = RegisterParameterDouble(Model, Land, "Water equivalent factor", 	   Dimensionless, 	  0.3,  0.01,   1.0, "1mm of snow would produce this amount of water when melted");
 	auto RainMultiplier              = RegisterParameterDouble(Model, Land, "Rain multiplier",             Dimensionless,     1.0,  0.5,    1.5, "Adjustment factor used to account for bias in the relationship between rain measured in the gauge and effective rainfall amounts falling");
 	auto InitialSnowDepth            = RegisterParameterDouble(Model, Land, "Initial snow depth",          MmSWE,             0.0,  0.0, 9999.0, "The depth of snow, expressed as water equivalents, at the start of the simulation");
 	auto DegreeDayEvapotranspiration = RegisterParameterDouble(Model, Land, "Degree day evapotranspiration", MmPerDegreePerDay, 0.12, 0.05,   0.2, "Describes the baseline dependency of evapotranspiration on air temperature. The parameter represents the number of millimetres water evapotranspired per degree celcius above the growing degree threshold when evapotranspiration rates are not soil moisture limited");
@@ -81,6 +80,8 @@ AddPersistModel(inca_model *Model)
 	auto ReachHasAbstraction = RegisterParameterBool(Model, Reaches, "Reach has abstraction", false);
 	auto ReachHasEffluentInput = RegisterParameterBool(Model, Reaches, "Reach has effluent input", false);
 
+	auto InitialStreamFlow = RegisterParameterDouble(Model, Reaches, "Initial stream flow", CubicMetersPerSecond, 0.1, 0.0001, 9999.0, "The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.");
+	
 	auto LandUsePercentages = RegisterParameterGroup(Model, "Landscape percentages", LandscapeUnits);
 
     auto PercentU = RegisterUnit(Model, "%");
@@ -88,10 +89,6 @@ AddPersistModel(inca_model *Model)
     auto Percent = RegisterParameterDouble(Model, LandUsePercentages, "%", PercentU, 25.0, 0.0, 100.0, "The percentage of a subcatchment occupied by a specific land cover type");
 	
 	SetParentGroup(Model, LandUsePercentages, Reaches);
-	
-    auto Streams = RegisterParameterGroup(Model, "Streams", Reach);
-	
-	auto InitialStreamFlow = RegisterParameterDouble(Model, Streams, "Initial stream flow", CubicMetersPerSecond, 0.1, 0.0001, 9999.0, "The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.");
 
 
 	//TODO: Allow parameter groups to have multiple index sets so that the matrix does not have to be built in three group stages?
@@ -109,9 +106,9 @@ AddPersistModel(inca_model *Model)
 	auto SnowFall = RegisterEquation(Model, "Snow fall", MmPerDay);
 	auto SnowMelt = RegisterEquation(Model, "Snow melt", MmPerDay);
 	auto RainFall = RegisterEquation(Model, "Rainfall",  MmPerDay);
-	auto SnowAsWaterEquivalent = RegisterEquation(Model, "Snow depth soil water equivalent", MmSWE);
+	auto SnowAsWaterEquivalent = RegisterEquation(Model, "Snow as water equivalent", MmSWE);
 	SetInitialValue(Model, SnowAsWaterEquivalent, InitialSnowDepth);
-	auto SnowDepth = RegisterEquation(Model, "Snow depth", Cm);
+	
 	
 	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation");
 	auto AirTemperature      = RegisterInput(Model, "Air temperature");
@@ -140,11 +137,7 @@ AddPersistModel(inca_model *Model)
 		return LAST_RESULT(SnowAsWaterEquivalent) + RESULT(SnowFall) - RESULT(SnowMelt);
 	)
 	
-	//NOTE: The snow (pack) depth in Cm was added in to be compatible with the soil temperature model -MDN 23.11.2018
-	EQUATION(Model, SnowDepth,
-		return RESULT(SnowAsWaterEquivalent)
-					/ 10.0 / PARAMETER(WaterEquivalentFactor);
-	)
+	
 
 	auto PercolationInput   = RegisterEquation(Model, "Percolation input", MmPerDay);
 	auto SaturationExcessInput = RegisterEquation(Model, "Saturation excess input", MmPerDay);

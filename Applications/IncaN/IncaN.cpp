@@ -2,7 +2,7 @@
 //NOTE: the g++ compiler flag ffast-math will make it so that isnan does not work correctly, so don't use that flag.
 #define INCA_TEST_FOR_NAN 0
 #define INCA_EQUATION_PROFILING 0
-#define INCA_PRINT_TIMING_INFO 1
+#define INCA_PRINT_TIMING_INFO 0
 
 #include "../../inca.h"
 
@@ -36,6 +36,8 @@ int main(int argc, char **argv)
 	EnsureModelComplianceWithIncaviewCommandline(Model, &Args);
 	
 	EndModelDefinition(Model);
+	
+	//PrintResultStructure(Model);
 	
 	inca_data_set *DataSet = GenerateDataSet(Model);
 	

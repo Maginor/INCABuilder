@@ -116,7 +116,17 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	
 	const inca_model *Model = DataSet->Model;
 	
-	fprintf(File, "# Parameter file generated for %s V%s\n\n", Model->Name, Model->Version);
+	fprintf(File, "# Parameter file generated for %s V%s", Model->Name, Model->Version);
+	
+	{
+		auto T = std::time(nullptr);
+		auto TM = *std::localtime(&T);
+		std::stringstream Oss;
+		Oss << std::put_time(&TM, "%Y-%m-%d %H:%M:%S");
+		fprintf(File, " at %s", Oss.str().data());
+	}
+	
+	fprintf(File, "\n\n");
 	
 	fprintf(File, "index_sets:\n");
 	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)

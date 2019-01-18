@@ -68,11 +68,9 @@ AddIncaNModel(inca_model *Model)
 	auto ReachNitrificationRate                  = RegisterParameterDouble(Model, Reaches, "Reach nitrification rate", PerDay, 20.0);
 	auto ReachEffluentNitrateConcentration       = RegisterParameterDouble(Model, Reaches, "Reach effluent nitrate concentration", MgPerL, 0.0);
 	auto ReachEffluentAmmoniumConcentration      = RegisterParameterDouble(Model, Reaches, "Reach effluent ammonium concentration", MgPerL, 0.0);
-
-	auto Streams = GetParameterGroupHandle(Model, "Streams");
 	
-	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Streams, "Initial stream nitrate concentration", MgPerL, 10.0);
-	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Streams, "Initial stream ammonium concentration", MgPerL, 10.0);
+	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream nitrate concentration", MgPerL, 10.0);
+	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 10.0);
 	
 	
 	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);

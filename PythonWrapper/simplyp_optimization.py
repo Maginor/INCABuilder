@@ -73,9 +73,9 @@ for idx, cal in enumerate(calibration) :
 
 	
 # Computing the Hessian at the optimal point:
-#hess = compute_hessian(dataset, param_est, calibration, objective)
-#print('Hessian matrix at optimal parameters:')
-#print(hess)
+hess = compute_hessian(dataset, param_est, calibration, objective)
+print('Hessian matrix at optimal parameters:')
+print(hess)
 
 
 # NOTE: Write the optimal values back to the dataset and then generate a new parameter file that has these values.

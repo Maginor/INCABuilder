@@ -1,52 +1,56 @@
 import ctypes
 import numpy as np
 
-incadll = ctypes.CDLL('persist.dll')             #NOTE: Change this to whatever specific model dll you need
+incadll = None
 
-incadll.DllSetupModel.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
-incadll.DllSetupModel.restype  = ctypes.c_void_p
+def initialize(dllname) :
+	global incadll
+	incadll = ctypes.CDLL(dllname)             #NOTE: Change this to whatever specific model dll you need
 
-incadll.DllRunModel.argtypes = [ctypes.c_void_p]
+	incadll.DllSetupModel.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+	incadll.DllSetupModel.restype  = ctypes.c_void_p
 
-incadll.DllCopyDataSet.argtypes = [ctypes.c_void_p]
-incadll.DllCopyDataSet.restype  = ctypes.c_void_p
+	incadll.DllRunModel.argtypes = [ctypes.c_void_p]
 
-incadll.DllDeleteDataSet.argtypes = [ctypes.c_void_p]
+	incadll.DllCopyDataSet.argtypes = [ctypes.c_void_p]
+	incadll.DllCopyDataSet.restype  = ctypes.c_void_p
 
-incadll.DllGetTimesteps.argtypes = [ctypes.c_void_p]
-incadll.DllGetTimesteps.restype = ctypes.c_ulonglong
+	incadll.DllDeleteDataSet.argtypes = [ctypes.c_void_p]
 
-incadll.DllGetInputTimesteps.argtypes = [ctypes.c_void_p]
-incadll.DllGetInputTimesteps.restype = ctypes.c_ulonglong
+	incadll.DllGetTimesteps.argtypes = [ctypes.c_void_p]
+	incadll.DllGetTimesteps.restype = ctypes.c_ulonglong
 
-incadll.DllGetInputStartDate.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetInputTimesteps.argtypes = [ctypes.c_void_p]
+	incadll.DllGetInputTimesteps.restype = ctypes.c_ulonglong
 
-incadll.DllGetResultSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double)]
+	incadll.DllGetInputStartDate.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
-incadll.DllGetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_bool]
+	incadll.DllGetResultSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double)]
 
-incadll.DllSetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_double]
+	incadll.DllGetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_bool]
 
-incadll.DllSetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_ulonglong]
+	incadll.DllSetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_double]
 
-incadll.DllSetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_bool]
+	incadll.DllSetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_ulonglong]
 
-incadll.DllSetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
+	incadll.DllSetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_bool]
 
-incadll.DllWriteParametersToFile.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllSetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
 
-incadll.DllGetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
-incadll.DllGetParameterDouble.restype = ctypes.c_double
+	incadll.DllWriteParametersToFile.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
-incadll.DllGetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
-incadll.DllGetParameterUInt.restype  = ctypes.c_ulonglong
+	incadll.DllGetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
+	incadll.DllGetParameterDouble.restype = ctypes.c_double
 
-incadll.DllGetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
-incadll.DllGetParameterBool.restype  = ctypes.c_bool
+	incadll.DllGetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
+	incadll.DllGetParameterUInt.restype  = ctypes.c_ulonglong
 
-incadll.DllGetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
+	incadll.DllGetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
+	incadll.DllGetParameterBool.restype  = ctypes.c_bool
 
-incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_ulonglong]
+	incadll.DllGetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
+
+	incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_ulonglong]
 
 
 def _CStr(string):

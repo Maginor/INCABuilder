@@ -1,20 +1,8 @@
 import inca
 import numpy as np
-from scipy import optimize
-import numdifftools as nd
+from inca_calibration import *
 
 
-def set_values(dataset, values, calibration):
-	#TODO: Allow for linking parameters across indexes (say you want the Time constant for soil water to be the same across all landscape units)
-	for idx, cal in enumerate(calibration):
-		parname, parindexes = cal
-		dataset.set_parameter_double(parname, parindexes, values[idx])
-		
-def check_min_max(params, min, max):
-	for idx, value in enumerate(params):
-		if(value < min[idx] or value > max[idx]):
-			return False
-	return True
 
 def sum_squares_error(params, dataset, calibration, objective, obs):	
 	# NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
@@ -29,50 +17,20 @@ def sum_squares_error(params, dataset, calibration, objective, obs):
     
 	sim = dataset.get_result_series(simname, simindexes)
 	
-	sse = np.sum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
+	sse = np.nansum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
     
 	# NOTE: If we made a copy of the dataset we need to delete it so that we don't get a huge memory leak
 	# datasetcopy.delete()
 	
 	return sse
-
-def run_optimization(dataset, min, max, initial_guess, calibration, objective) :
-	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
-	
-	#NOTE: We extract the observation series just once here so that it does not have to be extracted at every evaluation (it will not change during optimization)
-	obsseries = dataset.get_input_series(obsname, obsindexes)
-
-	if skiptimesteps >= dataset.get_parameter_uint('Timesteps', []) :
-		raise ValueError('We were told to skip more timesteps in the evaluation of the objective than the amount of timesteps we run the model for.')
-	
-	def eval(params) :
-		# NOTE: This version of the Nelder-Mead algorithm does not allow for bounds, so we have to hack them in
-		if not check_min_max(params, min, max):
-			return np.inf
-		return objective_fun(params, dataset, calibration, objective, obsseries)
-	
-	return optimize.fmin(eval, initial_guess)
-
-	
-def compute_hessian(dataset, params, calibration, objective) :
-	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
-	obsseries = dataset.get_input_series(obsname, obsindexes)
-	
-	#WARNING: This may be dangerous if we are close to the parameter bounds. The algorithm may evaluate outside the bounds and maybe crash the model.
-	def eval(par) : return objective_fun(par, dataset, calibration, objective, obsseries)
-	
-	return nd.Hessian(eval)(params)
-	
-def default_initial_guess(dataset, calibration) :
-	#NOTE: Just reads the values that were provided in the file
-	return [dataset.get_parameter_double(cal[0], cal[1]) for cal in calibration]
-
 	
 
 # NOTE: Example for optimizing the a and b values in the equation V = aQ^b (reach flow - velocity relationship)
 # This is just a toy setup, a proper calibration run probably needs to set up more parameters to modify and maybe use a better algorithm, such as the one in dlib.
 
 #TODO: The reach flow doesn't seem to be very sensitive to these parameters in particular, choose some better ones to illustrate this example!
+
+inca.initialize('persist.dll')
 
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/IncaN/tovdalparametersPersistOnly.dat', '../Applications/IncaN/tovdalinputs.dat')
 

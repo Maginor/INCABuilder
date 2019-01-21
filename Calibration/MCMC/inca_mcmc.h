@@ -197,6 +197,10 @@ TargetLogKernelWithGradient(const arma::vec &Par, arma::vec* GradientOut, void *
 	
 	double LogPriors = 0.0;  //NOTE: See above!
 	
+	static int NumRuns = 0;
+	
+	std::cout << "Run number " << NumRuns++ << " completed" << std::endl;
+	
 	return LogPriors + LogLikelyhood;
 }
 

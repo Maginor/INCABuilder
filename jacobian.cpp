@@ -106,7 +106,9 @@ EstimateJacobian(double *X, inca_matrix_insertion_function & MatrixInserter, dou
 		equation_h EquationToPermute = Batch.EquationsODE[Col];
 		
 		//Hmm. here we assume we can use the same H for all Fs which may not be a good idea?? But it makes things significantly faster because then we don't have to recompute the non-odes in all cases.
-		double H = 1e-6;  //TODO: This should definitely be sensitive to the size of the base values!!
+		double H0 = 1e-6;  //TODO: This should definitely be sensitive to the size of the base values. But how to do that?
+		volatile double Temp = X[Col] + H0;
+		double H = Temp - X[Col];
 		ValueSet->CurResults[EquationToPermute.Handle] = X[Col] + H; //TODO: Do it numerically correct
 		
 		//TODO: We should do some optimization here too to not have to call all the non-ode equations, but in that case we have to remember to reset the values at the end.

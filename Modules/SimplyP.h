@@ -165,7 +165,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return (1.0 - PARAMETER(ProportionToQuickFlow)) * RESULT(HydrologicalInputToSoilBox);
 	)
 	
-	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.01, IncaDascru);
+	auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.01 /* 1.0/20000.0 */, IncaDascru);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostCashCarp54, 1e-6, 1e-6);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
@@ -685,7 +685,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	EQUATION(Model, AgriculturalSoilTDPMass,
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
-		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(AgriculturalSoilWaterFlow)) / LAST_RESULT(AgriculturalSoilWaterVolume);
+		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess)) / LAST_RESULT(AgriculturalSoilWaterVolume);
 		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(AgriculturalSoilWaterEPC0);
 		return a / b + (LAST_RESULT(AgriculturalSoilTDPMass) - a / b) * exp(-b);
 	)
@@ -696,7 +696,15 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, AgriculturalSoilLabilePMass,
-		return LAST_RESULT(AgriculturalSoilLabilePMass) + (LAST_RESULT(AgriculturalSoilTDPMass) - RESULT(AgriculturalSoilTDPMass));
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double b0 = PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess);
+		double b = b0 / LAST_RESULT(AgriculturalSoilWaterVolume);
+		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(AgriculturalSoilWaterEPC0);
+		//TODO: factor out calculations of b0, a? Would probably not matter that much to speed though.
+	
+		double sorp = PARAMETER(PhosphorousSorptionCoefficient) * Msoil * (a / b0 - RESULT(AgriculturalSoilWaterEPC0) + (LAST_RESULT(AgriculturalSoilTDPMass)/LAST_RESULT(AgriculturalSoilWaterVolume) - a/b0)*(1.0 - exp(-b))/b);
+	
+		return LAST_RESULT(AgriculturalSoilLabilePMass) + sorp;
 	)
 	
 #else
@@ -782,7 +790,10 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	
 #if 1
+	auto SoilFieldCapacity = GetParameterDoubleHandle(Model, "Soil field capacity");
+
 	auto NewlyConvertedSoilWaterVolume = RegisterEquation(Model, "Newly-converted soil water volume", Mm);
+	SetInitialValue(Model, NewlyConvertedSoilWaterVolume, SoilFieldCapacity); //NOTE: This is needed for the Labile P + TDP computations in the first timestep!
 	SetSolver(Model, NewlyConvertedSoilWaterVolume, SimplyPSolver);
 	
 	auto NewlyConvertedSoilWaterFlow   = RegisterEquation(Model, "Newly-converted soil water flow", Mm);
@@ -807,18 +818,27 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	EQUATION(Model, NewlyConvertedSoilTDPMass,
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
-		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(NewlyConvertedSoilWaterFlow)) / LAST_RESULT(NewlyConvertedSoilWaterVolume);
-		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(NewlyConvertedSoilWaterEPC0);
+		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(NewlyConvertedSoilWaterFlow) + RESULT(InfiltrationExcess)) / LAST_RESULT(NewlyConvertedSoilWaterVolume);
+		double a = PARAMETER(NetAnnualPInputNewlyConverted) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(NewlyConvertedSoilWaterEPC0);
 		return a / b + (LAST_RESULT(NewlyConvertedSoilTDPMass) - a / b) * exp(-b);
 	)
 	
 	EQUATION(Model, InitialNewlyConvertedSoilLabilePMass,
-		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
-		return 1e-6 * (PARAMETER(InitialSoilPConcentration, Arable) - PARAMETER(InitialSoilPConcentration, Seminatural)) * Msoil;
+		double ag = RESULT(AgriculturalSoilLabilePMass);
+		if(PARAMETER(NCType) == Seminatural) return ag;
+		return 0.0;
 	)
 	
 	EQUATION(Model, NewlyConvertedSoilLabilePMass,
-		return LAST_RESULT(NewlyConvertedSoilLabilePMass) + (LAST_RESULT(NewlyConvertedSoilTDPMass) - RESULT(NewlyConvertedSoilTDPMass));
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double b0 = PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(NewlyConvertedSoilWaterFlow) + RESULT(InfiltrationExcess);
+		double b = b0 / LAST_RESULT(NewlyConvertedSoilWaterVolume);
+		double a = PARAMETER(NetAnnualPInputNewlyConverted) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(NewlyConvertedSoilWaterEPC0);
+		//TODO: factor out calculations of b0, a? Would probably not matter that much to speed though.
+	
+		double sorp = PARAMETER(PhosphorousSorptionCoefficient) * Msoil * (a / b0 - RESULT(NewlyConvertedSoilWaterEPC0) + (LAST_RESULT(NewlyConvertedSoilTDPMass)/LAST_RESULT(NewlyConvertedSoilWaterVolume) - a/b0)*(1.0 - exp(-b))/b);
+	
+		return LAST_RESULT(NewlyConvertedSoilLabilePMass) + sorp;
 	)
 
 #else
@@ -849,7 +869,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	EQUATION(Model, InitialNewlyConvertedSoilLabilePMass,
 		double ag = RESULT(AgriculturalSoilLabilePMass);
-		if(PARAMETER(NCType) == Arable)	return ag;
+		if(PARAMETER(NCType) == Seminatural) return ag;
 		return 0.0;
 	)
 	

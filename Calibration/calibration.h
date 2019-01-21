@@ -365,31 +365,31 @@ EvaluateObjectiveAndGradientSingleForwardDifference(inca_data_set *DataSet, std:
 	
 	double F0 = EvaluateObjective(DataSet, Calibrations, Objective, ParameterValues, DiscardTimesteps);
 	
-	double *XD = malloc(sizeof(double) * Dimensions);
+	double *XD = (double *)malloc(sizeof(double) * Dimensions);
 	
 	const double Epsilon = 1e-6;
 	
 	for(size_t Dim = 0; Dim < Dimensions; ++Dim)
-	{
+	{	
 		memcpy(XD, ParameterValues, sizeof(double) * Dimensions);
 		
-		double H;
+		double H0;
 		if(abs(XD[Dim]) > 1e-6)
-			H = sqrt(XD[Dim])*Epsilon;
+			H0 = sqrt(XD[Dim])*Epsilon;
 		else
-			H = 1e-9; //TODO: This was just completely arbitrary, it should be done properly
+			H0 = 1e-9; //TODO: This was just completely arbitrary, it should be done properly
 		
-		volatile double Temp = XD[Dim] + H;  //Volatile so that the compiler does not optimize it away
-		double HX = Temp - XD[Dim];
+		volatile double Temp = XD[Dim] + H0;  //Volatile so that the compiler does not optimize it away
+		double H = Temp - XD[Dim];
 		
-		XD[Dim] += HX;
+		XD[Dim] += H;
 		
-		FD = EvaluateObjective(DataSet, Calibrations, Objective, XD, DiscardTimesteps);
+		double FD = EvaluateObjective(DataSet, Calibrations, Objective, XD, DiscardTimesteps);
 		
-		GradientOut[Dim] = (FD - F0) / HX;
+		GradientOut[Dim] = (FD - F0) / H;
 	}
 	
-	free(EvalPoint);
+	free(XD);
 	
 	return F0;
 }

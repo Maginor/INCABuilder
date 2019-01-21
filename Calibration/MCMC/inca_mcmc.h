@@ -5,6 +5,7 @@
 #include "mcmc.hpp"
 #include "de.cpp"
 #include "rwmh.cpp"
+#include "hmc.cpp"
 
 
 #include <boost/accumulators/accumulators.hpp>
@@ -20,6 +21,7 @@ enum mcmc_algorithm
 {
 	MCMCAlgorithm_DifferentialEvolution,
 	MCMCAlgorithm_RandomWalkMetropolisHastings,
+	MCMCAlgorithm_HamiltonianMonteCarlo,
 };
 
 struct mcmc_setup
@@ -34,6 +36,9 @@ struct mcmc_setup
 	double DeBound;
 	bool   DeJumps;
 	double DeJumpGamma;
+	
+	double HMCStepSize;
+	size_t HMCLeapSteps;
 	
 	std::vector<parameter_calibration> Calibration;
 	
@@ -89,6 +94,10 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			{
 				Setup->Algorithm = MCMCAlgorithm_RandomWalkMetropolisHastings;
 			}
+			else if(strcmp(Alg, "hamiltonian_monte_carlo") == 0)
+			{
+				Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo;
+			}
 			//else if ...
 			else
 			{
@@ -125,6 +134,14 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 		{
 			Setup->DeJumpGamma = Stream.ExpectDouble();
 		}
+		else if(strcmp(Section, "hmc_step_size") == 0)
+		{
+			Setup->HMCStepSize = Stream.ExpectDouble();
+		}
+		else if(strcmp(Section, "hmc_leap_steps") == 0)
+		{
+			Setup->HMCLeapSteps = Stream.ExpectUInt();
+		}
 		else if(strcmp(Section, "parameter_calibration") == 0)
 		{
 			ReadParameterCalibration(Stream, Setup->Calibration, ParameterCalibrationReadInitialGuesses); //TODO: We should also read distributions here!
@@ -157,6 +174,28 @@ TargetLogKernel(const arma::vec& Par, void* Data, size_t ChainIdx = 0)
 	//TODO: When we have bounds turned on, it looks like de algorithm adds a log_jacobian for the priors. Find out what that is for!
 	double LogPriors = 0.0; //NOTE: This assumes uniformly distributed priors and that the MCMC driving algorithm discards draws outside the parameter min-max boundaries on its own.
 	//TODO: implement other priors.
+	
+	return LogPriors + LogLikelyhood;
+}
+
+double
+TargetLogKernelWithGradient(const arma::vec &Par, arma::vec* GradientOut, void *Data, size_t ChainIdx)
+{
+	mcmc_run_data *RunData = (mcmc_run_data *)Data;
+	
+	inca_data_set *DataSet = RunData->DataSets[ChainIdx];
+
+	double LogLikelyhood;
+	if(GradientOut)
+	{
+		LogLikelyhood = EvaluateObjectiveAndGradientSingleForwardDifference(DataSet, RunData->Calibration, RunData->Objective, Par.memptr(), RunData->DiscardTimesteps, GradientOut->memptr());
+	}
+	else
+	{
+		LogLikelyhood = EvaluateObjective(DataSet, RunData->Calibration, RunData->Objective, Par.memptr(), RunData->DiscardTimesteps);
+	}
+	
+	double LogPriors = 0.0;  //NOTE: See above!
 	
 	return LogPriors + LogLikelyhood;
 }
@@ -200,6 +239,8 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	Settings.lower_bounds = LowerBounds;
 	Settings.upper_bounds = UpperBounds;
 	
+	Setup->NumChains = 1;
+	
 	if(Setup->Algorithm == MCMCAlgorithm_DifferentialEvolution)
 	{
 		Settings.de_n_pop = Setup->NumChains;
@@ -228,6 +269,20 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		}
 		Setup->NumChains = 1; // :(
 	}
+	else if (Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo)
+	{
+		Settings.hmc_n_draws = Setup->NumGenerations;
+		Settings.hmc_step_size = Setup->HMCStepSize;
+		Settings.hmc_leap_steps = Setup->HMCLeapSteps;
+		Settings.hmc_n_burnin = Setup->NumBurnin;
+		//hmc_precond_mat
+		
+		if(Setup->NumChains > 1)
+		{
+			std::cout << "WARNING (MCMC): Hamiltonian Monte Carlo does not support having more than one chain." << std::endl;
+		}
+		Setup->NumChains = 1;
+	}
 	
 	//NOTE: Make one copy of the dataset for each chain (so that they don't overwrite each other).
 	RunData.DataSets.resize(Setup->NumChains);
@@ -247,7 +302,7 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	
 	if(!IsLogLikelyhoodMeasure(RunData.Objective.PerformanceMeasure))
 	{
-		std::cout << "ERROR: (MCMC) Chose a performance measure that was not a log likelyhood measure." << std::endl;
+		std::cout << "ERROR: (MCMC) A performance measure was selected that was not a log likelyhood measure." << std::endl;
 		exit(0);
 	}
 	
@@ -260,7 +315,10 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		exit(0);
 	}
 	
-	omp_set_num_threads(Setup->NumChains); //TODO: This may disturb some of the post-processing in metropolis-hastings
+	if(Setup->NumChains > 1)
+	{
+		omp_set_num_threads(Setup->NumChains);
+	}
 	
 	if(Setup->Algorithm == MCMCAlgorithm_DifferentialEvolution)
 	{
@@ -276,7 +334,14 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		
 		Results->AcceptanceRate = Settings.rwmh_accept_rate;
 	}
-	
+	else if(Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo)
+	{
+		mcmc::hmc(InitialGuess, Results->DrawsOut2,
+		[](const arma::vec& CalibrationIn, arma::vec* GradOut, void* Data){return TargetLogKernelWithGradient(CalibrationIn, GradOut, Data, 0);},
+		&RunData, Settings);
+		
+		Results->AcceptanceRate = Settings.hmc_accept_rate;
+	}
 	
 	
 	//NOTE: We delete every DataSet that we allocated above. We don't delete the one that was passed in since the caller may want to keep it.

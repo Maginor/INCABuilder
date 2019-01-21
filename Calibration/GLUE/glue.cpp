@@ -50,6 +50,9 @@ ComputeWeightedPerformance(inca_data_set *DataSet, double Performance, calibrati
 		WeightedPerformance = (Objective.Threshold - Performance) / (Objective.Threshold - Objective.OptimalValue);
 	}
 	
+	double StatWeight = 1.0 / (1.0 - WeightedPerformance);
+	//double StatWeight = exp(WeightedPerformance);
+	
 	size_t Timesteps = (size_t)DataSet->TimestepsLastRun;
 	
 	//TODO: The other EvaluateObjective we call before this already extracts this series, so it is kind of stupid to do it twice. Maybe we could make an optional version of it that gives us back the modeled series?
@@ -63,7 +66,7 @@ ComputeWeightedPerformance(inca_data_set *DataSet, double Performance, calibrati
 	//TODO! TODO! We should maybe also discard timesteps here too (but has to take care to do it correctly!)
 	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{
-		QuantileAccumulators[Timestep](ModeledSeries[Timestep], weight = WeightedPerformance);
+		QuantileAccumulators[Timestep](ModeledSeries[Timestep], weight = StatWeight);
 	}
 	
 	return {Performance, WeightedPerformance};

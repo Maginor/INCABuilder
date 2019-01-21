@@ -51,13 +51,27 @@ def initialize(dllname) :
 	incadll.DllGetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
 
 	incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_ulonglong]
+	
+	incadll.DllGetIndexSetsCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetIndexSetsCount.restype = ctypes.c_ulonglong
+	
+	incadll.DllGetIndexSets.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p)]
 
+	incadll.DllGetIndexCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetIndexCount.restype = ctypes.c_ulonglong
+	
+	incadll.DllGetIndexes.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DllGetParameterIndexSetsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetParameterIndexSetsCount.restype = ctypes.c_ulonglong
+	
+	incadll.DllGetParameterIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 
 def _CStr(string):
-	return string.encode('ascii')   #TODO: We should figure out what encoding is best to use here.
+	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
 
 def _PackIndexes(indexes):
-	cindexes = [index.encode('ascii') for index in indexes]
+	cindexes = [index.encode('utf-8') for index in indexes]
 	return (ctypes.c_char_p * len(cindexes))(*cindexes)
 	
 class DataSet :
@@ -121,7 +135,7 @@ class DataSet :
 		incadll.DllSetParameterBool(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_bool(value))
 		
 	def set_parameter_time(self, name, indexes, value):
-		incadll.DllSetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), value.encode('ascii'))
+		incadll.DllSetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), value.encode('utf-8'))
 		
 	def get_parameter_double(self, name, indexes) :
 		return incadll.DllGetParameterDouble(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes))
@@ -137,7 +151,7 @@ class DataSet :
 		# ALTERNATIVELY, we could just return a datetime value from this function so that the user does not have to work with the string format.
 		string = ctypes.create_string_buffer(32)
 		incadll.DllGetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), string)
-		return string.value.decode('ascii')
+		return string.value.decode('utf-8')
 
 	def get_input_timesteps(self):
 		incadll.DllGetInputTimesteps(self.datasetptr)
@@ -145,4 +159,24 @@ class DataSet :
 	def get_input_start_date(self):
 		string = ctypes.create_string_buffer(32)
 		incadll.DllGetInputStartDate(self.datasetptr, string)
-		return string.value.decode('ascii')
+		return string.value.decode('utf-8')
+		
+	def get_index_sets(self):
+		num = incadll.DllGetIndexSetsCount(self.datasetptr)
+		array = (ctypes.c_char_p * num)()
+		incadll.DllGetIndexSets(self.datasetptr, array)
+		return [string.decode('utf-8') for string in array]
+		
+	def get_indexes(self, index_set):
+		num = incadll.DllGetIndexCount(self.datasetptr, _CStr(index_set))
+		array = (ctypes.c_char_p * num)()
+		incadll.DllGetIndexes(self.datasetptr, _CStr(index_set), array)
+		return [string.decode('utf-8') for string in array]
+		
+	def get_parameter_index_sets(self, parname):
+		num = incadll.DllGetParameterIndexSetsCount(self.datasetptr, _CStr(parname))
+		array = (ctypes.c_char_p * num)()
+		incadll.DllGetParameterIndexSets(self.datasetptr, _CStr(parname), array)
+		return [string.decode('utf-8') for string in array]
+		
+		

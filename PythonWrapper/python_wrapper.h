@@ -154,3 +154,68 @@ DllSetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCoun
 {
 	SetInputSeries((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, InputData, (size_t)InputDataLength);
 }
+
+
+//TODO: Some of the following should be wrapped into accessors in inca_data_set.cpp, because we are creating too many dependencies on implementation details here:
+
+DLLEXPORT u64
+DllGetIndexSetsCount(void *DataSetPtr)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return DataSet->Model->FirstUnusedIndexSetHandle - 1;
+}
+
+DLLEXPORT void
+DllGetIndexSets(void *DataSetPtr, const char **NamesOut)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	const inca_model *Model = DataSet->Model;
+	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+	{
+		NamesOut[IndexSetHandle - 1] = GetName(Model, index_set_h {IndexSetHandle});
+	}
+}
+
+DLLEXPORT u64
+DllGetIndexCount(void *DataSetPtr, char *IndexSetName)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	index_set_h IndexSet = GetIndexSetHandle(DataSet->Model, IndexSetName);
+	return DataSet->IndexCounts[IndexSet.Handle];
+}
+
+DLLEXPORT void
+DllGetIndexes(void *DataSetPtr, char *IndexSetName, const char **NamesOut)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	index_set_h IndexSet = GetIndexSetHandle(DataSet->Model, IndexSetName);
+	for(size_t IdxIdx = 0; IdxIdx < DataSet->IndexCounts[IndexSet.Handle]; ++IdxIdx)
+	{
+		NamesOut[IdxIdx] = DataSet->IndexNames[IndexSet.Handle][IdxIdx];
+	}
+}
+
+DLLEXPORT u64
+DllGetParameterIndexSetsCount(void *DataSetPtr, char *ParameterName)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	entity_handle ParameterHandle = GetParameterHandle(DataSet->Model, ParameterName);
+	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+	return DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets.size();
+}
+
+DLLEXPORT void
+DllGetParameterIndexSets(void *DataSetPtr, char *ParameterName, const char **NamesOut)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	entity_handle ParameterHandle = GetParameterHandle(DataSet->Model, ParameterName);
+	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+	size_t Idx = 0;
+	for(index_set_h IndexSet : DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets)
+	{
+		NamesOut[Idx] = GetName(DataSet->Model, IndexSet);
+		++Idx;
+	}
+}
+
+

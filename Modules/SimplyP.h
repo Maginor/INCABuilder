@@ -94,8 +94,6 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
 	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
 	
-	auto PrecipitationScale      = RegisterParameterDouble(Model, Hydrology, "Precipitation scale", Dimensionless, 1.0, 0.0, 1.0);
-	
 	auto Reaches = RegisterParameterGroup(Model, "Reaches", Reach);
 	
 	auto CatchmentArea           = RegisterParameterDouble(Model, Reaches, "Catchment area", Km2, 51.7, 0.0, 10000.0);
@@ -129,12 +127,12 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto HydrologicalInputToSoilBox = RegisterEquation(Model, "Hydrological input to soil box", MmPerDay);
 	
 	EQUATION(Model, PrecipitationFallingAsSnow,
-		double precip = INPUT(Precipitation) * PARAMETER(PrecipitationScale);
+		double precip = INPUT(Precipitation);
 		return (INPUT(AirTemperature) < 0) ? precip : 0.0;
 	)
 	
 	EQUATION(Model, PrecipitationFallingAsRain,
-		double precip = INPUT(Precipitation) * PARAMETER(PrecipitationScale);
+		double precip = INPUT(Precipitation);
 		return (INPUT(AirTemperature) > 0) ? precip : 0.0;
 	)
 	

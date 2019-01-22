@@ -47,9 +47,6 @@ true
 "Exponent of stream velocity-discharge relationship" :     #(dimensionless) [0.1, 0.99] The b in V = aQ^b
 0.42
 
-"Precipitation scale" :
-1.0
-
 "Catchment area" :     #(km2) [0, 10000]
 51.7
 

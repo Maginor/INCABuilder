@@ -61,7 +61,6 @@ calibration = [
 	('Groundwater time constant',                                  ['Tarland1']),
 	('Gradient of stream velocity-discharge relationship',         ['Tarland1']),
 	('Exponent of stream velocity-discharge relationship',         ['Tarland1']),
-	('Precipitation scale',                                        ['Tarland1']),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -75,7 +74,7 @@ max = [2.0 * x for x in initial_guess]
 constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
-objective = (sum_squares_error, 'Reach flow', ['Tarland1'], 'observed Q', [], skiptimesteps)
+objective = (neg_likelyhood, 'Daily mean reach flow', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective)
 

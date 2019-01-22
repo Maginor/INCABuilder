@@ -8,15 +8,15 @@ from inca_calibration import *
 def log_likelyhood(params, dataset, calibration, objective, obs):	
 	# NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
 	# (in that case, only use the copy when setting parameter values, running the model, and extracting results below)
-	# datasetcopy = dataset.copy()
+	datasetcopy = dataset.copy()
 	
-	set_values(dataset, params, calibration)
+	set_values(datasetcopy, params, calibration)
 	
-	dataset.run_model()
+	datasetcopy.run_model()
 	
 	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
     
-	sim = dataset.get_result_series(simname, simindexes)
+	sim = datasetcopy.get_result_series(simname, simindexes)
 	sim2 = sim[skiptimesteps:]
 	obs2 = obs[skiptimesteps:]
 	
@@ -28,7 +28,7 @@ def log_likelyhood(params, dataset, calibration, objective, obs):
 	like = np.nansum(likes)
     
 	# NOTE: If we made a copy of the dataset we need to delete it so that we don't get a huge memory leak
-	# datasetcopy.delete()
+	datasetcopy.delete()
 	
 	#print ('single evaluation. result: %f' % like)
 	
@@ -85,12 +85,9 @@ for idx, cal in enumerate(calibration) :
 
 	
 # Computing the Hessian at the optimal point:
-
-#TODO: The hessian computation does not seem to work for this example :(   May be because we can't pass bounds to it, and so it walks outside recommended model constraints
-
-#hess = compute_hessian(dataset, param_est, calibration, objective)
-#print('Hessian matrix at optimal parameters:')
-#print(hess)
+hess = compute_hessian(dataset, param_est, calibration, objective)
+print('Hessian matrix at optimal parameters:')
+print(hess)
 
 
 # NOTE: Write the optimal values back to the dataset and then generate a new parameter file that has these values.

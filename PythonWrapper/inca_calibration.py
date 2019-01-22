@@ -36,10 +36,10 @@ def compute_hessian(dataset, params, calibration, objective) :
 	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 	obsseries = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
 	
-	#WARNING: This may be dangerous if we are close to the parameter bounds. The algorithm may evaluate outside the bounds and maybe crash the model.
 	def eval(par) : return objective_fun(par, dataset, calibration, objective, obsseries)
 	
-	return nd.Hessian(eval)(params)
+	#TODO: This step may not be ideal. We should research it some more. (note that the default step generator often crashes the model with bad parameter values).
+	return nd.Hessian(eval, step=0.01)(params)
 	
 def default_initial_guess(dataset, calibration) :
 	#NOTE: Just reads the values that were provided in the file

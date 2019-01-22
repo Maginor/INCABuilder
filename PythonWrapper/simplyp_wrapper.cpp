@@ -22,6 +22,7 @@ DllSetupModel(char *ParameterFilename, char *InputFilename) {
 	AddSimplyPHydrologyModule(Model);
 	AddSimplyPSedimentModule(Model);
 	AddSimplyPPhosphorusModule(Model);
+	AddSimplyPInputToWaterBodyModule(Model);
 	
 	ReadInputDependenciesFromFile(Model, InputFilename);
 	

@@ -802,7 +802,7 @@ EndModelDefinition(inca_model *Model)
 #endif
 }
 
-//NOTE: It is kind of superfluous to both provide the stack and the stack index... But it does probably not harm either?
+//NOTE: It is kind of superfluous to both provide the batch group and the batch group index... But it does probably not harm either?
 #define INNER_LOOP_BODY(Name) void Name(inca_data_set *DataSet, value_set_accessor *ValueSet, const equation_batch_group &BatchGroup, size_t BatchGroupIdx, s32 CurrentLevel)
 typedef INNER_LOOP_BODY(inca_inner_loop_body);
 
@@ -1469,12 +1469,12 @@ PrintParameterStorageStructure(inca_data_set *DataSet)
 	size_t StorageCount = DataSet->ParameterStorageStructure.Units.size();
 	for(size_t StorageIdx = 0; StorageIdx < StorageCount; ++StorageIdx)
 	{
-		std::vector<index_set_h> &IndexSetStack = DataSet->ParameterStorageStructure.Units[StorageIdx].IndexSets;
-		if(IndexSetStack.empty())
+		std::vector<index_set_h> &IndexSets = DataSet->ParameterStorageStructure.Units[StorageIdx].IndexSets;
+		if(IndexSets.empty())
 		{
 			std::cout << "[]";
 		}
-		for(index_set_h IndexSet : IndexSetStack)
+		for(index_set_h IndexSet : IndexSets)
 		{
 			std::cout << "[" << GetName(Model, IndexSet) << "]";
 		}
@@ -1502,12 +1502,12 @@ PrintInputStorageStructure(inca_data_set *DataSet)
 	size_t StorageCount = DataSet->InputStorageStructure.Units.size();
 	for(size_t StorageIdx = 0; StorageIdx < StorageCount; ++StorageIdx)
 	{
-		std::vector<index_set_h> &IndexSetStack = DataSet->InputStorageStructure.Units[StorageIdx].IndexSets;
-		if(IndexSetStack.empty())
+		std::vector<index_set_h> &IndexSets = DataSet->InputStorageStructure.Units[StorageIdx].IndexSets;
+		if(IndexSets.empty())
 		{
 			std::cout << "[]";
 		}
-		for(index_set_h IndexSet : IndexSetStack)
+		for(index_set_h IndexSet : IndexSets)
 		{
 			std::cout << "[" << GetName(Model, IndexSet) << "]";
 		}
@@ -1557,7 +1557,7 @@ PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet)
 				double CcPerHit = (double)Cc / (double)Hits;
 				
 				char FormatString[100];
-				sprintf(FormatString, "%s%dlf", "%", 55-PrintCount);
+				sprintf(FormatString, "%s%dlf", "%", 60-PrintCount);
 				//printf("%s", FormatString);
 				printf(FormatString, CcPerHit);
 				printf(" (%llu)", Hits);

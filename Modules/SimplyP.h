@@ -94,6 +94,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
 	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
 	
+	auto PrecipitationScale      = RegisterParameterDouble(Model, Hydrology, "Precipitation scale", Dimensionless, 1.0, 0.0, 1.0);
+	
 	auto Reaches = RegisterParameterGroup(Model, "Reaches", Reach);
 	
 	auto CatchmentArea           = RegisterParameterDouble(Model, Reaches, "Catchment area", Km2, 51.7, 0.0, 10000.0);
@@ -127,12 +129,12 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto HydrologicalInputToSoilBox = RegisterEquation(Model, "Hydrological input to soil box", MmPerDay);
 	
 	EQUATION(Model, PrecipitationFallingAsSnow,
-		double precip = INPUT(Precipitation);
+		double precip = INPUT(Precipitation) * PARAMETER(PrecipitationScale);
 		return (INPUT(AirTemperature) < 0) ? precip : 0.0;
 	)
 	
 	EQUATION(Model, PrecipitationFallingAsRain,
-		double precip = INPUT(Precipitation);
+		double precip = INPUT(Precipitation) * PARAMETER(PrecipitationScale);
 		return (INPUT(AirTemperature) > 0) ? precip : 0.0;
 	)
 	
@@ -231,63 +233,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return f_A * RESULT(AgriculturalSoilWaterFlow) + f_S * RESULT(SeminaturalSoilWaterFlow);
 	)
 	
-#if 0
-	auto DGroundwaterVolumeDt     = RegisterEquation(Model, "d(Groundwater volume)/dt", MmPerDay);
-	SetSolver(Model, DGroundwaterVolumeDt, SimplyPSolver);
-	
-	auto InitialGroundwaterVolume = RegisterEquationInitialValue(Model, "Initial groundwater volume", Mm);
-	auto GroundwaterVolume        = RegisterEquationODE(Model, "Groundwater volume", Mm);
-	SetInitialValue(Model, GroundwaterVolume, InitialGroundwaterVolume);
-	SetSolver(Model, GroundwaterVolume, SimplyPSolver);
-	
-	auto InitialGroundwaterFlow   = RegisterEquationInitialValue(Model, "Initial groundwater flow", MmPerDay);
-	auto GroundwaterFlow          = RegisterEquationODE(Model, "Groundwater flow", MmPerDay);
-	SetInitialValue(Model, GroundwaterFlow, InitialGroundwaterFlow);
-	SetSolver(Model, GroundwaterFlow, SimplyPSolver);
-	
-	EQUATION(Model, DGroundwaterVolumeDt,
-		// f_A = f_IG + f_Ar
-		// dVg_dt = beta*(f_A*QsA_i + f_S*QsS_i) - Qg_i
-		
-		return PARAMETER(BaseflowIndex) * RESULT(TotalSoilWaterFlow)
-			- RESULT(GroundwaterFlow);
-	)
-	
-	EQUATION(Model, InitialGroundwaterVolume,
-		//Vg0 = Qg0 *p['T_g']     # Groundwater vol (mm)
-		return RESULT(GroundwaterFlow) * PARAMETER(GroundwaterTimeConstant);
-	)
-	
-	EQUATION(Model, GroundwaterVolume,
-		return RESULT(DGroundwaterVolumeDt);
-	)
-	
-	EQUATION(Model, InitialGroundwaterFlow,
-		//Qg0 = p['beta']*UC_Qinv(p['Qr0_init'], p_SC.ix['A_catch',SC]) # Initial groundwater flow (mm/d)
-		return PARAMETER(BaseflowIndex) * ConvertM3PerSecondToMmPerDay(PARAMETER(InitialInStreamFlow), PARAMETER(CatchmentArea));
-	)
-	
-	EQUATION(Model, GroundwaterFlow,
-		//dQg_dt = (beta*(f_A*QsA_i + f_S*QsS_i) - Qg_i)/T_g
-		return RESULT(DGroundwaterVolumeDt) / PARAMETER(GroundwaterTimeConstant);
-	)
-	
-	auto Control = RegisterEquation(Model, "Control", Dimensionless);
-	
-	EQUATION(Model, Control,
-		//NOTE: We create this equation to put in the code that allow us to "hack" certain values to always have a minimum.
-		// The return value of this equation does not mean anything.
-		CURRENT_INDEX(Reach);
-		double tc = PARAMETER(GroundwaterTimeConstant);
-		if(RESULT(GroundwaterFlow) < PARAMETER(MinimumGroundwaterFlow))
-		{
-			SET_RESULT(GroundwaterFlow, PARAMETER(MinimumGroundwaterFlow));
-			SET_RESULT(GroundwaterVolume, PARAMETER(MinimumGroundwaterFlow)*tc);
-		}
-		
-		return 0.0;
-	)
-#else
+
 	auto InitialGroundwaterVolume = RegisterEquationInitialValue(Model, "Initial groundwater volume", Mm);
 	auto GroundwaterVolume        = RegisterEquationODE(Model, "Groundwater volume", Mm);
 	SetInitialValue(Model, GroundwaterVolume, InitialGroundwaterVolume);
@@ -328,8 +274,6 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		
 		return 0.0;
 	)
-
-#endif
 	
 	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MmPerDay);
 	SetSolver(Model, ReachFlowInput, SimplyPSolver);
@@ -789,7 +733,6 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	
 	
-#if 1
 	auto SoilFieldCapacity = GetParameterDoubleHandle(Model, "Soil field capacity");
 
 	auto NewlyConvertedSoilWaterVolume = RegisterEquation(Model, "Newly-converted soil water volume", Mm);
@@ -927,9 +870,6 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		
 		return LAST_RESULT(NewlyConvertedSoilWaterEPC0);
 	)
-#endif
-	
-	
 	
 	
 	

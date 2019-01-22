@@ -6,6 +6,7 @@ enum incaview_run_mode
 	IncaviewRunMode_Run,
 	IncaviewRunMode_CreateParameterDatabase,
 	IncaviewRunMode_ExportParameters,
+	IncaviewRunMode_FillParameterFile,
 };
 
 struct incaview_commandline_arguments
@@ -57,6 +58,13 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 			Args->ParameterOutFileName  = argv[3];
 			CorrectUse = true;
 		}
+		else if(strcmp(argv[1], "fill_parameter_file") == 0)
+		{
+			Args->Mode = IncaviewRunMode_FillParameterFile;
+			Args->ParameterInFileName  = argv[2];
+			Args->ParameterOutFileName = argv[3];
+			CorrectUse = true;
+		}
 	}
 	
 	if(!CorrectUse)
@@ -65,6 +73,7 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 		std::cout << " <exename> run <inputfile(.dat)> <parameterfile(.db or .dat)>" << std::endl;
 		std::cout << " <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl;
 		std::cout << " <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl;
+		std::cout << " <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl;
 		exit(0);
 	}
 }
@@ -135,6 +144,11 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 	{
 		//TODO: Check right file types?
 		ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
+		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
+	}
+	else if(Args->Mode == IncaviewRunMode_FillParameterFile)
+	{
+		ReadParametersFromFile(DataSet, Args->ParameterInFileName);
 		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
 	}
 }

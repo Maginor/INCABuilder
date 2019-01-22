@@ -617,18 +617,27 @@ PlaceUnitInTreeStructureRecursively(storage_unit_specifier &Unit, std::vector<da
 		if(!Unit.IndexSets.empty())
 		{
 			IndexSet = Unit.IndexSets[CurrentLevel];
+		
+			if(IndexSet == Tree.IndexSet)
+			{
+				if(CurrentLevel + 1 == Unit.IndexSets.size())
+				{
+					Tree.Handles.insert(Tree.Handles.end(), Unit.Handles.begin(), Unit.Handles.end());
+					return;
+				}
+				else
+				{
+					PlaceUnitInTreeStructureRecursively(Unit, Tree.Children, CurrentLevel + 1);
+					return;
+				}
+			}
 		}
-		if(IndexSet == Tree.IndexSet)
+		else
 		{
-			if(CurrentLevel + 1 == Unit.IndexSets.size())
+			if(Tree.IndexSet == index_set_h {})
 			{
 				Tree.Handles.insert(Tree.Handles.end(), Unit.Handles.begin(), Unit.Handles.end());
-				return;
-			}
-			else
-			{
-				PlaceUnitInTreeStructureRecursively(Unit, Tree.Children, CurrentLevel + 1);
-				return;
+				return;	
 			}
 		}
 	}

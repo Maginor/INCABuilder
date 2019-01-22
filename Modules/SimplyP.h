@@ -24,6 +24,12 @@ ConvertM3PerSecondToMmPerDay(double M3PerSecond, double CatchmentArea)
 }
 
 inline double
+ConvertMmPerDayToM3PerSecond(double MmPerDay, double CatchmentArea)
+{
+	return MmPerDay * CatchmentArea / 86.4;
+}
+
+inline double
 ConvertKgPerMmToMgPerL(double KgPerMm, double CatchmentArea)
 {
 	return KgPerMm / CatchmentArea;
@@ -62,6 +68,11 @@ ActivationControl(double X, double Threshold, double RelativeActivationDistance)
 	return ActivationControl0( (X - Threshold) / Dist );
 }
 
+inline double
+LinInterp(double X, double X0, double X1, double Y0, double Y1)
+{
+	return Y0 + (Y1 - Y0)*(X - X0) / (X1 - X0);
+}
 
 static void
 AddSimplyPHydrologyModule(inca_model *Model)
@@ -98,7 +109,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	auto CatchmentArea           = RegisterParameterDouble(Model, Reaches, "Catchment area", Km2, 51.7, 0.0, 10000.0);
 	auto ReachLength             = RegisterParameterDouble(Model, Reaches, "Reach length", M, 10000.0, 0.0, 10000000.0);
-	auto InitialInStreamFlow     = RegisterParameterDouble(Model, Reaches, "Initial in-stream flow", M3PerSecond, 1.0, 0.0, 1000000.0);
+	auto InitialInStreamFlow     = RegisterParameterDouble(Model, Reaches, "Initial in-stream flow", M3PerSecond, 1.0, 0.0, 1000000.0, "This parameter is only used by reaches that don't have other reaches as inputs.");
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
 	
@@ -171,7 +182,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
 	//auto SimplyPSolver = RegisterSolver(Model, "SimplyP solver", 0.0025, Mtl4ImplicitEuler);   //NOTE: Being a first order method, this one is not that good..
 	
-	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently).
+	//NOTE: Ideally we would want the soil water volume equations to just be one equation that is autoindexed over landscape units, but that would create a difficulty when merging outflow from the landscape units to the reach as we could not do that inside the same solver (currently). Also, we could not let one instance of the calculation span both Arable and Improved-grassland as is done with Agricultural here.
 	
 
 	auto AgriculturalSoilWaterFlow = RegisterEquation(Model, "Agricultural soil water flow", MmPerDay);
@@ -183,8 +194,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	EQUATION(Model, AgriculturalSoilWaterFlow,
 		double smd = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
-		return - smd / (PARAMETER(SoilWaterTimeConstant, Arable) * (1.0 + exp(smd)));
-		//return -smd * ActivationControl(RESULT(AgriculturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
+		//return - smd / (PARAMETER(SoilWaterTimeConstant, Arable) * (1.0 + exp(smd)));
+		return -smd * ActivationControl(RESULT(AgriculturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
 	)
 	
 	EQUATION(Model, AgriculturalSoilWaterVolume,
@@ -207,8 +218,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	EQUATION(Model, SeminaturalSoilWaterFlow,
 		double smd = PARAMETER(SoilFieldCapacity) - RESULT(SeminaturalSoilWaterVolume);
-		return - smd / (PARAMETER(SoilWaterTimeConstant, Seminatural) * (1.0 + exp(smd)));
-		// return - smd * ActivationControl(RESULT(SeminaturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
+		//return - smd / (PARAMETER(SoilWaterTimeConstant, Seminatural) * (1.0 + exp(smd)));
+		return - smd * ActivationControl(RESULT(SeminaturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
 	)
 	
 	EQUATION(Model, SeminaturalSoilWaterVolume,
@@ -334,7 +345,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, DailyMeanReachFlow,
-		//NOTE: Since DailyMeanReachFlow is reset to start at 0 every timestep and since its derivative is the reach flow, its value becomes the integral of the reach flow over the timestep.
+		//NOTE: Since DailyMeanReachFlow is reset to start at 0 every timestep and since its derivative is the reach flow, its value becomes the integral of the reach flow over the timestep, i.e. the daily mean value.
 		return RESULT(ReachFlow);
 	)
 }
@@ -477,8 +488,8 @@ AddSimplyPSedimentModule(inca_model *Model)
 				double C_season;
 				if(dayNo >= d_start && dayNo <= d_end)
 				{
-					if(dayNo < d_mid) C_season = C_cover + ((dayNo - d_start) / (d_mid - d_start)) * (1.0 - C_cover);
-					else              C_season = 1.0     + ((dayNo - d_mid)   / (d_end - d_mid))   * (C_cover - 1.0);
+					if(dayNo < d_mid) C_season = LinInterp(dayNo, d_start, d_mid, C_cover, 1.0);
+					else              C_season = LinInterp(dayNo, d_mid,   d_end, 1.0, C_cover);
 				}
 				else C_season = C_cover - E_risk_period*(1.0 - C_cover)/(2.0*(DAYS_THIS_YEAR()-E_risk_period));
 				
@@ -576,6 +587,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto GroundwaterTDPConcentration    = RegisterParameterDouble(Model, Phosphorous, "Groundwater TDP concentration", MgPerL, 0.02, 0.0, 10.0);
 	auto PPEnrichmentFactor             = RegisterParameterDouble(Model, Phosphorous, "Particulate P enrichment factor", Dimensionless, 1.6, 0.5, 2.0, "P content of eroded material compared to P content of bulk soils"); //NOTE: min-max values are pulled from thin air. Should be set by somebody who know better.
 	auto EffluentTDP                    = RegisterParameterDouble(Model, Phosphorous, "Reach effluent TDP inputs", KgPerDay, 0.1, 0.0, 10.0);
+	auto SRPFraction                    = RegisterParameterDouble(Model, Phosphorous, "SRP fraction", Dimensionless, 0.7, 0.0, 1.0, "Factor to multiply TDP by to estimate instream SRP concentration");
 	
 	auto PhosphorousLand = RegisterParameterGroup(Model, "Phosphorous land", LandscapeUnits);
 	SetParentGroup(Model, PhosphorousLand, Phosphorous);
@@ -629,7 +641,9 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
 		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess)) / LAST_RESULT(AgriculturalSoilWaterVolume);
 		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(AgriculturalSoilWaterEPC0);
-		return a / b + (LAST_RESULT(AgriculturalSoilTDPMass) - a / b) * exp(-b);
+		double value = a / b + (LAST_RESULT(AgriculturalSoilTDPMass) - a / b) * exp(-b);
+		//if(!PARAMETER(DynamicEPC0)) return LAST_RESULT(AgriculturalSoilTDPMass);
+		return value;
 	)
 	
 	EQUATION(Model, InitialAgriculturalSoilLabilePMass,
@@ -645,6 +659,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		//TODO: factor out calculations of b0, a? Would probably not matter that much to speed though.
 	
 		double sorp = PARAMETER(PhosphorousSorptionCoefficient) * Msoil * (a / b0 - RESULT(AgriculturalSoilWaterEPC0) + (LAST_RESULT(AgriculturalSoilTDPMass)/LAST_RESULT(AgriculturalSoilWaterVolume) - a/b0)*(1.0 - exp(-b))/b);
+		//if(!PARAMETER(DynamicEPC0)) sorp = 0.0;
 	
 		return LAST_RESULT(AgriculturalSoilLabilePMass) + sorp;
 	)
@@ -1006,7 +1021,10 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	auto TDPConcentration = RegisterEquation(Model, "TDP concentration (volume weighted daily mean)", MgPerL);
 	auto PPConcentration  = RegisterEquation(Model, "PP concentration (volume weighted daily mean)", MgPerL);
+	auto DailyMeanStreamTPFlux = RegisterEquation(Model, "Daily mean stream TP flux", KgPerDay);
 	auto TPConcentration  = RegisterEquation(Model, "TP concentration (volume weighted daily mean)", MgPerL);
+	auto DailyMeanStreamSRPFlux = RegisterEquation(Model, "Daily mean stream SRP flux", KgPerDay);
+	auto SRPConcentration = RegisterEquation(Model, "SRP concentration (volume weighted daily mean)", MgPerL);
 	
 	EQUATION(Model, TDPConcentration,
 		return ConvertKgPerMmToMgPerL(RESULT(DailyMeanStreamTDPFlux) / RESULT(DailyMeanReachFlow), PARAMETER(CatchmentArea));
@@ -1016,7 +1034,140 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		return ConvertKgPerMmToMgPerL(RESULT(DailyMeanStreamPPFlux) / RESULT(DailyMeanReachFlow), PARAMETER(CatchmentArea));
 	)
 	
+	EQUATION(Model, DailyMeanStreamTPFlux,
+		return RESULT(DailyMeanStreamTDPFlux) + RESULT(DailyMeanStreamPPFlux);
+	)
+	
 	EQUATION(Model, TPConcentration,
 		return RESULT(TDPConcentration) + RESULT(PPConcentration);
 	)
+	
+	EQUATION(Model, DailyMeanStreamSRPFlux,
+		return RESULT(DailyMeanStreamTDPFlux) * PARAMETER(SRPFraction);
+	)
+	
+	EQUATION(Model, SRPConcentration,
+		return RESULT(TDPConcentration) * PARAMETER(SRPFraction);
+	)
 }
+
+static void
+AddSimplyPInputToWaterBodyModule(inca_model *Model)
+{
+	auto M3PerSecond = RegisterUnit(Model, "m3/s");
+	auto KgPerDay    = RegisterUnit(Model, "kg/day");
+	
+	auto Reach = GetIndexSetHandle(Model, "Reaches");
+	
+	auto WaterBody = RegisterParameterGroup(Model, "Input to water body", Reach);
+	
+	auto IsInputToWaterBody = RegisterParameterBool(Model, WaterBody, "Is input to water body", false, "Whether or not the flow and various fluxes from this reach should be summed up in the calculation of inputs to a water body or lake");
+	
+	auto DailyMeanReachFlow = GetEquationHandle(Model, "Daily mean reach flow");
+	auto DailyMeanSuspendedSedimentFlux = GetEquationHandle(Model, "Daily mean suspended sediment flux");
+	auto DailyMeanTDPFlux = GetEquationHandle(Model, "Daily mean stream TDP flux");
+	auto DailyMeanPPFlux  = GetEquationHandle(Model, "Daily mean stream PP flux");
+	auto DailyMeanTPFlux  = GetEquationHandle(Model, "Daily mean stream TP flux");
+	auto DailyMeanSRPFlux = GetEquationHandle(Model, "Daily mean stream SRP flux");
+	
+	auto CatchmentArea = GetParameterDoubleHandle(Model, "Catchment area");
+	
+	auto FlowToWaterBody     = RegisterEquation(Model, "Flow to water body", M3PerSecond);
+	auto SSFluxToWaterBody   = RegisterEquation(Model, "SS flux to water body", KgPerDay);
+	auto TDPFluxToWaterBody  = RegisterEquation(Model, "TDP flux to water body", KgPerDay);
+	auto PPFluxToWaterBody   = RegisterEquation(Model, "PP flux to water body", KgPerDay);
+	auto TPFluxToWaterBody   = RegisterEquation(Model, "TP flux to water body", KgPerDay);
+	auto SRPFluxToWaterBody  = RegisterEquation(Model, "SRP flux to water body", KgPerDay);
+	
+	//TODO: We should maybe have a shorthand for this kind of cumulative equation?
+	
+	EQUATION(Model, FlowToWaterBody,
+		double sum = 0.0;
+		
+		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		{
+			double ca = PARAMETER(CatchmentArea, ReachIndex);
+			double q  = RESULT(DailyMeanReachFlow, ReachIndex); //NOTE: This is in mm/day
+			if(PARAMETER(IsInputToWaterBody, ReachIndex))
+			{
+				sum += ConvertMmPerDayToM3PerSecond(q, ca);
+			}
+		}
+		return sum;
+	)
+	
+	EQUATION(Model, SSFluxToWaterBody,
+		double sum = 0.0;
+		
+		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		{
+			double ss = RESULT(DailyMeanSuspendedSedimentFlux, ReachIndex);
+			if(PARAMETER(IsInputToWaterBody, ReachIndex))
+			{
+				sum += ss;
+			}
+		}
+		return sum;
+	)
+	
+	EQUATION(Model, TDPFluxToWaterBody,
+		double sum = 0.0;
+		
+		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		{
+			double tdp = RESULT(DailyMeanTDPFlux, ReachIndex);
+			if(PARAMETER(IsInputToWaterBody, ReachIndex))
+			{
+				sum += tdp;
+			}
+		}
+		return sum;
+	)
+	
+	EQUATION(Model, PPFluxToWaterBody,
+		double sum = 0.0;
+		
+		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		{
+			double pp = RESULT(DailyMeanPPFlux, ReachIndex);
+			if(PARAMETER(IsInputToWaterBody, ReachIndex))
+			{
+				sum += pp;
+			}
+		}
+		return sum;
+	)
+	
+	EQUATION(Model, TPFluxToWaterBody,
+		double sum = 0.0;
+		
+		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		{
+			double tp = RESULT(DailyMeanTPFlux, ReachIndex);
+			if(PARAMETER(IsInputToWaterBody, ReachIndex))
+			{
+				sum += tp;
+			}
+		}
+		return sum;
+	)
+	
+	EQUATION(Model, SRPFluxToWaterBody,
+		double sum = 0.0;
+		
+		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		{
+			double srp = RESULT(DailyMeanSRPFlux, ReachIndex); //NOTE: This is in mm/day
+			if(PARAMETER(IsInputToWaterBody, ReachIndex))
+			{
+				sum += srp;
+			}
+		}
+		return sum;
+	)
+	
+}
+
+
+
+

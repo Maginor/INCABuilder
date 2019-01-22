@@ -28,6 +28,7 @@ int main(int argc, char **argv)
 	AddSimplyPHydrologyModule(Model);
 	AddSimplyPSedimentModule(Model);
 	AddSimplyPPhosphorusModule(Model);
+	AddSimplyPInputToWaterBodyModule(Model);
 	
 	EnsureModelComplianceWithIncaviewCommandline(Model, &Args);
 	

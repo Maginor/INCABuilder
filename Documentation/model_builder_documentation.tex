@@ -28,7 +28,7 @@ Parameter groups & Parameter groups are collections of parameters. A parameter g
 \hline
 Parameters & Parameters are values used to tune the output of the model. Parameters do not vary over time. Currently four different types of parameters are supported: double precision floating point (64 bit), unsigned integer (64 bit), boolean and datetime (represented internally as number of seconds since 1-1-1970) \\
 \hline
-Inputs & Inputs are forcings on the model that vary over time. An example of an input is a time series of daily air temperature that has been measured in the field. Inputs can also vary with index sets. For instance, one can have a separate air temerature series for each geographical location in the model.\\
+Inputs & Inputs are forcings on the model that vary over time. An example of an input is a time series of daily air temperature that has been measured in the field. Inputs can also vary with index sets. For instance, one can have a separate air temperature series for each geographical location in the model.\\
 \hline
 Equations & The model has a set of equations that are executed in a specific order for every timestep of the model (see later for how the run order is determined). Each equation can look up the value of various parameters, inputs, results of other equations (both from the current timestep and earlier) and produces a single output value for each time it is evaluated. There are several types of equations. The main two are discrete timestep equations and ODE equations. \\
 \hline

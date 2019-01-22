@@ -37,7 +37,17 @@ def log_likelyhood(params, dataset, calibration, objective, obs):
 def neg_likelyhood(params, dataset, calibration, objective, obs) :
 	return -log_likelyhood(params, dataset, calibration, objective, obs)
 
-
+def sum_squares_error(params, dataset, calibration, objective, obs):	
+	set_values(dataset, params, calibration)
+	
+	dataset.run_model()
+	
+	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+    
+	sim = dataset.get_result_series(simname, simindexes)
+	
+	sse = np.nansum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
+	return sse
 
 inca.initialize('simplyp.dll')
 
@@ -51,6 +61,7 @@ calibration = [
 	('Groundwater time constant',                                  ['Tarland1']),
 	('Gradient of stream velocity-discharge relationship',         ['Tarland1']),
 	('Exponent of stream velocity-discharge relationship',         ['Tarland1']),
+	('Precipitation scale',                                        ['Tarland1']),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -61,21 +72,26 @@ initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads
 min = [0.5 * x for x in initial_guess]
 max = [2.0 * x for x in initial_guess]
 
+constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
+
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
-objective = (neg_likelyhood, 'Reach flow', ['Tarland1'], 'observed Q', [], skiptimesteps)
+objective = (sum_squares_error, 'Reach flow', ['Tarland1'], 'observed Q', [], skiptimesteps)
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective)
 
 print('\n')
 for idx, cal in enumerate(calibration) :
 	name, indexes = cal
-	print('Estimated %s: %.2f.' %  (name, param_est[idx]))
+	print('Estimated %-60s %-20s %5.2f (range [%5.2f, %5.2f])' %  (name, ', '.join(indexes), param_est[idx], min[idx], max[idx]))
 
 	
 # Computing the Hessian at the optimal point:
-hess = compute_hessian(dataset, param_est, calibration, objective)
-print('Hessian matrix at optimal parameters:')
-print(hess)
+
+#TODO: The hessian computation does not seem to work for this example :(   May be because we can't pass bounds to it, and so it walks outside recommended model constraints
+
+#hess = compute_hessian(dataset, param_est, calibration, objective)
+#print('Hessian matrix at optimal parameters:')
+#print(hess)
 
 
 # NOTE: Write the optimal values back to the dataset and then generate a new parameter file that has these values.

@@ -66,6 +66,20 @@ def initialize(dllname) :
 	incadll.DllGetParameterIndexSetsCount.restype = ctypes.c_ulonglong
 	
 	incadll.DllGetParameterIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DllGetResultIndexSetsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetResultIndexSetsCount.restype  = ctypes.c_ulonglong
+	
+	incadll.DllGetResultIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DllGetInputIndexSetsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetInputIndexSetsCount.restype  = ctypes.c_ulonglong
+	
+	incadll.DllGetInputIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DLLGetParameterDoubleMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
+	
+	incadll.DLLGetParameterUIntMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_ulonglong), ctypes.POINTER(ctypes.c_ulonglong)]
 
 def _CStr(string):
 	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
@@ -152,7 +166,19 @@ class DataSet :
 		string = ctypes.create_string_buffer(32)
 		incadll.DllGetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), string)
 		return string.value.decode('utf-8')
+		
+	def get_parameter_double_min_max(self, name) :
+		min = ctypes.c_double(0)
+		max = ctypes.c_double(0)
+		incadll.DLLGetParameterDoubleMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_double)(min), ctypes.POINTER(ctypes.c_double)(max))
+		return (min.value, max.value)
 
+	def get_parameter_uint_min_max(self, name):
+		min = ctypes.c_ulonglong(0)
+		max = ctypes.c_ulonglong(0)
+		incadll.DLLGetParameterUIntMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_ulonglong)(min), ctypes.POINTER(ctypes.c_ulonglong)(max))
+		return (min.value, max.value)
+		
 	def get_input_timesteps(self):
 		incadll.DllGetInputTimesteps(self.datasetptr)
 		
@@ -173,10 +199,21 @@ class DataSet :
 		incadll.DllGetIndexes(self.datasetptr, _CStr(index_set), array)
 		return [string.decode('utf-8') for string in array]
 		
-	def get_parameter_index_sets(self, parname):
-		num = incadll.DllGetParameterIndexSetsCount(self.datasetptr, _CStr(parname))
+	def get_parameter_index_sets(self, name):
+		num = incadll.DllGetParameterIndexSetsCount(self.datasetptr, _CStr(name))
 		array = (ctypes.c_char_p * num)()
-		incadll.DllGetParameterIndexSets(self.datasetptr, _CStr(parname), array)
+		incadll.DllGetParameterIndexSets(self.datasetptr, _CStr(name), array)
 		return [string.decode('utf-8') for string in array]
 		
+	def get_result_index_sets(self, name):
+		num = incadll.DllGetResultIndexSetsCount(self.datasetptr, _CStr(name))
+		array = (ctypes.c_char_p * num)()
+		incadll.DllGetResultIndexSets(self.datasetptr, _CStr(name), array)
+		return [string.decode('utf-8') for string in array]
+		
+	def get_input_index_sets(self, name):
+		num = incadll.DllGetInputIndexSetsCount(self.datasetptr, _CStr(name))
+		array = (ctypes.c_char_p * num)()
+		incadll.DllGetResultInputSets(self.datasetptr, _CStr(name), array)
+		return [string.decode('utf-8') for string in array]
 		

@@ -35,14 +35,16 @@ inca.initialize('persist.dll')
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/IncaN/tovdalparametersPersistOnly.dat', '../Applications/IncaN/tovdalinputs.dat')
 
 #NOTE: Print out the indexes of all the index sets in the model:
-for index_set in dataset.get_index_sets() :
-	print('%s has indexes: %s' % (index_set, ', '.join(dataset.get_indexes(index_set))))
+#for index_set in dataset.get_index_sets() :
+#	print('%s has indexes: %s' % (index_set, ', '.join(dataset.get_indexes(index_set))))
 
 #NOTE: Print out all the values of a given parameter:
-parname = 'Maximum capacity'
-for combination in list(itertools.product(*[dataset.get_indexes(index_set) for index_set in dataset.get_parameter_index_sets(parname)])) :
-	print ('%s[%s] = %f' % (parname, ', '.join(combination), dataset.get_parameter_double(parname, combination)))
-
+#parname = 'Maximum capacity'
+#for combination in list(itertools.product(*[dataset.get_indexes(index_set) for index_set in dataset.get_parameter_index_sets(parname)])) :
+#	print ('%s[%s] = %f' % (parname, ', '.join(combination), dataset.get_parameter_double(parname, combination)))
+	
+#(min, max) = dataset.get_parameter_uint_min_max('Timesteps')
+#print('min, max = %u, %u' % (min, max))
 
 # NOTE: Example of how you can override the timesteps and start date, in case you don't want to change them in the parameter file
 # dataset.set_parameter_uint('Timesteps', [], 1000)

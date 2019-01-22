@@ -44,3 +44,12 @@ def compute_hessian(dataset, params, calibration, objective) :
 def default_initial_guess(dataset, calibration) :
 	#NOTE: Just reads the values that were provided in the file
 	return [dataset.get_parameter_double(cal[0], cal[1]) for cal in calibration]
+	
+def constrain_min_max(dataset, calibration, minvec, maxvec) :
+	'''
+		Constrain the min and max values in the provided vectors to the recommended min and max values set for these parameters by the model.
+	'''
+	for idx, cal in enumerate(calibration) :
+		min, max = dataset.get_parameter_double_min_max(cal[0])
+		if minvec[idx] < min : minvec[idx] = min
+		if maxvec[idx] > max : maxvec[idx] = max

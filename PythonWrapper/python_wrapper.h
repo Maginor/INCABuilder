@@ -125,6 +125,38 @@ DllGetParameterTime(void *DataSetPtr, const char *Name, char **IndexNames, u64 I
 }
 
 DLLEXPORT void
+DLLGetParameterDoubleMinMax(void *DataSetPtr, char *Name, double *MinOut, double *MaxOut)
+{
+	//TODO: We don't check that the requested parameter was of type double!
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	entity_handle Handle = GetParameterHandle(DataSet->Model, Name);
+	const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
+	if(Spec.Type != ParameterType_Double)
+	{
+		std::cout << "ERROR: Requested the min and max values of " << Name << " using DllGetParameterDoubleMinMax, but it is not of type double." << std::endl;
+		exit(0);
+	}
+	*MinOut = Spec.Min.ValDouble;
+	*MaxOut = Spec.Max.ValDouble;
+}
+
+DLLEXPORT void
+DLLGetParameterUIntMinMax(void *DataSetPtr, char *Name, u64 *MinOut, u64 *MaxOut)
+{
+	//TODO: We don't check that the requested parameter was of type uint!
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	entity_handle Handle = GetParameterHandle(DataSet->Model, Name);
+	const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
+	if(Spec.Type != ParameterType_UInt)
+	{
+		std::cout << "ERROR: Requested the min and max values of " << Name << " using DllGetParameterUIntMinMax, but it is not of type uint." << std::endl;
+		exit(0);
+	}
+	*MinOut = Spec.Min.ValUInt;
+	*MaxOut = Spec.Max.ValUInt;
+}
+
+DLLEXPORT void
 DllGetInputStartDate(void *DataSetPtr, char *WriteTo)
 {
 	//IMPORTANT: This assumes that WriteTo is a char* buffer that is long enough (i.e. at least 11-12-ish bytes)
@@ -218,4 +250,48 @@ DllGetParameterIndexSets(void *DataSetPtr, char *ParameterName, const char **Nam
 	}
 }
 
+DLLEXPORT u64
+DllGetResultIndexSetsCount(void *DataSetPtr, char *ResultName)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	equation_h Equation = GetEquationHandle(DataSet->Model, ResultName);
+	size_t UnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
+	return DataSet->ResultStorageStructure.Units[UnitIndex].IndexSets.size();
+}
 
+DLLEXPORT void
+DllGetResultIndexSets(void *DataSetPtr, char *ResultName, const char **NamesOut)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	equation_h Equation = GetEquationHandle(DataSet->Model, ResultName);
+	size_t UnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
+	size_t Idx = 0;
+	for(index_set_h IndexSet : DataSet->ResultStorageStructure.Units[UnitIndex].IndexSets)
+	{
+		NamesOut[Idx] = GetName(DataSet->Model, IndexSet);
+		++Idx;
+	}
+}
+
+DLLEXPORT u64
+DllGetInputIndexSetsCount(void *DataSetPtr, char *InputName)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	input_h Input = GetInputHandle(DataSet->Model, InputName);
+	size_t UnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Input.Handle];
+	return DataSet->InputStorageStructure.Units[UnitIndex].IndexSets.size();
+}
+
+DLLEXPORT void
+DllGetInputIndexSets(void *DataSetPtr, char *InputName, const char **NamesOut)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	input_h Input = GetInputHandle(DataSet->Model, InputName);
+	size_t UnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Input.Handle];
+	size_t Idx = 0;
+	for(index_set_h IndexSet : DataSet->InputStorageStructure.Units[UnitIndex].IndexSets)
+	{
+		NamesOut[Idx] = GetName(DataSet->Model, IndexSet);
+		++Idx;
+	}
+}

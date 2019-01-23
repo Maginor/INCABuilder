@@ -124,7 +124,7 @@ struct token_stream
 	const char * ExpectQuotedString();
 	const char * ExpectUnquotedString();
 	
-	void PrintErrorHeader();
+	void PrintErrorHeader(bool CurrentColumn=false);
 	
 };
 
@@ -135,9 +135,11 @@ IsAlpha(char c)
 }
 
 void
-token_stream::PrintErrorHeader()
+token_stream::PrintErrorHeader(bool CurrentColumn)
 {
-	std::cout << "ERROR: In file " << Filename << " line " << (StartLine+1) << " column " << (StartColumn) << ": ";
+	u32 Col = StartColumn;
+	if(CurrentColumn) Col = Column;
+	std::cout << "ERROR: In file " << Filename << " line " << (StartLine+1) << " column " << (Col) << ": ";
 }
 
 static bool
@@ -213,7 +215,7 @@ ReadTokenInternal_(token_stream *Stream)
 			}
 			else
 			{
-				Stream->PrintErrorHeader();
+				Stream->PrintErrorHeader(true);
 				std::cout << "Found a token of unknown type" << std::endl;
 				exit(0);
 			}
@@ -448,7 +450,7 @@ token_stream::PeekToken(size_t PeekAhead)
 	{
 		ReadTokenInternal_(this);
 	}
-	return &Tokens[AtToken + 1];
+	return &Tokens[AtToken + PeekAhead];
 }
 
 token *

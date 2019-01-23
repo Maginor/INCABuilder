@@ -20,8 +20,9 @@ def log_likelyhood(params, dataset, calibration, objective, obs):
 	sim2 = sim[skiptimesteps:]
 	obs2 = obs[skiptimesteps:]
 	
-	#TODO: sigma_e = M*sim2
-	sigma_e = sim2
+	#TODO: extract M as a parameter instead
+	M = params[len(calibration)]
+	sigma_e = M*sim2
 	
 	likes = norm(sim2, sigma_e).logpdf(obs2)
 	
@@ -54,7 +55,7 @@ inca.initialize('simplyp.dll')
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/SimplyP/tarlandparameters.dat', '../Applications/SimplyP/tarlandinputs.dat')
 
 
-#NOTE: The 'calibration' structure is a tuple of (indexed) parameters that we want to calibrate
+#NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
 	('Proportion of precipitation that contributes to quick flow', ['Tarland1']),
 	('Baseflow index',                                             ['Tarland1']),
@@ -67,13 +68,15 @@ calibration = [
 	
 
 initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
+initial_guess.append(0.5)
 
-min = [0.5 * x for x in initial_guess]
-max = [2.0 * x for x in initial_guess]
+min = [0.25 * x for x in initial_guess]
+max = [4.0 * x for x in initial_guess]
 
 constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
+#objective = (sum_squares_error, 'Daily mean reach flow', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
 objective = (neg_likelyhood, 'Daily mean reach flow', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective)
@@ -82,12 +85,16 @@ print('\n')
 for idx, cal in enumerate(calibration) :
 	name, indexes = cal
 	print('Estimated %-60s %-20s %5.2f (range [%5.2f, %5.2f])' %  (name, ', '.join(indexes), param_est[idx], min[idx], max[idx]))
+if len(param_est) > len(calibration) :
+	print('M: %f' % param_est[len(calibration)])
 
-	
 # Computing the Hessian at the optimal point:
 hess = compute_hessian(dataset, param_est, calibration, objective)
-print('Hessian matrix at optimal parameters:')
-print(hess)
+print('\nHessian matrix at optimal parameters:')
+print_matrix(hess)
+inv_hess = np.linalg.inv(hess)
+print('\nInverse Hessian:')
+print_matrix(inv_hess)
 
 
 # NOTE: Write the optimal values back to the dataset and then generate a new parameter file that has these values.

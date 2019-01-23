@@ -195,7 +195,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, AgriculturalSoilWaterFlow,
 		double smd = PARAMETER(SoilFieldCapacity) - RESULT(AgriculturalSoilWaterVolume);
 		//return - smd / (PARAMETER(SoilWaterTimeConstant, Arable) * (1.0 + exp(smd)));
-		return -smd * ActivationControl(RESULT(AgriculturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
+		return -smd * ActivationControl(RESULT(AgriculturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01) / PARAMETER(SoilWaterTimeConstant, Arable);
 	)
 	
 	EQUATION(Model, AgriculturalSoilWaterVolume,
@@ -219,7 +219,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, SeminaturalSoilWaterFlow,
 		double smd = PARAMETER(SoilFieldCapacity) - RESULT(SeminaturalSoilWaterVolume);
 		//return - smd / (PARAMETER(SoilWaterTimeConstant, Seminatural) * (1.0 + exp(smd)));
-		return - smd * ActivationControl(RESULT(SeminaturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01);
+		return - smd * ActivationControl(RESULT(SeminaturalSoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01) / PARAMETER(SoilWaterTimeConstant, Seminatural);
 	)
 	
 	EQUATION(Model, SeminaturalSoilWaterVolume,
@@ -642,7 +642,9 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess)) / LAST_RESULT(AgriculturalSoilWaterVolume);
 		double a = PARAMETER(NetAnnualPInputAgricultural) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(AgriculturalSoilWaterEPC0);
 		double value = a / b + (LAST_RESULT(AgriculturalSoilTDPMass) - a / b) * exp(-b);
-		//if(!PARAMETER(DynamicEPC0)) return LAST_RESULT(AgriculturalSoilTDPMass);
+		
+		if(!PARAMETER(DynamicEPC0)) return LAST_RESULT(AgriculturalSoilTDPMass);
+		
 		return value;
 	)
 	
@@ -659,7 +661,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		//TODO: factor out calculations of b0, a? Would probably not matter that much to speed though.
 	
 		double sorp = PARAMETER(PhosphorousSorptionCoefficient) * Msoil * (a / b0 - RESULT(AgriculturalSoilWaterEPC0) + (LAST_RESULT(AgriculturalSoilTDPMass)/LAST_RESULT(AgriculturalSoilWaterVolume) - a/b0)*(1.0 - exp(-b))/b);
-		//if(!PARAMETER(DynamicEPC0)) sorp = 0.0;
+		
+		if(!PARAMETER(DynamicEPC0)) sorp = 0.0;
 	
 		return LAST_RESULT(AgriculturalSoilLabilePMass) + sorp;
 	)
@@ -776,6 +779,9 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
 		double b = (PARAMETER(PhosphorousSorptionCoefficient) * Msoil + LAST_RESULT(NewlyConvertedSoilWaterFlow) + RESULT(InfiltrationExcess)) / LAST_RESULT(NewlyConvertedSoilWaterVolume);
 		double a = PARAMETER(NetAnnualPInputNewlyConverted) * 100.0 * PARAMETER(CatchmentArea) / 365.0 + PARAMETER(PhosphorousSorptionCoefficient) * Msoil * RESULT(NewlyConvertedSoilWaterEPC0);
+		
+		if(!PARAMETER(DynamicEPC0)) return LAST_RESULT(NewlyConvertedSoilTDPMass);
+		
 		return a / b + (LAST_RESULT(NewlyConvertedSoilTDPMass) - a / b) * exp(-b);
 	)
 	
@@ -793,6 +799,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		//TODO: factor out calculations of b0, a? Would probably not matter that much to speed though.
 	
 		double sorp = PARAMETER(PhosphorousSorptionCoefficient) * Msoil * (a / b0 - RESULT(NewlyConvertedSoilWaterEPC0) + (LAST_RESULT(NewlyConvertedSoilTDPMass)/LAST_RESULT(NewlyConvertedSoilWaterVolume) - a/b0)*(1.0 - exp(-b))/b);
+		
+		if(!PARAMETER(DynamicEPC0)) sorp = 0.0;
 	
 		return LAST_RESULT(NewlyConvertedSoilLabilePMass) + sorp;
 	)

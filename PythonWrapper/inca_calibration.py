@@ -31,15 +31,23 @@ def run_optimization(dataset, min, max, initial_guess, calibration, objective) :
 	
 	return optimize.fmin(eval, initial_guess, maxfun=10000)
 
-	
+def print_matrix(matrix) :
+	s = [['%9.4f' % e for e in row] for row in matrix]
+	lens = [max(map(len, col)) for col in zip(*s)]
+	fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
+	table = [fmt.format(*row) for row in s]
+	print('\n'.join(table))
+
 def compute_hessian(dataset, params, calibration, objective) :
 	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 	obsseries = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
 	
 	def eval(par) : return objective_fun(par, dataset, calibration, objective, obsseries)
 	
-	#TODO: This step may not be ideal. We should research it some more. (note that the default step generator often crashes the model with bad parameter values).
-	return nd.Hessian(eval, step=0.01)(params)
+	#WARNING: The estimation seems to be extremely sensitive to the step size! How to choose the best one?
+	#steps = [1e-4 * x for x in params]
+	steps = 1e-3
+	return nd.Hessian(eval, step=steps)(params)
 	
 def default_initial_guess(dataset, calibration) :
 	#NOTE: Just reads the values that were provided in the file

@@ -162,6 +162,10 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, entity_handle 
 static void
 CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *Exename = "")
 {
+	//NOTE: Deletes any (potentially) existing database of the same name.
+	//TODO: We should figure out if it is safe to have this here?
+	remove(Dbname);
+	
 	sqlite3 *Db;
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	if(rc != SQLITE_OK)
@@ -832,6 +836,10 @@ static void
 WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, const char *Dbname, const char *StructureTable, const char *ValueTable, int Mode)
 {
 	const inca_model *Model = DataSet->Model;
+	
+	//NOTE: Deletes any (potentially) existing database of the same name.
+	//TODO: We should figure out if it is safe to have this here?
+	remove(Dbname);
 	
 	sqlite3 *Db;
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);

@@ -100,7 +100,7 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 		std::cout << " <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl;
 		std::cout << " <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl;
 #if INCAVIEW_INCLUDE_OPTIMIZER
-		std::cout << " <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat)>" << std::endl;
+		std::cout << " <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat or .db)>" << std::endl;
 #endif
 		exit(0);
 	}
@@ -170,6 +170,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
 		else
 			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
+		
 		ReadInputsFromFile(DataSet, Args->InputFileName);
 		
 		optimization_setup Setup;
@@ -183,7 +184,12 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		
 		WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
 		
-		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
+		int Type2 = IncaviewParseFileType(Args->ParameterOutFileName);
+		if(Type2 == 0)
+			CreateParameterDatabase(DataSet, Args->ParameterOutFileName, Args->Exename);
+		else
+			WriteParametersToFile(DataSet, Args->ParameterOutFileName);
+		
 	}
 #endif
 	else if(Args->Mode == IncaviewRunMode_CreateParameterDatabase)

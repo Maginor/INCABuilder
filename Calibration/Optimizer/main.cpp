@@ -38,5 +38,12 @@ int main()
 	
 	ReadOptimizationSetup(&Setup, "optimization_setup.dat");
 	
-	RunOptimizer(DataSet, &Setup);
+	auto Result = RunOptimizer(DataSet, &Setup);
+	
+	std::cout << std::endl;
+	PrintOptimizationResult(&Setup, Result);
+	
+	WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
+	
+	WriteParametersToFile(DataSet, "optimal_parameters.dat");
 }

@@ -83,6 +83,34 @@ public:
 };
 
 static void
+PrintOptimizationResult(optimization_setup *Setup, dlib::function_evaluation& Result)
+{
+	std::cout << "Optimal values: " << std::endl << std::endl;
+	for(size_t CalIdx = 0; CalIdx < Setup->Calibration.size(); ++CalIdx)
+	{
+		PrintParameterCalibration(Setup->Calibration[CalIdx]);
+		std::cout << " " << Result.x(CalIdx) << std::endl << std::endl;
+	}
+}
+
+static void
+WriteOptimalParametersToDataSet(inca_data_set *DataSet, optimization_setup *Setup, dlib::function_evaluation &Result)
+{
+	size_t Dimensions = Setup->Calibration.size();
+	
+	for(size_t CalIdx = 0; CalIdx < Dimensions; ++ CalIdx)
+	{
+		double Value = Result.x(CalIdx);
+		parameter_calibration &Cal = Setup->Calibration[CalIdx];
+		
+		for(size_t ParIdx = 0; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
+		{
+			SetParameterValue(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);
+		}
+	}
+}
+
+static dlib::function_evaluation
 RunOptimizer(inca_data_set *DataSet, optimization_setup *Setup)
 {
 	optimization_model Optim(DataSet, Setup);
@@ -103,11 +131,7 @@ RunOptimizer(inca_data_set *DataSet, optimization_setup *Setup)
 	
 	auto Result = dlib::find_min_global(Optim, MinBound, MaxBound, dlib::max_function_calls(Setup->MaxFunctionCalls));
 	
-	//TODO: Output result somehow!
-	
-	//std::cout << "best a: " << Result.x(0) << std::endl;
-	//std::cout << "best b: " << Result.x(1) << std::endl;
-	//std::cout << "best Time constant: " << Result.x(2) << std::endl;
+	return Result;
 }
 
 #define OPTIMIZER_H

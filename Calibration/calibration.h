@@ -175,6 +175,24 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 	}
 }
 
+inline void
+PrintParameterCalibration(parameter_calibration &Cal)
+{
+	size_t Count = Cal.ParameterNames.size();
+	if(Count > 1) std::cout << "link {" << std::endl;
+	for(size_t Idx = 0; Idx < Count; ++Idx)
+	{
+		if(Count > 1) std::cout << "\t";
+		std::cout << "\"" << Cal.ParameterNames[Idx] << "\" {";
+		for(const char *Index : Cal.ParameterIndexes[Idx])
+		{
+			std::cout << "\"" << Index << "\" ";
+		}
+		std::cout << "}" << std::endl;
+	}
+	if(Count > 1) std::cout << "}";
+}
+
 static void
 ReadCalibrationObjectives(token_stream &Stream, std::vector<calibration_objective> &ObjectivesOut, bool ReadWeightingInfo = false)
 {

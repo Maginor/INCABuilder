@@ -4,6 +4,10 @@
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 0
 
+#define INCAVIEW_INCLUDE_OPTIMIZER 1
+
+#define CALIBRATION_PRINT_DEBUG_INFO 0
+
 #include "../../inca.h"
 
 #include "../../Modules/SimplyP.h"

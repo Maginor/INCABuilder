@@ -1,12 +1,22 @@
 
 #if !defined(INCAVIEW_COMPATIBILITY_H)
 
+
+#if !defined(INCAVIEW_INCLUDE_OPTIMIZER)
+#define INCAVIEW_INCLUDE_OPTIMIZER 0
+#endif
+
+#if INCAVIEW_INCLUDE_OPTIMIZER
+#include "Calibration\Optimizer\optimizer.h"
+#endif
+
 enum incaview_run_mode
 {
 	IncaviewRunMode_Run,
 	IncaviewRunMode_CreateParameterDatabase,
 	IncaviewRunMode_ExportParameters,
 	IncaviewRunMode_FillParameterFile,
+	IncaviewRunMode_RunOptimization,
 };
 
 struct incaview_commandline_arguments
@@ -15,6 +25,7 @@ struct incaview_commandline_arguments
 	const char *InputFileName;
 	const char *ParameterInFileName;
 	const char *ParameterOutFileName;
+	const char *CalibrationScriptName;
 	const char *Exename;
 };
 
@@ -66,6 +77,20 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 			CorrectUse = true;
 		}
 	}
+	else if(argc == 6)
+	{
+#if INCAVIEW_INCLUDE_OPTIMIZER
+		if(strcmp(argv[1], "run_optimizer") == 0)
+		{
+			Args->Mode = IncaviewRunMode_RunOptimization;
+			Args->InputFileName       = argv[2];
+			Args->ParameterInFileName = argv[3];
+			Args->CalibrationScriptName = argv[4];
+			Args->ParameterOutFileName = argv[5];
+			CorrectUse = true;
+		}
+#endif
+	}
 	
 	if(!CorrectUse)
 	{
@@ -74,6 +99,9 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 		std::cout << " <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl;
 		std::cout << " <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl;
 		std::cout << " <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl;
+#if INCAVIEW_INCLUDE_OPTIMIZER
+		std::cout << " <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat)>" << std::endl;
+#endif
 		exit(0);
 	}
 }
@@ -81,7 +109,7 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 static void
 EnsureModelComplianceWithIncaviewCommandline(inca_model *Model, incaview_commandline_arguments *Args)
 {
-	if(Args->Mode == IncaviewRunMode_Run)
+	if(Args->Mode == IncaviewRunMode_Run || Args->Mode == IncaviewRunMode_RunOptimization)
 	{
 		ReadInputDependenciesFromFile(Model, Args->InputFileName);
 	}
@@ -133,6 +161,31 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		WriteResultsToDatabase(DataSet, ResultDbFileName);
 		WriteInputsToDatabase(DataSet, InputDbFileName);
 	}
+#if INCAVIEW_INCLUDE_OPTIMIZER
+	else if(Args->Mode == IncaviewRunMode_RunOptimization)
+	{
+		int Type = IncaviewParseFileType(Args->ParameterInFileName);
+		
+		if(Type == 0)
+			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
+		else
+			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
+		ReadInputsFromFile(DataSet, Args->InputFileName);
+		
+		optimization_setup Setup;
+	
+		ReadOptimizationSetup(&Setup, Args->CalibrationScriptName);
+		
+		auto Result = RunOptimizer(DataSet, &Setup);
+		
+		std::cout << std::endl;
+		PrintOptimizationResult(&Setup, Result);
+		
+		WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
+		
+		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
+	}
+#endif
 	else if(Args->Mode == IncaviewRunMode_CreateParameterDatabase)
 	{
 		//TODO: Check right file types?

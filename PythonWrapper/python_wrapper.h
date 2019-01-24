@@ -174,6 +174,15 @@ DllGetParameterUnit(void *DataSetPtr, char *Name)
 	return GetName(DataSet->Model, Spec.Unit);
 }
 
+DLLEXPORT const char *
+DllGetResultUnit(void *DataSetPtr, char *Name)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	equation_h Equation = GetEquationHandle(DataSet->Model, Name);
+	const equation_spec &Spec = DataSet->Model->EquationSpecs[Equation.Handle];
+	return GetName(DataSet->Model, Spec.Unit);
+}
+
 DLLEXPORT void
 DllGetInputStartDate(void *DataSetPtr, char *WriteTo)
 {

@@ -86,6 +86,9 @@ def initialize(dllname) :
 	
 	incadll.DllGetParameterUnit.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetParameterUnit.restype = ctypes.c_char_p
+	
+	incadll.DllGetResultUnit.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetResultUnit.restype = ctypes.c_char_p
 
 def _CStr(string):
 	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
@@ -191,6 +194,10 @@ class DataSet :
 		
 	def get_parameter_unit(self, name):
 		unit = incadll.DllGetParameterUnit(self.datasetptr, _CStr(name))
+		return unit.decode('utf-8')
+		
+	def get_result_unit(self, name) :
+		unit = incadll.DllGetResultUnit(self.datasetptr, _CStr(name))
 		return unit.decode('utf-8')
 		
 	def get_input_timesteps(self):

@@ -34,12 +34,14 @@ inca.initialize('persist.dll')
 
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/IncaN/tovdalparametersPersistOnly.dat', '../Applications/IncaN/tovdalinputs.dat')
 
+#parname = 'Maximum capacity'
+#print('Unit of %s is %s (%s)' % (parname, dataset.get_parameter_unit(parname), dataset.get_parameter_description(parname)))
+
 #NOTE: Print out the indexes of all the index sets in the model:
 #for index_set in dataset.get_index_sets() :
 #	print('%s has indexes: %s' % (index_set, ', '.join(dataset.get_indexes(index_set))))
 
 #NOTE: Print out all the values of a given parameter:
-#parname = 'Maximum capacity'
 #for combination in list(itertools.product(*[dataset.get_indexes(index_set) for index_set in dataset.get_parameter_index_sets(parname)])) :
 #	print ('%s[%s] = %f' % (parname, ', '.join(combination), dataset.get_parameter_double(parname, combination)))
 	

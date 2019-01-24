@@ -125,7 +125,7 @@ DllGetParameterTime(void *DataSetPtr, const char *Name, char **IndexNames, u64 I
 }
 
 DLLEXPORT void
-DLLGetParameterDoubleMinMax(void *DataSetPtr, char *Name, double *MinOut, double *MaxOut)
+DllGetParameterDoubleMinMax(void *DataSetPtr, char *Name, double *MinOut, double *MaxOut)
 {
 	//TODO: We don't check that the requested parameter was of type double!
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
@@ -141,7 +141,7 @@ DLLGetParameterDoubleMinMax(void *DataSetPtr, char *Name, double *MinOut, double
 }
 
 DLLEXPORT void
-DLLGetParameterUIntMinMax(void *DataSetPtr, char *Name, u64 *MinOut, u64 *MaxOut)
+DllGetParameterUIntMinMax(void *DataSetPtr, char *Name, u64 *MinOut, u64 *MaxOut)
 {
 	//TODO: We don't check that the requested parameter was of type uint!
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
@@ -154,6 +154,24 @@ DLLGetParameterUIntMinMax(void *DataSetPtr, char *Name, u64 *MinOut, u64 *MaxOut
 	}
 	*MinOut = Spec.Min.ValUInt;
 	*MaxOut = Spec.Max.ValUInt;
+}
+
+DLLEXPORT const char *
+DllGetParameterDescription(void *DataSetPtr, char *Name)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	entity_handle Handle = GetParameterHandle(DataSet->Model, Name);
+	const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
+	return Spec.Description;
+}
+
+DLLEXPORT const char *
+DllGetParameterUnit(void *DataSetPtr, char *Name)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	entity_handle Handle = GetParameterHandle(DataSet->Model, Name);
+	const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
+	return GetName(DataSet->Model, Spec.Unit);
 }
 
 DLLEXPORT void

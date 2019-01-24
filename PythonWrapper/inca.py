@@ -77,9 +77,15 @@ def initialize(dllname) :
 	
 	incadll.DllGetInputIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 	
-	incadll.DLLGetParameterDoubleMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
+	incadll.DllGetParameterDoubleMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
 	
-	incadll.DLLGetParameterUIntMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_ulonglong), ctypes.POINTER(ctypes.c_ulonglong)]
+	incadll.DllGetParameterUIntMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_ulonglong), ctypes.POINTER(ctypes.c_ulonglong)]
+	
+	incadll.DllGetParameterDescription.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetParameterDescription.restype = ctypes.c_char_p
+	
+	incadll.DllGetParameterUnit.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	incadll.DllGetParameterUnit.restype = ctypes.c_char_p
 
 def _CStr(string):
 	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
@@ -170,14 +176,22 @@ class DataSet :
 	def get_parameter_double_min_max(self, name) :
 		min = ctypes.c_double(0)
 		max = ctypes.c_double(0)
-		incadll.DLLGetParameterDoubleMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_double)(min), ctypes.POINTER(ctypes.c_double)(max))
+		incadll.DllGetParameterDoubleMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_double)(min), ctypes.POINTER(ctypes.c_double)(max))
 		return (min.value, max.value)
 
 	def get_parameter_uint_min_max(self, name):
 		min = ctypes.c_ulonglong(0)
 		max = ctypes.c_ulonglong(0)
-		incadll.DLLGetParameterUIntMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_ulonglong)(min), ctypes.POINTER(ctypes.c_ulonglong)(max))
+		incadll.DllGetParameterUIntMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_ulonglong)(min), ctypes.POINTER(ctypes.c_ulonglong)(max))
 		return (min.value, max.value)
+		
+	def get_parameter_description(self, name):
+		desc = incadll.DllGetParameterDescription(self.datasetptr, _CStr(name))
+		return desc.decode('utf-8')
+		
+	def get_parameter_unit(self, name):
+		unit = incadll.DllGetParameterUnit(self.datasetptr, _CStr(name))
+		return unit.decode('utf-8')
 		
 	def get_input_timesteps(self):
 		incadll.DllGetInputTimesteps(self.datasetptr)

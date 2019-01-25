@@ -1,7 +1,11 @@
+
+import matplotlib.pyplot as plt, seaborn as sn, emcee, corner, mpld3
 from scipy import optimize
 import numpy as np
 import numdifftools as nd
-import emcee
+from scipy.stats import norm
+
+#from emcee.utils import MPIPool
 
 def set_values(dataset, values, calibration):
 	#TODO: Allow for linking parameters across indexes (say you want the Time constant for soil water to be the same across all landscape units)
@@ -16,10 +20,7 @@ def check_min_max(params, min, max):
 	return True
 
 def run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=True) :
-	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
-	
-	#NOTE: We extract the observation series just once here so that it does not have to be extracted at every evaluation (it will not change during optimization)
-	obsseries = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+	objective_fun = objective[0]
 
 	if skiptimesteps >= dataset.get_parameter_uint('Timesteps', []) :
 		raise ValueError('We were told to skip more timesteps in the evaluation of the objective than the amount of timesteps we run the model for.')
@@ -41,10 +42,9 @@ def run_optimization(dataset, min, max, initial_guess, calibration, objective, m
 		return optimize.fmin(eval, initial_guess, maxfun=10000)
 
 def compute_hessian(dataset, params, calibration, objective) :
-	objective_fun, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
-	obsseries = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+	objective_fun = objective[0]
 	
-	def eval(par) : return objective_fun(par, dataset, calibration, objective, obsseries)
+	def eval(par) : return objective_fun(par, dataset, calibration, objective)
 	
 	#WARNING: The estimation seems to be extremely sensitive to the step size! How to choose the best one?
 	#steps = [1e-4 * x for x in params]
@@ -70,40 +70,7 @@ def constrain_min_max(dataset, calibration, minvec, maxvec) :
 		min, max = dataset.get_parameter_double_min_max(cal[0])
 		if minvec[idx] < min : minvec[idx] = min
 		if maxvec[idx] > max : maxvec[idx] = max
-		
 
-def run_emcee(dataset, min, max, initial_guess, calibration, objective, n_walk, n_steps, n_burn) :
-	
-	log_likelyhood, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
-	
-	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
-	
-	n_dim = len(initial_guess)
-	
-	def log_prior(params) :
-		if check_min_max(params, min, max) :
-			return 0
-		return -np.inf
-	
-	def log_posterior(params):
-		log_pri = log_prior(params)
-		
-		if(np.isfinite(log_pri)):
-			log_like = log_likelyhood(params, dataset, calibration, objective, obs)
-			return log_pri + log_like
-		return -np.inf
-		
-	starting_guesses = [initial_guess + 1e-4*np.random.randn(n_dim) for i in range(n_walk)]
-	
-	sampler = emcee.EnsembleSampler(n_walk, n_dim, log_posterior)
-	
-	pos, prob, state = sampler.run_mcmc(starting_guesses, n_steps)
-	
-	print('\nAverage acceptance rate: %f' % np.mean(sampler.acceptance_fraction))
-	
-	samples = sampler.chain[:, n_burn:, :].reshape((-1, n_dim))
-	
-	return samples
 		
 		
 		

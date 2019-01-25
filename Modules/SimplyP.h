@@ -100,7 +100,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto PETReductionFactor      = RegisterParameterDouble(Model, Hydrology, "PET reduction factor", Dimensionless, 1.0, 0.0, 1.0);
 	auto SoilFieldCapacity       = RegisterParameterDouble(Model, Hydrology, "Soil field capacity", Mm, 290.0, 0.0, 5000.0);
 	auto BaseflowIndex           = RegisterParameterDouble(Model, Hydrology, "Baseflow index", Dimensionless, 0.70, 0.0, 1.0);
-	auto GroundwaterTimeConstant = RegisterParameterDouble(Model, Hydrology, "Groundwater time constant", Days, 65.0, 0.5, 200.0);
+	auto GroundwaterTimeConstant = RegisterParameterDouble(Model, Hydrology, "Groundwater time constant", Days, 65.0, 0.5, 400.0);
 	auto MinimumGroundwaterFlow  = RegisterParameterDouble(Model, Hydrology, "Minimum groundwater flow", MmPerDay, 0.40, 0.0, 10.0);
 	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
 	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
@@ -119,7 +119,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	auto HydrologyLand = RegisterParameterGroup(Model, "Hydrology land", LandscapeUnits);
 	
-	auto SoilWaterTimeConstant   = RegisterParameterDouble(Model, HydrologyLand, "Soil water time constant", Days, 2.0, 0.05, 20.0);
+	auto SoilWaterTimeConstant   = RegisterParameterDouble(Model, HydrologyLand, "Soil water time constant", Days, 2.0, 0.05, 40.0);
 	
 	auto LandUseSubcatchment = RegisterParameterGroup(Model, "Land use for subcatchment", LandscapeUnits);
 	SetParentGroup(Model, LandUseSubcatchment, Reaches);

@@ -18,68 +18,68 @@ def initialize(dllname) :
 	incadll.DllDeleteDataSet.argtypes = [ctypes.c_void_p]
 
 	incadll.DllGetTimesteps.argtypes = [ctypes.c_void_p]
-	incadll.DllGetTimesteps.restype = ctypes.c_ulonglong
+	incadll.DllGetTimesteps.restype = ctypes.c_uint64
 
 	incadll.DllGetInputTimesteps.argtypes = [ctypes.c_void_p]
-	incadll.DllGetInputTimesteps.restype = ctypes.c_ulonglong
+	incadll.DllGetInputTimesteps.restype = ctypes.c_uint64
 
 	incadll.DllGetInputStartDate.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
-	incadll.DllGetResultSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double)]
+	incadll.DllGetResultSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.POINTER(ctypes.c_double)]
 
-	incadll.DllGetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_bool]
+	incadll.DllGetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.POINTER(ctypes.c_double), ctypes.c_bool]
 
-	incadll.DllSetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_double]
+	incadll.DllSetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.c_double]
 
-	incadll.DllSetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_ulonglong]
+	incadll.DllSetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.c_uint64]
 
-	incadll.DllSetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_bool]
+	incadll.DllSetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.c_bool]
 
-	incadll.DllSetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
+	incadll.DllSetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.c_char_p]
 
 	incadll.DllWriteParametersToFile.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
-	incadll.DllGetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
+	incadll.DllGetParameterDouble.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64]
 	incadll.DllGetParameterDouble.restype = ctypes.c_double
 
-	incadll.DllGetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
-	incadll.DllGetParameterUInt.restype  = ctypes.c_ulonglong
+	incadll.DllGetParameterUInt.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64]
+	incadll.DllGetParameterUInt.restype  = ctypes.c_uint64
 
-	incadll.DllGetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong]
+	incadll.DllGetParameterBool.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64]
 	incadll.DllGetParameterBool.restype  = ctypes.c_bool
 
-	incadll.DllGetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.c_char_p]
+	incadll.DllGetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.c_char_p]
 
-	incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_double), ctypes.c_ulonglong]
+	incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
 	
 	incadll.DllGetIndexSetsCount.argtypes = [ctypes.c_void_p]
-	incadll.DllGetIndexSetsCount.restype = ctypes.c_ulonglong
+	incadll.DllGetIndexSetsCount.restype = ctypes.c_uint64
 	
 	incadll.DllGetIndexSets.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p)]
 
 	incadll.DllGetIndexCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-	incadll.DllGetIndexCount.restype = ctypes.c_ulonglong
+	incadll.DllGetIndexCount.restype = ctypes.c_uint64
 	
 	incadll.DllGetIndexes.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 	
 	incadll.DllGetParameterIndexSetsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-	incadll.DllGetParameterIndexSetsCount.restype = ctypes.c_ulonglong
+	incadll.DllGetParameterIndexSetsCount.restype = ctypes.c_uint64
 	
 	incadll.DllGetParameterIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 	
 	incadll.DllGetResultIndexSetsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-	incadll.DllGetResultIndexSetsCount.restype  = ctypes.c_ulonglong
+	incadll.DllGetResultIndexSetsCount.restype  = ctypes.c_uint64
 	
 	incadll.DllGetResultIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 	
 	incadll.DllGetInputIndexSetsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-	incadll.DllGetInputIndexSetsCount.restype  = ctypes.c_ulonglong
+	incadll.DllGetInputIndexSetsCount.restype  = ctypes.c_uint64
 	
 	incadll.DllGetInputIndexSets.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 	
 	incadll.DllGetParameterDoubleMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
 	
-	incadll.DllGetParameterUIntMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_ulonglong), ctypes.POINTER(ctypes.c_ulonglong)]
+	incadll.DllGetParameterUIntMinMax.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_uint64)]
 	
 	incadll.DllGetParameterDescription.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetParameterDescription.restype = ctypes.c_char_p
@@ -91,7 +91,7 @@ def initialize(dllname) :
 	incadll.DllGetResultUnit.restype = ctypes.c_char_p
 	
 	incadll.DllGetAllParametersCount.argtypes = [ctypes.c_void_p]
-	incadll.DllGetAllParametersCount.restype = ctypes.c_ulonglong
+	incadll.DllGetAllParametersCount.restype = ctypes.c_uint64
 	
 	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
 
@@ -157,7 +157,7 @@ class DataSet :
 		incadll.DllSetParameterDouble(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_double(value))
 	
 	def set_parameter_uint(self, name, indexes, value):
-		incadll.DllSetParameterUInt(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_ulonglong(value))
+		incadll.DllSetParameterUInt(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_uint64(value))
 		
 	def set_parameter_bool(self, name, indexes, value):
 		incadll.DllSetParameterBool(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_bool(value))
@@ -188,9 +188,9 @@ class DataSet :
 		return (min.value, max.value)
 
 	def get_parameter_uint_min_max(self, name):
-		min = ctypes.c_ulonglong(0)
-		max = ctypes.c_ulonglong(0)
-		incadll.DllGetParameterUIntMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_ulonglong)(min), ctypes.POINTER(ctypes.c_ulonglong)(max))
+		min = ctypes.c_uint64(0)
+		max = ctypes.c_uint64(0)
+		incadll.DllGetParameterUIntMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_uint64)(min), ctypes.POINTER(ctypes.c_uint64)(max))
 		return (min.value, max.value)
 		
 	def get_parameter_description(self, name):

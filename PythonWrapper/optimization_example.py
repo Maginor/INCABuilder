@@ -39,6 +39,7 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/Inc
 #NOTE: List of all parameters and their types.
 #print(dataset.get_parameter_list())
 
+#NOTE: Unit and description of a specific parameter:
 #parname = 'Maximum capacity'
 #print('Unit of %s is %s (%s)' % (parname, dataset.get_parameter_unit(parname), dataset.get_parameter_description(parname)))
 

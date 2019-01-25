@@ -50,6 +50,14 @@ enum parameter_type
 	ParameterType_Time,
 };
 
+inline const char *
+GetParameterTypeName(parameter_type Type)
+{
+	//NOTE: It is important that this matches the above enum:
+	const char *Typenames[4] = {"double", "uint", "bool", "time"};
+	return Typenames[(size_t)Type];
+}
+
 struct parameter_spec
 {
 	const char *Name;

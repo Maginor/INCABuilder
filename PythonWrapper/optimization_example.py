@@ -4,7 +4,7 @@ from inca_calibration import *
 import itertools
 
 
-def sum_squares_error(params, dataset, calibration, objective, obs):	
+def sum_squares_error(params, dataset, calibration, objective):	
 	# NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
 	# (in that case, only use the copy when setting parameter values, running the model, and extracting results below)
 	# datasetcopy = dataset.copy()
@@ -15,6 +15,7 @@ def sum_squares_error(params, dataset, calibration, objective, obs):
 	
 	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
     
+	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
 	sim = dataset.get_result_series(simname, simindexes)
 	
 	sse = np.nansum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
@@ -33,6 +34,10 @@ def sum_squares_error(params, dataset, calibration, objective, obs):
 inca.initialize('persist.dll')
 
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/IncaN/tovdalparametersPersistOnly.dat', '../Applications/IncaN/tovdalinputs.dat')
+
+
+#NOTE: List of all parameters and their types.
+#print(dataset.get_parameter_list())
 
 #parname = 'Maximum capacity'
 #print('Unit of %s is %s (%s)' % (parname, dataset.get_parameter_unit(parname), dataset.get_parameter_description(parname)))

@@ -322,3 +322,25 @@ DllGetInputIndexSets(void *DataSetPtr, char *InputName, const char **NamesOut)
 		++Idx;
 	}
 }
+
+DLLEXPORT u64
+DllGetAllParametersCount(void *DataSetPtr)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return (u64)(DataSet->Model->FirstUnusedParameterHandle - 1);
+}
+
+DLLEXPORT void
+DllGetAllParameters(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+{
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedParameterHandle - 1; ++Idx)
+	{
+		entity_handle Handle = Idx + 1;
+		const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
+		NamesOut[Idx] = Spec.Name;
+		TypesOut[Idx] = GetParameterTypeName(Spec.Type);
+	}
+}
+
+

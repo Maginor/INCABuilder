@@ -89,6 +89,11 @@ def initialize(dllname) :
 	
 	incadll.DllGetResultUnit.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetResultUnit.restype = ctypes.c_char_p
+	
+	incadll.DllGetAllParametersCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetAllParametersCount.restype = ctypes.c_ulonglong
+	
+	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
 
 def _CStr(string):
 	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
@@ -237,4 +242,13 @@ class DataSet :
 		array = (ctypes.c_char_p * num)()
 		incadll.DllGetResultInputSets(self.datasetptr, _CStr(name), array)
 		return [string.decode('utf-8') for string in array]
+		
+	def get_parameter_list(self) :
+		num = incadll.DllGetAllParametersCount(self.datasetptr)
+		namearray = (ctypes.c_char_p * num)()
+		typearray = (ctypes.c_char_p * num)()
+		incadll.DllGetAllParameters(self.datasetptr, namearray, typearray)
+		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
+		
+		
 		

@@ -23,8 +23,8 @@ calibration = [
 initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
 initial_guess.append(0.5)
 
-min = [0.25 * x for x in initial_guess]
-max = [4.0 * x for x in initial_guess]
+min = [0.1 * x for x in initial_guess]
+max = [10.0 * x for x in initial_guess]
 
 constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
 

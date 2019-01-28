@@ -37,6 +37,8 @@ int main(int argc, char **argv)
 	EnsureModelComplianceWithIncaviewCommandline(Model, &Args);
 	
 	EndModelDefinition(Model);
+
+        PrintResultStructure(Model);
 	
 	inca_data_set *DataSet = GenerateDataSet(Model);
 	

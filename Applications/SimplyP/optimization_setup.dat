@@ -42,7 +42,7 @@ parameter_calibration :
 
 
 objectives:
-"Daily mean reach flow" {"Tarland1"}     "observed Q mm/d" {}     mean_square_error
+"Daily mean reach flow" {"Tarland1"}     "observed Q mm/d" {}     mean_absolute_error
 
 
 

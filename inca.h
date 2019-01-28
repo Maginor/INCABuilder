@@ -6,6 +6,8 @@
 
 /*
 Important TODOs:
+	- PrintPartialDependencyTrace gives incorrect information sometimes when a solver is involved (twice).
+
 	- Better encapsulation of the ValueSet subsystem. Unify lookup systems for parameters, inputs, results, last_results
 	- Have to figure out if the initial value equation system we have currently is good.
 	- Implement stream index set specific functionality. (or not??)

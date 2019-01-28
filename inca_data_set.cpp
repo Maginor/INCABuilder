@@ -921,6 +921,31 @@ CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h Cumulate
 	return Total;
 }
 
+static double
+CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase, parameter_double_h Weight)
+{
+	double Total = 0.0;
+	
+	size_t SubsequentOffset;
+	size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, CurrentIndexes, DataSet->IndexCounts, CumulateOverIndexSet, SubsequentOffset, Equation.Handle);
+	
+	size_t ParSubsequentOffset;
+	size_t ParOffset = OffsetForHandle(DataSet->ParameterStorageStructure, CurrentIndexes, DataSet->IndexCounts, CumulateOverIndexSet, ParSubsequentOffset, Weight.Handle);
+	
+	double *Lookup = LookupBase + Offset;
+	parameter_value *ParLookup = DataSet->ParameterData + ParOffset;
+	for(index_t Index = 0; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
+	{
+		double EquationValue = *Lookup;
+		double ParValue = (*ParLookup).ValDouble;
+		Total += EquationValue + ParValue;
+		Lookup += SubsequentOffset;
+		ParLookup += ParSubsequentOffset;
+	}
+	
+	return Total;
+}
+
 
 //TODO: There is so much code doubling between input / result access. Could it be merged?
 static void

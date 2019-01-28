@@ -140,8 +140,9 @@ struct equation_spec
 	
 	bool EquationIsSet;              //NOTE: Whether or not the equation body has been provided.
 	
-	index_set_h CumulatesOverIndexSet; //NOTE: Only used for Type == EquationType_Cumulative.
-	equation_h Cumulates;              //NOTE: Only used for Type == EquationType_Cumulative.
+	index_set_h CumulatesOverIndexSet;   //NOTE: Only used for Type == EquationType_Cumulative.
+	equation_h Cumulates;                //NOTE: Only used for Type == EquationType_Cumulative.
+	parameter_double_h CumulationWeight; //NOTE: Only used for Type == EquationType_Cumulative.
 	
 	solver_h Solver;
 	
@@ -861,9 +862,10 @@ RegisterEquationInitialValue(inca_model *Model, const char *Name, unit_h Unit)
 
 //NOTE: CumulateResult is implemented in inca_data_set.cpp
 static double CumulateResult(inca_data_set *DataSet, equation_h Result, index_set_h CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase);
+static double CumulateResult(inca_data_set *DataSet, equation_h Result, index_set_h CumulateOverIndexSet, index_t *CurrentIndexes, double *LookupBase, parameter_double_h Weight);
 
 inline equation_h
-RegisterEquationCumulative(inca_model *Model, const char *Name, equation_h Cumulates, index_set_h CumulatesOverIndexSet)
+RegisterEquationCumulative(inca_model *Model, const char *Name, equation_h Cumulates, index_set_h CumulatesOverIndexSet, parameter_double_h Weight = {})
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -878,13 +880,26 @@ RegisterEquationCumulative(inca_model *Model, const char *Name, equation_h Cumul
 	equation_h Equation = RegisterEquation(Model, Name, Unit, EquationType_Cumulative);
 	Model->EquationSpecs[Equation.Handle].CumulatesOverIndexSet = CumulatesOverIndexSet;
 	Model->EquationSpecs[Equation.Handle].Cumulates = Cumulates;
+	Model->EquationSpecs[Equation.Handle].CumulationWeight = Weight;
 	
-	SetEquation(Model, Equation,
-		[Cumulates, CumulatesOverIndexSet] (value_set_accessor *ValueSet) -> double
-		{
-			return CumulateResult(ValueSet->DataSet, Cumulates, CumulatesOverIndexSet, ValueSet->CurrentIndexes, ValueSet->AllCurResultsBase);
-		}
-	);
+	if(IsValid(Weight))
+	{
+		SetEquation(Model, Equation,
+			[Cumulates, CumulatesOverIndexSet, Weight] (value_set_accessor *ValueSet) -> double
+			{
+				return CumulateResult(ValueSet->DataSet, Cumulates, CumulatesOverIndexSet, ValueSet->CurrentIndexes, ValueSet->AllCurResultsBase, Weight);
+			}
+		);
+	}
+	else
+	{
+		SetEquation(Model, Equation,
+			[Cumulates, CumulatesOverIndexSet] (value_set_accessor *ValueSet) -> double
+			{
+				return CumulateResult(ValueSet->DataSet, Cumulates, CumulatesOverIndexSet, ValueSet->CurrentIndexes, ValueSet->AllCurResultsBase);
+			}
+		);
+	}
 	
 	return Equation;
 }

@@ -1,0 +1,68 @@
+
+
+#NOTE: currently only supports hamiltonian_monte_carlo, differential_evolution and metropolis_hastings
+#algorithm         : metropolis_hastings
+#algorithm         : differential_evolution
+algorithm         : hamiltonian_monte_carlo
+
+generations       : 1000      #NOTE: excluding burnin
+
+burnin            : 100
+
+discard_timesteps : 365       #NOTE: Skip these many of the first timesteps when doing objective evaluations
+
+# Differential Evolution specific:
+chains            : 8
+#chains            : 1
+
+de_b              : 0.1       #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space. Specific to differential evolution.
+
+de_jumps          : true      #NOTE: whether or not DE should perform a (longer) jump every 10 steps
+
+de_jump_gamma     : 1.0       #NOTE: The gamma for the jump (if jumps are enabled)
+
+
+#HMC Specific
+hmc_step_size     : 0.01
+
+hmc_leap_steps    : 2
+
+#TODO: add this:
+#rwmh_cov_mat
+
+
+
+objectives :
+
+"Reach flow" {"Tveitvatn"}     "Discharge"  {"Tveitvatn"}    ll_proportional_normal
+
+parameter_calibration :
+
+# Format:
+#           "name" {"index1" "index2" ..etc..}
+#           min max   initial_guess
+# OR
+#           link {
+#                "name1" {"index1" "index2" ..etc.. }
+#                "name2" {"index3" "index4" ..etc.. }
+#                ..etc..
+#           } min max  initial_guess
+
+
+"a" {"Tveitvatn"}
+0.01 0.5 0.06
+
+"b" {"Tveitvatn"}
+0.3 0.8 0.7
+
+link {
+	"Time constant" {"Soil water" "Forest Productive"}
+	"Time constant" {"Soil water" "Forest Unproductive"}
+	"Time constant" {"Soil water" "Peat"}
+	"Time constant" {"Soil water" "Open mountainous landscape"}
+	"Time constant" {"Soil water" "Arable"}
+} 3 15 6
+
+
+
+

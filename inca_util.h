@@ -182,6 +182,17 @@ YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 	}
 }
 
+//Important: note that this one is overwritten whenever you call it
+inline char *
+TimeString(s64 SecondsSinceEpoch)
+{
+	s32 Year, Month, Day;
+	YearMonthDay(SecondsSinceEpoch, &Year, &Month, &Day);
+	static char Buf[32];
+	sprintf(Buf, "%04d-%02d-%02d", Year, Month, Day);
+	return Buf;
+}
+
 inline s64
 DayOffset(s64 OffsetFrom, s64 Date)
 {

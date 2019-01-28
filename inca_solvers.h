@@ -1,10 +1,9 @@
 
-// #define INCA_SOLVER_FUNCTION(Name) Name(double h, u32 n, double* x0, double* wk, inca_solver_equation_function &EquationFunction)
+// #define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction, const inca_solver_equation_function &JacobiFunction, double AbsErr, double RelErr)
 
 #if !defined(INCA_SOLVERS_H)
 
-
-INCA_SOLVER_FUNCTION(IncaEuler)
+INCA_SOLVER_FUNCTION(IncaEulerImpl_)
 {
 	//NOTE: This is not meant to be used as a proper solver, it is just an illustration of how a solver function works.
 	
@@ -22,7 +21,17 @@ INCA_SOLVER_FUNCTION(IncaEuler)
 	}
 }
 
-INCA_SOLVER_FUNCTION(IncaDascru)
+INCA_SOLVER_SETUP_FUNCTION(IncaEuler)
+{
+	SolverSpec->SolverFunction = IncaEulerImpl_;
+	SolverSpec->UsesJacobian = false;
+	SolverSpec->UsesErrorControl = false;
+}
+
+
+
+
+INCA_SOLVER_FUNCTION(IncaDascruImpl_)
 {
 	//NOTE: This is the original solver from INCA based on the DASCRU Runge-Kutta 4 solver.
 	
@@ -166,6 +175,13 @@ SXYFV:	            if ( q >= ( 0.03125 * r ) ) be=0;
     {
         return;
     }
+}
+
+INCA_SOLVER_SETUP_FUNCTION(IncaDascru)
+{
+	SolverSpec->SolverFunction = IncaDascruImpl_;
+	SolverSpec->UsesJacobian = false;
+	SolverSpec->UsesErrorControl = false;
 }
 
 

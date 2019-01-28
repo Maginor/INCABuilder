@@ -1,0 +1,53 @@
+\documentclass[]{memoir}
+
+
+
+\begin{document}
+
+\chapter{Introduction}
+
+NOTE NOTE NOTE: The documentation is under development, and is not finished
+
+This is documentation for model developers. Separate documentation for model users and framework developers will be provided in separate documents (eventually).
+
+It is recommended for any model developers to take a look at the tutorials and experiment with making changes to them before reading the documentation. The tutorials will also provide the information about how to compile the models into finished exes.
+
+\chapter{Basic concepts}
+
+\section{The model}
+
+The model object contains all immutable information about the model that will not change with each particular usage of the model. The model object contains lists of various model entities and information about these that are provided during model registration. The different model entities are presented in Table \ref{tab:modelentity}
+
+\begin{table}[h]
+\label{tab:modelentity}
+\begin{tabular}{>{\bfseries}l|p{7cm}l}
+\hline
+Index sets & Parameters, inputs and equation results can index over one or more index sets. For instance, you may want to evalute the same equations in multiple contexts, such as once per reach in a river, and in that case you want an index set for these reaches. \\
+\hline
+Parameter groups & Parameter groups are collections of parameters. A parameter group can vary with an index set, making each parameter have a separate value for each index in the index set. The parameter group can also be a child group of another parameter group. In that case, each parameter in the group has a separate value for each pair of indexes from the index set of its group and the parent group. This can be chained to make parameters vary with as many index sets as one wants. \\
+\hline
+Parameters & Parameters are values used to tune the output of the model. Parameters do not vary over time. Currently four different types of parameters are supported: double precision floating point (64 bit), unsigned integer (64 bit), boolean and datetime (represented internally as number of seconds since 1-1-1970) \\
+\hline
+Inputs & Inputs are forcings on the model that vary over time. An example of an input is a time series of daily air temperature that has been measured in the field. Inputs can also vary with index sets. For instance, one can have a separate air temperature series for each geographical location in the model.\\
+\hline
+Equations & The model has a set of equations that are executed in a specific order for every timestep of the model (see later for how the run order is determined). Each equation can look up the value of various parameters, inputs, results of other equations (both from the current timestep and earlier) and produces a single output value for each time it is evaluated. There are several types of equations. The main two are discrete timestep equations and ODE equations. \\
+\hline
+Solvers & Each solver contains a list ODE equations that it will solve over one timestep whenever it is run. The solver must be registered with additional information about e.g. which integrator method it will use. \\
+\hline
+\end{tabular}
+\caption{The model entities}
+\end{table}
+
+\section{The dataset}
+
+The dataset contains information about the specific setup of a model. This includes all the indexes of each index set, as well as all the specific values of the parameters and input series. It will also contain the result series after the model is run. The typical way of setting up a dataset is by reading it in from a parameter file and an input file. The file formats for these are (will be!) provided in separate documentation.
+
+\chapter{Model development}
+
+
+
+
+
+\end{document}
+
+

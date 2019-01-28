@@ -15,7 +15,7 @@ int main()
 	auto Days = RegisterUnit(Model, "days"); //NOTE: Units have no effect on how the model runs, but they are displayed for instance in the INCAView gui. They are just a note that lets you remember the unit of a parameters or equation when calibrating the model.
 	auto Dimensionless = RegisterUnit(Model);
 	
-	//ParameterUInt is of type (64 bit) unsigned integer, i.e {0, 1, 2, ..., 2^64}.
+	//ParameterUInt is of type (64 bit) unsigned integer, i.e {0, 1, 2, ..., 2^64-1}.
 	// The value 100 is the default value, and will be the value of this parameter unless it is overwritten later (usually when loading a parameter file, but in this example we just set parameter values manually below)
 	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
 	

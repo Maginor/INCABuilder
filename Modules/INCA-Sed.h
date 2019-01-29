@@ -288,7 +288,7 @@ AddINCASedModel(inca_model *Model)
 	EQUATION(Model, SuspendedSedimentMass,
 		//TODO: Should we turn effluent input off if there is no effluent flow to the reach in Persist? (there is a parameterbool signifying this)
 		
-		std::cout << "bed mass: " << RESULT(MassOfBedSedimentPerUnitArea) << " mass: " << RESULT(SuspendedSedimentMass) << " deposition: " << RESULT(SedimentDeposition) << " entrainment: " << RESULT(SedimentEntrainment) << std::endl;
+		//std::cout << "bed mass: " << RESULT(MassOfBedSedimentPerUnitArea) << " mass: " << RESULT(SuspendedSedimentMass) << " deposition: " << RESULT(SedimentDeposition) << " entrainment: " << RESULT(SedimentEntrainment) << std::endl;
 		
 		return 
 			  RESULT(SedimentOfSizeClassDeliveredToReach) 

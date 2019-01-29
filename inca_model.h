@@ -152,6 +152,7 @@ struct equation_spec
 	std::set<input_h>     InputDependencies;
 	std::set<equation_h>  DirectResultDependencies;
 	std::set<equation_h>  DirectLastResultDependencies;
+	std::set<equation_h>  CrossIndexResultDependencies;
 	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
@@ -174,6 +175,7 @@ struct solver_spec
 	std::set<index_set_h> IndexSetDependencies;
 	std::vector<equation_h> EquationsToSolve;
 	std::set<equation_h> DirectResultDependencies;
+	std::set<equation_h> CrossIndexResultDependencies;
 	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies

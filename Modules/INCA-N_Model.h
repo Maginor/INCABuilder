@@ -262,6 +262,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DrynessFactor,
+		CURRENT_INDEX(Reach); //NOTE: Has to be here until we make some more fixes to the dependency system
 		double depth = RESULT(WaterDepth, Soilwater);
 		double maxratedepth = PARAMETER(MaxRateDepth);
 		double zeroratedepth = PARAMETER(ZeroRateDepth);

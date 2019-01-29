@@ -181,14 +181,8 @@ struct equation_batch_template
 	solver_h Solver;
 };
 
-inline equation_batch_template &
-PushNewBatch(std::vector<equation_batch_template> &Batches)
-{
-	Batches.resize(Batches.size()+1, {});
-	return Batches[Batches.size()-1];
-}
-
-bool IsTopIndexSetForThisDependency(std::vector<index_set_h> &IndexSetDependencies, std::vector<index_set_h> &BatchGroupIndexSets, size_t IndexSetLevel)
+static bool
+IsTopIndexSetForThisDependency(std::vector<index_set_h> &IndexSetDependencies, std::vector<index_set_h> &BatchGroupIndexSets, size_t IndexSetLevel)
 {
 	index_set_h CurrentLevelIndexSet = BatchGroupIndexSets[IndexSetLevel];
 	bool DependsOnCurrentLevel = (std::find(IndexSetDependencies.begin(), IndexSetDependencies.end(), CurrentLevelIndexSet) != IndexSetDependencies.end());
@@ -204,6 +198,42 @@ bool IsTopIndexSetForThisDependency(std::vector<index_set_h> &IndexSetDependenci
 	}
 	
 	return true;
+}
+
+static bool
+WeDependOnBatch(std::set<equation_h> &Dependencies, std::set<equation_h> &CrossDependencies, equation_batch_template &Batch)
+{
+	bool DependOnBatch = false;
+	for(equation_h EquationInBatch : Batch.Equations)
+	{
+		if(!Dependencies.empty() && std::find(Dependencies.begin(), Dependencies.end(), EquationInBatch) != Dependencies.end())
+		{
+			DependOnBatch = true;
+			break;
+		}
+		if(!CrossDependencies.empty() && std::find(CrossDependencies.begin(), CrossDependencies.end(), EquationInBatch) != CrossDependencies.end())
+		{
+			DependOnBatch = true;
+			break;
+		}
+	}
+	if(Batch.Type == BatchType_Solver && !DependOnBatch)
+	{
+		for(equation_h EquationInBatch : Batch.EquationsODE)
+		{
+			if(!Dependencies.empty() && std::find(Dependencies.begin(), Dependencies.end(), EquationInBatch) != Dependencies.end())
+			{
+				DependOnBatch = true;
+				break;
+			}
+			if(!CrossDependencies.empty() && std::find(CrossDependencies.begin(), CrossDependencies.end(), EquationInBatch) != CrossDependencies.end())
+			{
+				DependOnBatch = true;
+				break;
+			}
+		}
+	}
+	return DependOnBatch;
 }
 
 
@@ -296,6 +326,7 @@ EndModelDefinition(inca_model *Model)
 		}
 		
 		//NOTE: Every equation always depends on its initial value parameter if it has one.
+		//TODO: We should have a specialized system for this, because this currently causes the initial value parameter to be loaded into the CurParameters buffer at each step, which is unnecessary.
 		if(IsValid(Spec.InitialValue))
 		{
 			std::vector<index_set_h>& IndexSetDependencies = Model->ParameterSpecs[Spec.InitialValue.Handle].IndexSetDependencies;
@@ -323,11 +354,19 @@ EndModelDefinition(inca_model *Model)
 				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
 			}
 			
-			//TODO: Cross index result dependency.
+			if(ValueSet.ResultCrossIndexDependency[DepResultHandle] != 0)
+			{
+				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
+				{
+					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
+				}
+				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle});
+			}
 		}
 		
 		//NOTE: Every equation always depends on its initial value equation if it has one.
-		//TODO: Right now we register it as a LastResultDependency, which is not technically correct, but it should give the desired result. However, this may break, so we should probably rethink how we do this.
+		//TODO: Right now we register it as a LastResultDependency, which is not technically correct, but it should give the desired result.
+		//TODO: Figure out if this may break somehting, and if we need a specialized system for this?
 		equation_h EqInitialValue = Model->EquationSpecs[EquationHandle].InitialValueEquation;
 		if(IsValid(EqInitialValue))
 		{
@@ -404,6 +443,7 @@ EndModelDefinition(inca_model *Model)
 			solver_spec &SolverSpec = Model->SolverSpecs[Solver.Handle];
 			SolverSpec.IndexSetDependencies.insert(Spec.IndexSetDependencies.begin(), Spec.IndexSetDependencies.end());
 			SolverSpec.DirectResultDependencies.insert(Spec.DirectResultDependencies.begin(), Spec.DirectResultDependencies.end());
+			SolverSpec.CrossIndexResultDependencies.insert(Spec.CrossIndexResultDependencies.begin(), Spec.CrossIndexResultDependencies.end());
 			SolverSpec.EquationsToSolve.push_back(equation_h {EquationHandle});
 			
 			if(!SolverHasBeenHitOnce[Solver.Handle])
@@ -440,7 +480,7 @@ EndModelDefinition(inca_model *Model)
 			
 			solver_spec &SolverSpec = Model->SolverSpecs[Spec.Solver.Handle];
 			//NOTE: There is only one stand-in equation for the whole solver in the EquationsToSort vector. We create a new batch containing all of the equations and put it at the end of the batch build list.
-			equation_batch_template &Batch = PushNewBatch(BatchBuild);
+			equation_batch_template Batch = {};
 			Batch.Type = BatchType_Solver;
 			Batch.Solver = Spec.Solver;
 			Batch.IndexSetDependencies = SolverSpec.IndexSetDependencies; //Important: Should be the dependencies of the solver, not of the one equation.
@@ -454,56 +494,110 @@ EndModelDefinition(inca_model *Model)
 				else assert(0);
 			}
 			TopologicalSortEquations(Model, Batch.Equations, TopologicalSortEquationsInSolverVisit);
+			
+			
+			s32 EarliestSuitableBatchIdx = BatchBuild.size();
+			//size_t FirstBatchWeDependOn     = BatchBuild.size();
+			for(s32 BatchIdx = BatchBuild.size() - 1; BatchIdx >= 0; --BatchIdx)
+			{
+				equation_batch_template &NeighborBatch = BatchBuild[BatchIdx];
+				if(NeighborBatch.IndexSetDependencies == Batch.IndexSetDependencies)
+				{
+					EarliestSuitableBatchIdx = BatchIdx;
+				}
+				
+				//FirstBatchWeDependOn = BatchIdx;
+				bool DependOnBatch = WeDependOnBatch(SolverSpec.DirectResultDependencies, SolverSpec.CrossIndexResultDependencies, NeighborBatch);
+				//if(DependOnBatch) std::cout << SolverSpec.Name << " depend on " << BatchIdx << std::endl;
+				if(DependOnBatch) break; //We have to enter after this batch.
+			}
+			
+			//if(strcmp(SolverSpec.Name, "Reach solver")==0)
+			//{
+			//	std::cout << "earliest suitable " << EarliestSuitableBatchIdx << std::endl;
+			//}
+			
+			if(EarliestSuitableBatchIdx == BatchBuild.size())
+			{
+				BatchBuild.push_back(Batch);
+			}
+			else
+			{
+				//NOTE: This inserts the new batch right after the earliest suitable one.
+				BatchBuild.insert(BatchBuild.begin() + EarliestSuitableBatchIdx + 1, Batch);
+			}
 		}
 		else
 		{
 			//NOTE: put non-solver equations in the first batch that suits it. A batch is suitable if it has the same index set dependencies as the equation and if no batch after it have equations that this equation depends on.
 			
-			size_t EarliestSuitableBatchIdx = BatchBuild.size();
-			for(s32 BatchIdx = BatchBuild.size() - 1; BatchIdx >= 0; --BatchIdx)
+			s32 EarliestSuitableBatchIdx = BatchBuild.size();
+			bool EarliestSuitableIsSolver = false;
+			for(s32 BatchIdx = (s32)BatchBuild.size() - 1; BatchIdx >= 0; --BatchIdx)
 			{
 				equation_batch_template &Batch = BatchBuild[BatchIdx];
-				if(Batch.Type == BatchType_Regular && Batch.IndexSetDependencies == Spec.IndexSetDependencies)
+				if(Batch.IndexSetDependencies == Spec.IndexSetDependencies)
 				{
-					EarliestSuitableBatchIdx = (size_t)BatchIdx;
+					EarliestSuitableBatchIdx = BatchIdx;
+					EarliestSuitableIsSolver = (Batch.Type == BatchType_Solver);
 				}
 				
-				bool WeDependOnBatch = false;
-				for(equation_h EquationInBatch : Batch.Equations)
-				{
-					if(std::find(Spec.DirectResultDependencies.begin(), Spec.DirectResultDependencies.end(), EquationInBatch) != Spec.DirectResultDependencies.end())
-					{
-						WeDependOnBatch = true;
-						break;
-					}
-				}
-				if(Batch.Type == BatchType_Solver && !WeDependOnBatch)
-				{
-					for(equation_h EquationInBatch : Batch.EquationsODE)
-					{
-						equation_spec &Spec = Model->EquationSpecs[EquationInBatch.Handle];
-						if(std::find(Spec.DirectResultDependencies.begin(), Spec.DirectResultDependencies.end(), EquationInBatch) != Spec.DirectResultDependencies.end())
-						{
-							WeDependOnBatch = true;
-							break;
-						}
-					}
-				}
-				if(WeDependOnBatch) break; // We can not enter a batch that is earlier than this
+				bool DependOnBatch = WeDependOnBatch(Spec.DirectResultDependencies, Spec.CrossIndexResultDependencies, Batch);
+				if(DependOnBatch) break; // We can not enter a batch that is earlier than this
 				
 				//NOTE: We don't have to check equations in the batch depends on us, because all equations that depend on us have been sorted so that they are processed after us, and so have not been put in the batches yet.
 			}
 			
+			bool PushNewBatch = false;
+			
 			if(EarliestSuitableBatchIdx == BatchBuild.size())
 			{
-				equation_batch_template &Batch = PushNewBatch(BatchBuild);
-				Batch.Type = BatchType_Regular;
-				Batch.Equations.push_back(Equation);
-				Batch.IndexSetDependencies = Spec.IndexSetDependencies;
+				PushNewBatch = true;
+			}
+			else if(EarliestSuitableIsSolver)
+			{
+				//This equation does not belong to a solver, so we can not add it to the solver batch. Try to add it immediately after, either by adding it to the next batch if it is suitable or by creating a new batch.
+				if(EarliestSuitableBatchIdx == BatchBuild.size())
+				{
+					PushNewBatch = true;
+				}
+				else
+				{
+					equation_batch_template &NextBatch = BatchBuild[EarliestSuitableBatchIdx + 1];
+					if(NextBatch.IndexSetDependencies == Spec.IndexSetDependencies)
+					{
+						NextBatch.Equations.push_back(Equation);
+					}
+					else
+					{
+						equation_batch_template Batch = {};
+						Batch.Type = BatchType_Regular;
+						Batch.Equations.push_back(Equation);
+						Batch.IndexSetDependencies = Spec.IndexSetDependencies;
+						BatchBuild.insert(BatchBuild.begin() + EarliestSuitableBatchIdx + 1, Batch);
+					}
+				}
 			}
 			else
 			{
 				BatchBuild[EarliestSuitableBatchIdx].Equations.push_back(Equation);
+			}
+			
+			if(PushNewBatch)
+			{
+				equation_batch_template Batch = {};
+				Batch.Type = BatchType_Regular;
+				Batch.Equations.push_back(Equation);
+				Batch.IndexSetDependencies = Spec.IndexSetDependencies;
+				
+				if(Spec.DirectResultDependencies.empty() && Spec.CrossIndexResultDependencies.empty())
+				{
+					BatchBuild.insert(BatchBuild.begin(), Batch); //NOTE: If we had no dependencies at all, just insert us at the beginning rather than at the end. This makes it less likely to screw up later structure, and is for instance good for INCA-N.
+				}
+				else
+				{
+					BatchBuild.push_back(Batch);
+				}
 			}
 		}
 	}
@@ -524,7 +618,8 @@ EndModelDefinition(inca_model *Model)
 	
 	//NOTE: We do a second pass to see if some equations can be shifted to a later batch. This may ultimately reduce the amount of batch groups and speed up execution. It will also make sure that cross indexing between results is more likely to be correct.
 	// (TODO: this needs a better explanation, but for now suffice to say that inca-N-classic is not correct without this second pass).
-	//TODO: Maaybe this could be done in the same pass as above, but I haven't figured out how. The problem is that while we are building the batches above, we don't know about any of the batches that will appear after us yet.
+	//TODO: Maaybe this could be done in the same pass as above, but I haven't figured out how. The problem is that while we are building the batches above, we don't know about any of the batches that will appear after the current batch we are building.
+
 #if 1
 	{	
 		size_t BatchIdx = 0;

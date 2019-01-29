@@ -212,6 +212,7 @@ AddINCASedModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachUpstreamSuspendedSediment,
+		CURRENT_INDEX(SizeClass); //TODO: Has to be here until we fix the dependency system some more..
 		double sum = 0.0;
 		FOREACH_INPUT(Reach,
 			sum += RESULT(ReachSuspendedSedimentOutput, *Input);
@@ -228,7 +229,7 @@ AddINCASedModel(inca_model *Model)
 		return PARAMETER(BankErosionScalingFactor) * pow(RESULT(ReachFlow), PARAMETER(BankErosionNonlinearCoefficient));
 	)
 	
-	EQUATION(Model, MassOfBedSedimentPerUnitArea, //ODE
+	EQUATION(Model, MassOfBedSedimentPerUnitArea,
 		return RESULT(SedimentDeposition) - RESULT(SedimentEntrainment);
 	)
 	
@@ -271,7 +272,7 @@ AddINCASedModel(inca_model *Model)
 		return 86400.0 * terminalsettlingvelocity * RESULT(SuspendedSedimentMass) / RESULT(ReachVolume);
 	)
 	
-	EQUATION(Model, SuspendedSedimentMass, //ODE
+	EQUATION(Model, SuspendedSedimentMass,
 		//TODO: Should we turn effluent input off if there is no effluent flow to the reach in Persist? (there is a parameterbool signifying this)
 		return 
 			  RESULT(SedimentOfSizeClassDeliveredToReach) 

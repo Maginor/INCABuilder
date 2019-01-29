@@ -934,13 +934,24 @@ CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h Cumulate
 	
 	double *Lookup = LookupBase + Offset;
 	parameter_value *ParLookup = DataSet->ParameterData + ParOffset;
+        
+        double Total0 = 0.0;
+        for(index_t Index = 0; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
+        {
+            double ParValue = (*ParLookup).ValDouble;
+            Total0 += ParValue;
+            ParLookup += ParSubsequentOffset;
+        }
+        //std::cout << Total0 << std::endl;   
+        ParLookup = DataSet->ParameterData + ParOffset;
 	for(index_t Index = 0; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
 	{
-		double EquationValue = *Lookup;
-		double ParValue = (*ParLookup).ValDouble;
-		Total += EquationValue + ParValue;
-		Lookup += SubsequentOffset;
-		ParLookup += ParSubsequentOffset;
+            double EquationValue = *Lookup;
+            double ParValue = (*ParLookup).ValDouble;
+            Total += EquationValue * ParValue;
+            Total /= Total0;
+            Lookup += SubsequentOffset;
+            ParLookup += ParSubsequentOffset;
 	}
 	
 	return Total;

@@ -1,6 +1,6 @@
 
 
-// NOTE NOTE NOTE This module is in development and is not finished
+// NOTE NOTE NOTE This module is in development and is not finished!!!!
 
 static void
 AddINCASedModel(inca_model *Model)
@@ -9,8 +9,10 @@ AddINCASedModel(inca_model *Model)
 	
 	auto Dimensionless = RegisterUnit(Model);
 	auto SPerM         = RegisterUnit(Model, "s/m");
+	auto MPerS         = RegisterUnit(Model, "m/s");
 	auto SPerM2        = RegisterUnit(Model, "s/m2");
 	auto M3PerSPerKm2  = RegisterUnit(Model, "m3/s/km2");
+	auto Kg            = RegisterUnit(Model, "kg");
 	auto KgPerM2PerKm2 = RegisterUnit(Model, "kg/m2/km2");
 	auto KgPerSPerKm2  = RegisterUnit(Model, "kg/s/km2");
 	auto KgPerM2PerS   = RegisterUnit(Model, "kg/m2/s");
@@ -18,6 +20,13 @@ AddINCASedModel(inca_model *Model)
 	auto KgPerKm2PerDay = RegisterUnit(Model, "kg/km2/day");
 	auto KgPerDay      = RegisterUnit(Model, "kg/day");
 	auto KgPerKm2      = RegisterUnit(Model, "kg/km2");
+	auto KgPerM2       = RegisterUnit(Model, "kg/m2");
+	auto KgPerM2PerDay = RegisterUnit(Model, "kg/m2/day");
+	auto JPerSPerM2    = RegisterUnit(Model, "J/s/m2");
+	auto MgPerL        = RegisterUnit(Model, "mg/L");
+	auto Metres        = RegisterUnit(Model, "m");
+	auto KgPerM2PerM3SPerDay = RegisterUnit(Model, "kg/m2/m3 s/day");
+	auto S2PerKg       = RegisterUnit(Model, "s2/kg");
 	
 	auto Reach = GetIndexSetHandle(Model, "Reaches");
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
@@ -30,12 +39,12 @@ AddINCASedModel(inca_model *Model)
 	//TODO : Find default/min/max/description for these e.g. in the INCA-P documentation
 	//TODO : Find out which of these should index over LandscapeUnits (in addition to or instead of Reach)
 	auto FlowErosionScalingFactor               = RegisterParameterDouble(Model, Sediment, "Flow erosion scaling factor", SPerM2, 1.0);
-	auto FlowErosionDirectRunoffThreshold       = RegisterParameterDouble(Model, Sediment, "Flow erosion direct runoff threshold", M3PerSPerKm2, 1.0);
+	auto FlowErosionDirectRunoffThreshold       = RegisterParameterDouble(Model, Sediment, "Flow erosion direct runoff threshold", M3PerSPerKm2, 0.001);
 	auto FlowErosionNonlinearCoefficient        = RegisterParameterDouble(Model, Sediment, "Flow erosion nonlinear coefficient", Dimensionless, 1.0);
 	auto TransportCapacityScalingFactor         = RegisterParameterDouble(Model, Sediment, "Transport capacity scaling factor", KgPerM2PerKm2, 1.0);
-	auto TransportCapacityDirectRunoffThreshold = RegisterParameterDouble(Model, Sediment, "Transport capacity direct runoff threshold", M3PerSPerKm2, 1.0);
+	auto TransportCapacityDirectRunoffThreshold = RegisterParameterDouble(Model, Sediment, "Transport capacity direct runoff threshold", M3PerSPerKm2, 0.001);
 	auto TransportCapacityNonlinearCoefficient  = RegisterParameterDouble(Model, Sediment, "Transport capacity nonlinear coefficient", Dimensionless, 1.0);
-	auto SplashDetachmentScalingFactor          = RegisterParameterDouble(Model, Sediment, "Splash detachment scaling factor", SPerM, 1.0);
+	auto SplashDetachmentScalingFactor          = RegisterParameterDouble(Model, Sediment, "Splash detachment scaling factor", SPerM, 0.001);
 	auto FlowErosionPotential                   = RegisterParameterDouble(Model, Sediment, "Flow erosion potential", KgPerSPerKm2, 0.074);
 	auto SplashDetachmentSoilErodibility        = RegisterParameterDouble(Model, Sediment, "Splash detachment soil erodibility", KgPerM2PerS, 1.0);
 	auto VegetationIndex                        = RegisterParameterDouble(Model, Sediment, "Vegetation index", Dimensionless, 1.0);
@@ -50,10 +59,11 @@ AddINCASedModel(inca_model *Model)
 	auto Rainfall = GetEquationHandle(Model, "Rainfall");
 	auto RunoffToReach = GetEquationHandle(Model, "Runoff to reach");
 	
-	//auto ReachSolver = GetSolverHandle(Model, "Reach solver");
 	
 	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);
 	
+	
+	///////////// Erosion and sediment transport ////////////////
 	
 	auto SedimentMobilisedViaSplashDetachment = RegisterEquation(Model, "Sediment mobilised via splash detachment", KgPerKm2PerDay);
 	auto SedimentMobilisedViaFlowErosion      = RegisterEquation(Model, "Sediment mobilised via flow erosion", KgPerKm2PerDay);
@@ -70,6 +80,9 @@ AddINCASedModel(inca_model *Model)
 	
 	auto TotalSedimentDeliveryToReach         = RegisterEquationCumulative(Model, "Total sediment delivery to reach", AreaScaledSedimentDeliveryToReach, LandscapeUnits);
 	
+	auto SoilMassInTheOAHorizon               = RegisterEquation(Model, "Soil mass in the O/A horizon", KgPerKm2);
+	SetSolver(Model, SoilMassInTheOAHorizon, IncaSolver);
+	//SetInitialValue(Model, SoilMassInTheOAHorizon)
 	
 	//TODO: Documentation says this should use Reffq = "effective precipitation". Is that the same as rainfall?
 	EQUATION(Model, SedimentMobilisedViaSplashDetachment,
@@ -94,7 +107,7 @@ AddINCASedModel(inca_model *Model)
 	EQUATION(Model, SedimentMobilisedViaFlowErosion,
 		double SFE = RESULT(FlowErosionKFactor) * (RESULT(SedimentTransportCapacity) - RESULT(SedimentMobilisedViaSplashDetachment)) / (RESULT(SedimentTransportCapacity) + RESULT(FlowErosionKFactor));
 		if(RESULT(SedimentTransportCapacity) + RESULT(FlowErosionKFactor) == 0) return 0.0;
-		return SFE;
+		return Max(0.0, SFE);
 	)
 	
 	EQUATION(Model, SedimentDeliveryToReach,
@@ -123,8 +136,13 @@ AddINCASedModel(inca_model *Model)
 		return 0.0;
 	)
 	
+	EQUATION(Model, SoilMassInTheOAHorizon,
+		return -RESULT(SedimentDeliveryToReach);
+	)
 	
-	///////////////// IN - STREAM ////////////////////////////////
+	///////////////// Suspended sediment ////////////////////////////////
+	
+	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.1, IncaDascru);
 	
 	auto SizeClass = RegisterIndexSet(Model, "Sediment size class");
 	
@@ -135,9 +153,133 @@ AddINCASedModel(inca_model *Model)
 	RequireIndex(Model, SizeClass, "Coarse sand");
 	
 	auto SedimentSizeClass = RegisterParameterGroup(Model, "Sediment size class", SizeClass);
-	SetParentGroup(Model, SedimentSizeClass, Sediment);
 	
-	auto PercentageOfSedimentInGrainSizeClass   = RegisterParameterDouble(Model, SedimentSizeClass, "Percentage of sediment in grain size class", PercentU, 0.2);
+	auto PercentageOfSedimentInGrainSizeClass   = RegisterParameterDouble(Model, SedimentSizeClass, "Percentage of sediment in grain size class", PercentU, 20);
+	auto SmallestDiameterOfSedimentClass        = RegisterParameterDouble(Model, SedimentSizeClass, "Smallest diameter of sediment in size class", Metres, 0.0, 0.0, 2e3, "These are specified by the model and should not be changed unless you know what you are doing");
+	auto LargestDiameterOfSedimentClass         = RegisterParameterDouble(Model, SedimentSizeClass, "Largest diameter of sediment in size class", Metres, 2e-6);
+	
+	auto SedimentReach = RegisterParameterGroup(Model, "Sediment reach", Reach);
+	SetParentGroup(Model, SedimentReach, SedimentSizeClass);
+	
+	auto EffluentSedimentConcentration   = RegisterParameterDouble(Model, SedimentReach, "Effluent sediment concentration", MgPerL, 0.0);
+	
+	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
+	
+	auto BankErosionScalingFactor        = RegisterParameterDouble(Model, Reaches, "Bank erosion scaling factor", KgPerM2PerM3SPerDay, 1.0);
+	auto BankErosionNonlinearCoefficient = RegisterParameterDouble(Model, Reaches, "Bank erosion non-linear coefficient", Dimensionless, 1.0);
+	auto ShearVelocityCoefficient        = RegisterParameterDouble(Model, Reaches, "Shear velocity coefficient", Dimensionless, 1.0);
+	auto MeanChannelSlope                = RegisterParameterDouble(Model, Reaches, "Mean channel slope", Dimensionless, 2.0);
+	auto EntrainmentCoefficient          = RegisterParameterDouble(Model, Reaches, "Entrainment coefficient", S2PerKg, 1.0);
+	
+	auto SedimentOfSizeClassDeliveredToReach = RegisterEquation(Model, "Sediment of size class delivered to reach", KgPerDay);
+	auto ReachUpstreamSuspendedSediment     = RegisterEquation(Model, "Reach upstream suspended sediment", KgPerDay);
+	auto ClayReleaseFromChannelBanks        = RegisterEquation(Model, "Clay release from channel banks", KgPerM2PerDay);
+	auto ReachFrictionFactor                = RegisterEquation(Model, "Reach friction factor", Dimensionless);
+	auto ReachShearVelocity                 = RegisterEquation(Model, "Reach shear velocity", MPerS);
+	auto ProportionOfSedimentThatCanBeEntrained = RegisterEquation(Model, "Proportion of sediment that can be entrained", Dimensionless);
+	auto StreamPower                        = RegisterEquation(Model, "Stream power", JPerSPerM2);
+	
+	auto SedimentEntrainment                = RegisterEquation(Model, "Sediment entrainment", KgPerM2PerDay);
+	SetSolver(Model, SedimentEntrainment, InstreamSedimentSolver);
+	
+	auto SedimentDeposition                 = RegisterEquation(Model, "Sediment deposition", KgPerM2PerDay);
+	SetSolver(Model, SedimentDeposition, InstreamSedimentSolver);
+	
+	auto ReachSuspendedSedimentOutput       = RegisterEquation(Model, "Reach suspended sediment output", KgPerDay);
+	SetSolver(Model, ReachSuspendedSedimentOutput, InstreamSedimentSolver);
+	
+	auto MassOfBedSedimentPerUnitArea       = RegisterEquationODE(Model, "Mass of bed sediment per unit area", KgPerM2);
+	SetSolver(Model, MassOfBedSedimentPerUnitArea, InstreamSedimentSolver);
+	//SetInitialValue
+	
+	auto SuspendedSedimentMass = RegisterEquationODE(Model, "Suspended sediment mass", Kg);
+	SetSolver(Model, SuspendedSedimentMass, InstreamSedimentSolver);
+	//SetInitialValue
+	
+	
+	
+	auto ReachWidth = GetParameterDoubleHandle(Model, "Reach width");
+	auto EffluentFlow = GetParameterDoubleHandle(Model, "Effluent flow");
+	auto ReachDepth = GetEquationHandle(Model, "Reach depth");
+	auto ReachFlow  = GetEquationHandle(Model, "Reach flow");
+	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
+	auto ReachVelocity = GetEquationHandle(Model, "Reach velocity");
+	
+	
+	
+	EQUATION(Model, SedimentOfSizeClassDeliveredToReach,
+		return RESULT(TotalSedimentDeliveryToReach) * PARAMETER(PercentageOfSedimentInGrainSizeClass) / 100.0;
+	)
+	
+	EQUATION(Model, ReachUpstreamSuspendedSediment,
+		double sum = 0.0;
+		FOREACH_INPUT(Reach,
+			sum += RESULT(ReachSuspendedSedimentOutput, *Input);
+		)
+		return sum;
+	)
+	
+	EQUATION(Model, ReachSuspendedSedimentOutput,
+		return 86400.0 * RESULT(SuspendedSedimentMass) * RESULT(ReachFlow) / RESULT(ReachVolume);
+	)
+	
+	EQUATION(Model, ClayReleaseFromChannelBanks,
+		//TODO: Should this be for the clay size class only??
+		return PARAMETER(BankErosionScalingFactor) * pow(RESULT(ReachFlow), PARAMETER(BankErosionNonlinearCoefficient));
+	)
+	
+	EQUATION(Model, MassOfBedSedimentPerUnitArea, //ODE
+		return RESULT(SedimentDeposition) - RESULT(SedimentEntrainment);
+	)
+	
+	EQUATION(Model, ReachFrictionFactor,
+		return 4.0 * RESULT(ReachDepth) / (2.0 * RESULT(ReachDepth) + PARAMETER(ReachWidth));
+	)
+	
+	EQUATION(Model, ReachShearVelocity,
+		double earthsurfacegravity = 9.807;
+		return sqrt(earthsurfacegravity * RESULT(ReachDepth) * PARAMETER(ShearVelocityCoefficient) * PARAMETER(MeanChannelSlope));
+	)
+	
+	EQUATION(Model, ProportionOfSedimentThatCanBeEntrained,
+		double Dmax = 9.99 * pow(RESULT(ReachShearVelocity), 2.52);
+		double Dlow = PARAMETER(SmallestDiameterOfSedimentClass);
+		double Dupp = PARAMETER(LargestDiameterOfSedimentClass);
+		if(Dmax < Dlow) return 0.0;
+		if(Dmax > Dupp) return 1.0;
+		return (Dmax - Dlow) / (Dupp - Dlow);
+	)
+	
+	EQUATION(Model, StreamPower,
+		double waterdensity = 1000.0;
+		double earthsurfacegravity = 9.807;
+		return waterdensity * earthsurfacegravity * PARAMETER(MeanChannelSlope) * RESULT(ReachVelocity) * RESULT(ReachDepth);
+	)
+	
+	EQUATION(Model, SedimentEntrainment,
+		return 86400.0 * PARAMETER(EntrainmentCoefficient) * RESULT(MassOfBedSedimentPerUnitArea) * RESULT(ProportionOfSedimentThatCanBeEntrained) * RESULT(StreamPower) * RESULT(ReachFrictionFactor);
+	)
+	
+	EQUATION(Model, SedimentDeposition,
+		double mediangrainsize = (PARAMETER(SmallestDiameterOfSedimentClass) + PARAMETER(LargestDiameterOfSedimentClass)) / 2.0;
+		double sedimentdensity = 2650.0;
+		double waterdensity    = 1000.0;
+		double earthsurfacegravity = 9.807;
+		double fluidviscosity = 0.001;
+		double terminalsettlingvelocity = (sedimentdensity - waterdensity) * earthsurfacegravity * Square(mediangrainsize) / (18.0 * fluidviscosity);
+		
+		return 86400.0 * terminalsettlingvelocity * RESULT(SuspendedSedimentMass) / RESULT(ReachVolume);
+	)
+	
+	EQUATION(Model, SuspendedSedimentMass, //ODE
+		//TODO: Should we turn effluent input off if there is no effluent flow to the reach in Persist? (there is a parameterbool signifying this)
+		return 
+			  RESULT(SedimentOfSizeClassDeliveredToReach) 
+			+ PARAMETER(EffluentSedimentConcentration) * PARAMETER(EffluentFlow)
+			+ RESULT(ReachUpstreamSuspendedSediment) 
+			- RESULT(ReachSuspendedSedimentOutput) 
+			+ PARAMETER(ReachLength) * PARAMETER(ReachWidth) * (RESULT(SedimentEntrainment) + RESULT(ClayReleaseFromChannelBanks) - RESULT(SedimentDeposition));
+	)
 }
 
 

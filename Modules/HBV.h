@@ -44,7 +44,6 @@ static void AddSnowRoutine(inca_model *Model)
 	auto Refreeze    = RegisterEquation(Model, "Refreeze", Mm);
 	auto WaterToSoil = RegisterEquation(Model, "Water to soil", Mm);
 	
-	//TODO: I don't know how good of an idea it is to have the snow depth equation in this module since it has nothing to do with the hydrology. It is only used in order to compute soil temperature.
 	auto SnowDepth   = RegisterEquation(Model, "Snow depth", Cm);
 	
 	EQUATION(Model, SnowmeltTemperatureDifference,
@@ -342,7 +341,6 @@ AddSoilMoistureRoutine(inca_model *Model)
         auto SoilSolver = RegisterSolver(Model, "Soil solver", 0.1, IncaDascru);	
 	
         auto GroundwaterRecharge         = RegisterEquation(Model, "Groundwater recharge", MmPerDay);
-        auto WeightedRecharge            = RegisterEquation(Model, "Weighted recharge", MmPerDay);
         auto SoilMoistureRecharge        = RegisterEquation(Model, "Soil moisture recharge", MmPerDay);
         auto RechargeFraction            = RegisterEquation(Model, "Fraction of precipitation to groundwater", MmPerDay);
         auto InitialWaterInBox           = RegisterEquation(Model, "Initial soil moisture in timestep",MmPerDay);
@@ -364,7 +362,7 @@ AddSoilMoistureRoutine(inca_model *Model)
         SetInitialValue(Model, SoilMoisture, InitialSoilMoisture);
 	
 //	auto GroundwaterRechargeFromLandscapeUnit = RegisterEquation(Model, "Groundwater recharge from landscape unit", MmPerDay);
-	auto TotalRecharge                        = RegisterEquationCumulative(Model, "Total recharge", WeightedRecharge, LandscapeUnits);
+	auto TotalRecharge                        = RegisterEquationCumulative(Model, "Total recharge", GroundwaterRecharge, LandscapeUnits, Percent);
 	
 //	auto TotalExcessRunoff                    = RegisterEquationCumulative(Model, "Runoff from soil in all landscape units", ExcessSoilMoisture, LandscapeUnits);
 //	auto RunoffFromLandscapeUnit              = RegisterEquation(Model, "Runoff from landscape unit", MmPerDay); //NOTE: This one is just to multiply in a percentage. Maybe we should add an option to RegisterEquationCumulative to do that automatically since it seems like this is something we have to do often.
@@ -408,11 +406,6 @@ AddSoilMoistureRoutine(inca_model *Model)
                 if (excessMoisture < 0.) return 0.; else return excessMoisture;
         )         
                         
-//        EQUATION(Model, SeepageFromBox,
-////                double seepage = PARAMETER(SeepageRateFromBox) * RESULT(InitialWaterInBox);
-//                return 0.;//seepage;   
-//                )               
-
         EQUATION(Model, EvapotranspirationFraction,
 		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(FieldCapacity);
 		double potentialetpfraction = Min(RESULT(InitialWaterInBox), smmax) / smmax;
@@ -428,20 +421,9 @@ AddSoilMoistureRoutine(inca_model *Model)
 	EQUATION(Model, SoilMoisture,
 		return RESULT(InitialWaterInBox) 
                 - RESULT(Evapotranspiration); 
-//                - RESULT(SeepageFromBox);
 	)
 	
-	EQUATION(Model, WeightedRecharge,  //To be used in an cumulate equation
-		RESULT(Dummy); //NOTE: Without this the equation is misplaced in the run structure since it falls outside the current dependency system. We may want to make a smarter dependency system.
-		double partialRecharge = RESULT(GroundwaterRecharge) + RESULT(ExcessSoilMoisture);
-//                double seepageToGw = RESULT(SeepageFromBox, FINAL_INDEX(SoilBoxes));
-//		return (totalRecharge + seepageToGw) * PARAMETER(Percent) / 100.0;
-                return partialRecharge * PARAMETER(Percent) / 100.0;
-	)
-	
-//	EQUATION(Model, TotalExcessRunoff,
-//		return RESULT(ExcessSoilMoisture) * PARAMETER(Percent) / 100.0;
-//	)
+
 }
 
 
@@ -464,33 +446,18 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto UpperSecondRunoffThreshold      = RegisterParameterDouble(Model, Groundwater, "Threshold for second runoff in upper storage (UZL)", Mm, 10.0);
 	auto PercolationRate                 = RegisterParameterDouble(Model, Groundwater, "Percolation rate from upper to lower groundwater storage", MmPerDay, 0.1);
 	
-	auto InitialUpperStorage = RegisterParameterDouble(Model, Groundwater, "Initial upper groundwater storage", Mm, 5.0);
-	auto InitialLowerStorage = RegisterParameterDouble(Model, Groundwater, "Initial lower groundwater storage", Mm, 5.0);
+	auto InitialUpperStorage = RegisterParameterDouble(Model, Groundwater, "Initial upper groundwater storage", Mm, 100.0);
+	auto InitialLowerStorage = RegisterParameterDouble(Model, Groundwater, "Initial lower groundwater storage", Mm, 200.0);
 	
 	auto Recharge = GetEquationHandle(Model, "Total recharge"); //NOTE: From the soil moisture routine.
 	
-//	auto GroundwaterSolver = RegisterSolver(Model, "Groundwater solver", 0.1, IncaDascru);
-//	
-//	auto UpperGroundwaterRunoff = RegisterEquation(Model, "Runoff from upper groundwater storage", MmPerDay);
-//	SetSolver(Model, UpperGroundwaterRunoff, GroundwaterSolver);
-//	auto LowerGroundwaterRunoff = RegisterEquation(Model, "Runoff from lower groundwater storage", MmPerDay);
-//	SetSolver(Model, LowerGroundwaterRunoff, GroundwaterSolver);
-//	auto GroundwaterPercolation = RegisterEquation(Model, "Percolation from upper to lower groundwater storage", MmPerDay);
-//	SetSolver(Model, GroundwaterPercolation, GroundwaterSolver);
-//	auto UpperGroundwaterStorage = RegisterEquationODE(Model, "Upper groundwater storage", Mm);
-//	SetSolver(Model, UpperGroundwaterStorage, GroundwaterSolver);
-//	SetInitialValue(Model, UpperGroundwaterStorage, InitialUpperStorage);
-//	auto LowerGroundwaterStorage = RegisterEquationODE(Model, "Lower groundwater storage", Mm);
-//	SetSolver(Model, LowerGroundwaterStorage, GroundwaterSolver);
-//	SetInitialValue(Model, LowerGroundwaterStorage, InitialLowerStorage);
+        auto FastFlow     = RegisterEquation(Model, "Fast flow", MmPerDay);
+        auto SlowFlow     = RegisterEquation(Model, "Slow flow", MmPerDay);
+        auto BaseFlow     = RegisterEquation(Model, "Baseflow", MmPerDay);
+        auto Percolation  = RegisterEquation(Model, "Percolation", MmPerDay);
+        auto UpperStorage = RegisterEquationODE(Model, "Upper groundwater storage", Mm);
         
-        
-        auto FastFlow     = RegisterEquationODE(Model, "Fast flow", MmPerDay);
-        auto SlowFlow     = RegisterEquationODE(Model, "Slow flow", MmPerDay);
-        auto BaseFlow     = RegisterEquationODE(Model, "Baseflow", MmPerDay);
-        auto Percolation  = RegisterEquationODE(Model, "Percolation", MmPerDay);
-        auto UpperStorage = RegisterEquationODE(Model, "Upper groundwater storage", MmPerDay);
-        auto LowerStorage = RegisterEquationODE(Model, "Lower groundwater storage", MmPerDay);
+        auto LowerStorage = RegisterEquationODE(Model, "Lower groundwater storage", Mm);
         
         SetInitialValue(Model, UpperStorage, InitialUpperStorage);
         SetInitialValue(Model, LowerStorage, InitialLowerStorage);
@@ -501,18 +468,21 @@ AddGroundwaterResponseRoutine(inca_model *Model)
         SetSolver(Model, Percolation,UpperSolver);
         SetSolver(Model, UpperStorage, UpperSolver);
         
-        auto LowerSolver = RegisterSolver(Model, "Lower solver", 0.1, IncaDascru);
-        SetSolver(Model, LowerStorage, LowerSolver);
-        SetSolver(Model, BaseFlow, LowerSolver);        
+//        auto LowerSolver = RegisterSolver(Model, "Lower solver", 0.1, IncaDascru);
+        SetSolver(Model, LowerStorage, UpperSolver);
+        SetSolver(Model, BaseFlow, UpperSolver);        
         
         
         EQUATION(Model, UpperStorage,
-                double percolation = PARAMETER(PercolationRate);
-                double upperStorage = LAST_RESULT(UpperStorage) + RESULT(Recharge)
-                                      - RESULT(FastFlow) 
-                                      - RESULT(SlowFlow)
+                double percolation = RESULT(Percolation);
+                double sf = RESULT(SlowFlow);
+                double ff = RESULT(FastFlow);
+                double recharge = RESULT(Recharge);
+                double upperStorage = recharge
+                                      - ff 
+                                      - sf
                                       - percolation;
-        return upperStorage;
+                return upperStorage;
         )
 
         EQUATION(Model, FastFlow,
@@ -520,6 +490,7 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 		double UZL = PARAMETER(UpperSecondRunoffThreshold);
                 double storage = RESULT(UpperStorage);
                 double fastflow = storage > UZL ? (storage-UZL)*K0 : 0.;
+//                fastflow = fastflow < 0. ? 0. : fastflow;
                 return fastflow;
         )         
         
@@ -527,20 +498,23 @@ AddGroundwaterResponseRoutine(inca_model *Model)
                 double K1 = PARAMETER(SecondUpperRecessionCoefficient);
                 double storage = RESULT(UpperStorage);
                 double slowflow = storage * K1;
+//                slowflow = slowflow < 0. ? 0. : slowflow; 
                 return slowflow;
         )
                         
         EQUATION(Model, Percolation,
                 double percolation = PARAMETER(PercolationRate);
                 double storage = RESULT(UpperStorage);
-                double slowflow = RESULT(SlowFlow);
-                double fastflow = RESULT(FastFlow);
-                percolation = (storage - slowflow - fastflow) > PARAMETER(PercolationRate) ? PARAMETER(PercolationRate) : storage - slowflow - fastflow;
+//                double slowflow = RESULT(SlowFlow);
+//                double fastflow = RESULT(FastFlow);
+                percolation = storage > percolation ? percolation : storage;
                 return percolation;
         )                
                 
         EQUATION(Model, LowerStorage,
-                return LAST_RESULT(LowerStorage) + RESULT(Percolation) - RESULT(BaseFlow);
+                double percolation = RESULT(Percolation);
+                double bf = RESULT(BaseFlow);
+                return percolation -  bf;
                 
         )         
                         

@@ -2,7 +2,6 @@
 
 index_sets:
 "Landscape units" : {"Forest" "Peatland"}
-"Soil boxes" : {"Upper box" "Lower box"}
 "Reaches" : {"R1"}
 
 parameters:
@@ -13,8 +12,6 @@ parameters:
 "Start date" :     # ["1000-1-1", "3000-12-31"]
 "1986-1-1"
 
-"Flow routing max base" :     #(day) [1, 10] Width of the convolution filter that smooths out the flow from the groundwater to the river over time
-5
 
 ###################### "Landscape units" ######################
 "Degree day factor" :     #(mm/°C/day) [1.5, 4] Degree day factor, rate at which the snow will melt water in snow will freeze
@@ -45,68 +42,18 @@ parameters:
 0.7 0.7
 
 
-###################### "Landscape units" "Soil boxes" ######################
+###################### "Landscape units" ######################
 "Field capacity" :     #(mm) [100, 300] Maximum soil moisture storage
 150 150
-150 150
 
-"Relative runoff exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to runoff
+
+"Beta recharge exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to runoff
 2 2
-2 2
+
 
 "Initial soil moisture" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
 10 10
-10 10
 
-###################### "Soil boxes" ######################
-"Percolation rate from soil box" :     #(mm/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1 0.1
-
-###################### "Reaches" ######################
-"Recession coefficent for upper groundwater storage (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
-
-"Recession coefficent for upper groundwater storage (K0)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
-
-"Recession coefficient for lower groundwater storage (K2)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
-
-"Threshold for second runoff in upper storage (UZL)" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-10
-
-"Percolation rate from upper to lower groundwater storage" :     #(mm/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
-
-"Initial upper groundwater storage" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-5
-
-"Initial lower groundwater storage" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-5
-
-"Catchment area" :     #(km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-1
-
-"Reach has effluent input" :
-false
-
-"Effluent flow" :     #(m3/day) [0, 99999999] The rate of liquid inputs to a reach from e.g. sewage treatment works
-0
-
-"Reach length" :     #(m) [0.1, 999999] The length of the main stem of the stream / reach in a subcatchment
-1000
-
-"Reach width" :     #(m) [0.1, 9999] The average width of the main stem of the stream / reach in a subcatchment
-10
-
-"a" :     #(/m2) [1e-005, 0.99] The flow velocity 'a' parameter V=aQ^b
-0.04
-
-"b" :     #(dimensionless) [0.1, 0.99] The flow velocity 'b' parameter V=aQ^b
-0.67
-
-"Initial reach flow" :     #(m3/day) [0.0001, 9999999] The flow in the reach at the start of the simulation. This parameter is only used for reaches that don't have other reaches as inputs.
-1000
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(dimensionless) [0, 100] How much of the catchment area that is made up by this type of land cover.

@@ -57,4 +57,5 @@ int main()
 	PrintResultSeries(DataSet, "Sediment delivery to reach", {"Tveitvatn", "Forest Productive"}, 10);
 	
 	PrintResultSeries(DataSet, "Total sediment delivery to reach", {"Tveitvatn"}, 10);
+	PrintResultSeries(DataSet, "Suspended sediment mass", {"Tveitvatn", "Clay"}, 10);
 }

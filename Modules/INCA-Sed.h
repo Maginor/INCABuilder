@@ -2,6 +2,8 @@
 
 // NOTE NOTE NOTE This module is in development and is not finished!!!!
 
+#include "../boost_solvers.h"
+
 static void
 AddINCASedModel(inca_model *Model)
 {
@@ -37,13 +39,15 @@ AddINCASedModel(inca_model *Model)
 	auto Sediment = RegisterParameterGroup(Model, "Sediments", LandscapeUnits);
 	
 	//TODO : Find default/min/max/description for these e.g. in the INCA-P documentation
-	//TODO : Find out which of these should index over LandscapeUnits (in addition to or instead of Reach)
+	
+	//NOTE: The first 6 of these should index over reach instead, but that seems to break things.. Fix!
 	auto FlowErosionScalingFactor               = RegisterParameterDouble(Model, Sediment, "Flow erosion scaling factor", SPerM2, 1.0);
 	auto FlowErosionDirectRunoffThreshold       = RegisterParameterDouble(Model, Sediment, "Flow erosion direct runoff threshold", M3PerSPerKm2, 0.001);
-	auto FlowErosionNonlinearCoefficient        = RegisterParameterDouble(Model, Sediment, "Flow erosion nonlinear coefficient", Dimensionless, 1.0);
+	auto FlowErosionNonlinearCoefficient        = RegisterParameterDouble(Model, Sediment, "Flow erosion non-linear coefficient", Dimensionless, 1.0);
 	auto TransportCapacityScalingFactor         = RegisterParameterDouble(Model, Sediment, "Transport capacity scaling factor", KgPerM2PerKm2, 1.0);
 	auto TransportCapacityDirectRunoffThreshold = RegisterParameterDouble(Model, Sediment, "Transport capacity direct runoff threshold", M3PerSPerKm2, 0.001);
-	auto TransportCapacityNonlinearCoefficient  = RegisterParameterDouble(Model, Sediment, "Transport capacity nonlinear coefficient", Dimensionless, 1.0);
+	auto TransportCapacityNonlinearCoefficient  = RegisterParameterDouble(Model, Sediment, "Transport capacity non-linear coefficient", Dimensionless, 1.0);
+	
 	auto SplashDetachmentScalingFactor          = RegisterParameterDouble(Model, Sediment, "Splash detachment scaling factor", SPerM, 0.001);
 	auto FlowErosionPotential                   = RegisterParameterDouble(Model, Sediment, "Flow erosion potential", KgPerSPerKm2, 0.074);
 	auto SplashDetachmentSoilErodibility        = RegisterParameterDouble(Model, Sediment, "Splash detachment soil erodibility", KgPerM2PerS, 1.0);
@@ -94,14 +98,14 @@ AddINCASedModel(inca_model *Model)
 		double qquick = RESULT(RunoffToReach, DirectRunoff) / 86.4;
 		double flow = Max(0.0, qquick - PARAMETER(FlowErosionDirectRunoffThreshold));
 		return 86400.0 * PARAMETER(FlowErosionScalingFactor) * PARAMETER(FlowErosionPotential) 
-			* pow((PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(FlowErosionNonlinearCoefficient));
+			* pow( (1e-3 * PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(FlowErosionNonlinearCoefficient));
 	)
 	
 	EQUATION(Model, SedimentTransportCapacity,
 		double qquick = RESULT(RunoffToReach, DirectRunoff) / 86.4;
 		double flow = Max(0.0, qquick - PARAMETER(TransportCapacityDirectRunoffThreshold));
 		return 86400.0 * PARAMETER(TransportCapacityScalingFactor) 
-			* pow((PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(TransportCapacityNonlinearCoefficient));
+			* pow((1e-3 * PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(TransportCapacityNonlinearCoefficient));
 	)
 	
 	EQUATION(Model, SedimentMobilisedViaFlowErosion,
@@ -122,7 +126,7 @@ AddINCASedModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, AreaScaledSedimentDeliveryToReach,
-		return PARAMETER(SubcatchmentArea) * 1e6 * PARAMETER(Percent) / 100.0 * RESULT(SedimentDeliveryToReach);
+		return PARAMETER(SubcatchmentArea) /* 1e6 */* PARAMETER(Percent) / 100.0 * RESULT(SedimentDeliveryToReach);
 	)
 	
 	EQUATION(Model, SurfaceSedimentStore,
@@ -143,6 +147,7 @@ AddINCASedModel(inca_model *Model)
 	///////////////// Suspended sediment ////////////////////////////////
 	
 	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.1, IncaDascru);
+	//auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.01, BoostRosenbrock4, 1e-3, 1e-3);
 	
 	auto SizeClass = RegisterIndexSet(Model, "Sediment size class");
 	
@@ -170,6 +175,7 @@ AddINCASedModel(inca_model *Model)
 	auto ShearVelocityCoefficient        = RegisterParameterDouble(Model, Reaches, "Shear velocity coefficient", Dimensionless, 1.0);
 	auto MeanChannelSlope                = RegisterParameterDouble(Model, Reaches, "Mean channel slope", Dimensionless, 2.0);
 	auto EntrainmentCoefficient          = RegisterParameterDouble(Model, Reaches, "Entrainment coefficient", S2PerKg, 1.0);
+	auto InitialMassOfBedSedimentPerUnitArea = RegisterParameterDouble(Model, Reaches, "Initial mass of bed sediment per unit area", KgPerM2, 1e3);
 	
 	auto SedimentOfSizeClassDeliveredToReach = RegisterEquation(Model, "Sediment of size class delivered to reach", KgPerDay);
 	auto ReachUpstreamSuspendedSediment     = RegisterEquation(Model, "Reach upstream suspended sediment", KgPerDay);
@@ -190,7 +196,7 @@ AddINCASedModel(inca_model *Model)
 	
 	auto MassOfBedSedimentPerUnitArea       = RegisterEquationODE(Model, "Mass of bed sediment per unit area", KgPerM2);
 	SetSolver(Model, MassOfBedSedimentPerUnitArea, InstreamSedimentSolver);
-	//SetInitialValue
+	SetInitialValue(Model, MassOfBedSedimentPerUnitArea, InitialMassOfBedSedimentPerUnitArea);
 	
 	auto SuspendedSedimentMass = RegisterEquationODE(Model, "Suspended sediment mass", Kg);
 	SetSolver(Model, SuspendedSedimentMass, InstreamSedimentSolver);
@@ -229,10 +235,6 @@ AddINCASedModel(inca_model *Model)
 		return PARAMETER(BankErosionScalingFactor) * pow(RESULT(ReachFlow), PARAMETER(BankErosionNonlinearCoefficient));
 	)
 	
-	EQUATION(Model, MassOfBedSedimentPerUnitArea,
-		return RESULT(SedimentDeposition) - RESULT(SedimentEntrainment);
-	)
-	
 	EQUATION(Model, ReachFrictionFactor,
 		return 4.0 * RESULT(ReachDepth) / (2.0 * RESULT(ReachDepth) + PARAMETER(ReachWidth));
 	)
@@ -257,10 +259,15 @@ AddINCASedModel(inca_model *Model)
 		return waterdensity * earthsurfacegravity * PARAMETER(MeanChannelSlope) * RESULT(ReachVelocity) * RESULT(ReachDepth);
 	)
 	
+	//TODO: This equation probably has a unit error, it gives a way too high value..
+	// Works pretty well when we remove the 86400
 	EQUATION(Model, SedimentEntrainment,
-		return 86400.0 * PARAMETER(EntrainmentCoefficient) * RESULT(MassOfBedSedimentPerUnitArea) * RESULT(ProportionOfSedimentThatCanBeEntrained) * RESULT(StreamPower) * RESULT(ReachFrictionFactor);
+		double value = /*86400.0 */ PARAMETER(EntrainmentCoefficient) * RESULT(MassOfBedSedimentPerUnitArea) * RESULT(ProportionOfSedimentThatCanBeEntrained) * RESULT(StreamPower) * RESULT(ReachFrictionFactor);
+		return value;
 	)
 	
+	//TODO: This equation is probably wrong too!
+	// Works pretty well when we remove the 86400
 	EQUATION(Model, SedimentDeposition,
 		double mediangrainsize = (PARAMETER(SmallestDiameterOfSedimentClass) + PARAMETER(LargestDiameterOfSedimentClass)) / 2.0;
 		double sedimentdensity = 2650.0;
@@ -269,11 +276,20 @@ AddINCASedModel(inca_model *Model)
 		double fluidviscosity = 0.001;
 		double terminalsettlingvelocity = (sedimentdensity - waterdensity) * earthsurfacegravity * Square(mediangrainsize) / (18.0 * fluidviscosity);
 		
-		return 86400.0 * terminalsettlingvelocity * RESULT(SuspendedSedimentMass) / RESULT(ReachVolume);
+		double value = /*86400.0 */ terminalsettlingvelocity * RESULT(SuspendedSedimentMass) / RESULT(ReachVolume);
+		
+		return value;
+	)
+	
+	EQUATION(Model, MassOfBedSedimentPerUnitArea,
+		return RESULT(SedimentDeposition) - RESULT(SedimentEntrainment);
 	)
 	
 	EQUATION(Model, SuspendedSedimentMass,
 		//TODO: Should we turn effluent input off if there is no effluent flow to the reach in Persist? (there is a parameterbool signifying this)
+		
+		std::cout << "bed mass: " << RESULT(MassOfBedSedimentPerUnitArea) << " mass: " << RESULT(SuspendedSedimentMass) << " deposition: " << RESULT(SedimentDeposition) << " entrainment: " << RESULT(SedimentEntrainment) << std::endl;
+		
 		return 
 			  RESULT(SedimentOfSizeClassDeliveredToReach) 
 			+ PARAMETER(EffluentSedimentConcentration) * PARAMETER(EffluentFlow)

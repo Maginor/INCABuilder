@@ -225,8 +225,7 @@ DllGetParameterDoubleMinMax(void *DataSetPtr, char *Name, double *MinOut, double
 	const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
 	if(Spec.Type != ParameterType_Double)
 	{
-		std::cout << "ERROR: Requested the min and max values of " << Name << " using DllGetParameterDoubleMinMax, but it is not of type double." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Requested the min and max values of " << Name << " using DllGetParameterDoubleMinMax, but it is not of type double." << std::endl);
 	}
 	*MinOut = Spec.Min.ValDouble;
 	*MaxOut = Spec.Max.ValDouble;
@@ -245,8 +244,7 @@ DllGetParameterUIntMinMax(void *DataSetPtr, char *Name, u64 *MinOut, u64 *MaxOut
 	const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
 	if(Spec.Type != ParameterType_UInt)
 	{
-		std::cout << "ERROR: Requested the min and max values of " << Name << " using DllGetParameterUIntMinMax, but it is not of type uint." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Requested the min and max values of " << Name << " using DllGetParameterUIntMinMax, but it is not of type uint." << std::endl);
 	}
 	*MinOut = Spec.Min.ValUInt;
 	*MaxOut = Spec.Max.ValUInt;

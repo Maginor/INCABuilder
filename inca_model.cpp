@@ -288,41 +288,48 @@ EndModelDefinition(inca_model *Model)
 			exit(0);
 		}
 		
-		// Clear dependency markers
+		// Clear dependency registrations from evaluation of previous equation.
 		ValueSet.Clear();
 		
-		//Evaluate the equations. Since we are in ValueSet.Running=false mode, the equations will register which values they tried to access.
+		//Call the equation. Since we are in ValueSet.Running==false mode, the equation will register which values it tried to access.
 		Model->Equations[EquationHandle](&ValueSet);
 		
 		//std::cout << GetName(Model, equation {EquationHandle}) << std::endl;
 		
-		for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
-		{
-			//NOTE: Direct dependency on an index set coming from looking up a CURRENT_INDEX inside the equation.
-			if(ValueSet.DirectIndexSetDependency[IndexSetHandle] != 0)
-			{
-				Spec.IndexSetDependencies.insert(index_set_h {IndexSetHandle});
-			}
-		}
+		Spec.IndexSetDependencies.insert(ValueSet.DirectIndexSetDependencies.begin(), ValueSet.DirectIndexSetDependencies.end());
 		
-		for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+		for(dependency_registration ParameterDependency : ValueSet.ParameterDependencies)
 		{
-			if(ValueSet.ParameterDependency[ParameterHandle] != 0) // The equation requested a read of this parameter.
+			entity_handle ParameterHandle = ParameterDependency.Handle;
+			
+			parameter_spec &ParSpec = Model->ParameterSpecs[ParameterHandle];
+			std::vector<index_set_h>& IndexSetDependencies = ParSpec.IndexSetDependencies;
+			if(ParameterDependency.NumExplicitIndexes > IndexSetDependencies.size())
 			{
-				std::vector<index_set_h>& IndexSetDependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
-				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
+				std::cout << "ERROR: In equation " << Spec.Name << ". The parameter " << ParSpec.Name << " is referenced with more explicit indexes than the number of index sets this parameter depends on." << std::endl;
+				exit(0);
+			}
+			size_t ImplicitIndexCount = IndexSetDependencies.size() - ParameterDependency.NumExplicitIndexes;
+			
+			if(ImplicitIndexCount > 0)
+			{
+				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.begin() + ImplicitIndexCount);
+			}
+			
+			if(ParameterDependency.NumExplicitIndexes == 0)
+			{
+				//NOTE: We only store the parameters that should be hotloaded at the start of the batch in this vector: For various reasons we can't do that with parameters that are refered to by explicit indexing.
 				Spec.ParameterDependencies.insert(ParameterHandle);
 			}
 		}
 		
-		for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
+		for(dependency_registration InputDependency : ValueSet.InputDependencies)
 		{
-			if(ValueSet.InputDependency[InputHandle] != 0)
-			{
-				std::vector<index_set_h>& IndexSetDependencies = Model->InputSpecs[InputHandle].IndexSetDependencies;
-				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
-				Spec.InputDependencies.insert(input_h {InputHandle});
-			}
+			//TODO: This one has to be updated to match the parameter registration above if we later allow for explicitly indexed inputs.
+			entity_handle InputHandle = InputDependency.Handle;
+			std::vector<index_set_h>& IndexSetDependencies = Model->InputSpecs[InputHandle].IndexSetDependencies;
+			Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
+			Spec.InputDependencies.insert(input_h {InputHandle});
 		}
 		
 		//NOTE: Every equation always depends on its initial value parameter if it has one.
@@ -334,34 +341,39 @@ EndModelDefinition(inca_model *Model)
 			Spec.ParameterDependencies.insert(Spec.InitialValue.Handle);
 		}
 		
-		for(entity_handle DepResultHandle = 1; DepResultHandle < Model->FirstUnusedEquationHandle; ++DepResultHandle)
+		for(dependency_registration ResultDependency : ValueSet.ResultDependencies)
 		{
-			if(ValueSet.ResultDependency[DepResultHandle] != 0)
+			entity_handle DepResultHandle = ResultDependency.Handle;
+			
+			if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
 			{
-				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
-				{
-					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
-				}
+				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
+			}
+			
+			if(ResultDependency.NumExplicitIndexes == 0)
+			{
 				Spec.DirectResultDependencies.insert(equation_h {DepResultHandle});
 			}
-			
-			if(ValueSet.LastResultDependency[DepResultHandle] != 0)
+			else
 			{
-				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
-				{
-					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
-				}
-				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
-			}
-			
-			if(ValueSet.ResultCrossIndexDependency[DepResultHandle] != 0)
-			{
-				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
-				{
-					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
-				}
+				//TODO: For index set dependency resolution below, we should really keep the full information about the number of explicit indexes, however it is very tricky to actually use that correctly in the resolution...
 				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle});
 			}
+		}
+		
+		for(dependency_registration ResultDependency : ValueSet.LastResultDependencies)
+		{
+			entity_handle DepResultHandle = ResultDependency.Handle;
+			if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
+			{
+				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
+			}
+			
+			if(ResultDependency.NumExplicitIndexes == 0)
+			{
+				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
+			}
+			//else     TODO: We should keep info about this. See note above ( but tricky )
 		}
 		
 		//NOTE: Every equation always depends on its initial value equation if it has one.
@@ -617,7 +629,7 @@ EndModelDefinition(inca_model *Model)
 #endif
 	
 	//NOTE: We do a second pass to see if some equations can be shifted to a later batch. This may ultimately reduce the amount of batch groups and speed up execution. It will also make sure that cross indexing between results is more likely to be correct.
-	// (TODO: this needs a better explanation, but for now suffice to say that inca-N-classic is not correct without this second pass).
+	// (TODO: this needs a better explanation, but for instance SimplyP gets a more fragmented run structure without this second pass).
 	//TODO: Maaybe this could be done in the same pass as above, but I haven't figured out how. The problem is that while we are building the batches above, we don't know about any of the batches that will appear after the current batch we are building.
 
 #if 1

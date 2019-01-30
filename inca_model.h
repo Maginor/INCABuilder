@@ -372,6 +372,12 @@ struct inca_data_set
 	~inca_data_set();
 };
 
+struct dependency_registration
+{
+	entity_handle Handle;
+	size_t NumExplicitIndexes;
+};
+
 struct value_set_accessor
 {
 	// The purpose of the value set accessor is to store state during the run of the model as well as providing access to various values to each equation that gets evaluated.
@@ -387,43 +393,37 @@ struct value_set_accessor
 	u64 DaysThisYear;
 	s64 Timestep; //NOTE: We make this a signed integer so that it can be set to -1 during the "initial value" step.
 
-	//NOTE: A trained eye probably recognize this class as one that should be inherited by two subclasses. The problem with doing that is that it would slow down model execution a lot if you can't do direct access of member data.
-	union
-	{
-		struct //NOTE: For use during model execution
-		{
-			parameter_value *CurParameters;
-			double          *CurInputs;
-			double          *CurResults;
-			double          *LastResults;
-			
-			index_t *CurrentIndexes; //NOTE: Contains the current index of each index set during execution.	
-			
-			double *AllCurResultsBase;
-			double *AllLastResultsBase;
-			
-			double *AllCurInputsBase;
-			
-			double *AtResult;
-			double *AtLastResult;
-			
-			
-			parameter_value *AtParameterLookup;
-			size_t *AtInputLookup;
-			size_t *AtResultLookup;
-			size_t *AtLastResultLookup;
-		};
-		
-		struct //NOTE: For use during dependency registration
-		{
-			size_t *ParameterDependency;
-			size_t *InputDependency;
-			size_t *ResultDependency;
-			size_t *LastResultDependency;
-			size_t *ResultCrossIndexDependency;
-			size_t *DirectIndexSetDependency;
-		};
-	};
+
+	//NOTE: For use during model execution		
+	parameter_value *CurParameters;
+	double          *CurInputs;
+	double          *CurResults;
+	double          *LastResults;
+	
+	index_t *CurrentIndexes; //NOTE: Contains the current index of each index set during execution.	
+	
+	double *AllCurResultsBase;
+	double *AllLastResultsBase;
+	
+	double *AllCurInputsBase;
+	
+	double *AtResult;
+	double *AtLastResult;
+	
+	
+	parameter_value *AtParameterLookup;
+	size_t *AtInputLookup;
+	size_t *AtResultLookup;
+	size_t *AtLastResultLookup;
+
+	
+	//NOTE: For use during dependency registration:
+	std::vector<dependency_registration> ParameterDependencies;
+	std::vector<dependency_registration> InputDependencies;
+	std::vector<dependency_registration> ResultDependencies;
+	std::vector<dependency_registration> LastResultDependencies;
+	std::vector<index_set_h> DirectIndexSetDependencies;
+
 	
 #if INCA_EQUATION_PROFILING
 	size_t *EquationHits;
@@ -436,12 +436,6 @@ struct value_set_accessor
 		Running = false;
 		DataSet = 0;
 		this->Model = Model;
-		ParameterDependency         = AllocClearedArray(size_t, Model->FirstUnusedParameterHandle);
-		InputDependency             = AllocClearedArray(size_t, Model->FirstUnusedInputHandle);
-		ResultDependency            = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);
-		LastResultDependency        = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);
-		ResultCrossIndexDependency  = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);
-		DirectIndexSetDependency    = AllocClearedArray(size_t, Model->FirstUnusedIndexSetHandle);
 	}
 	
 	//NOTE: For proper run:
@@ -473,16 +467,6 @@ struct value_set_accessor
 			free(CurrentIndexes);
 
 		}
-		else
-		{
-			free(ParameterDependency);
-			free(InputDependency);
-			free(ResultDependency);
-			free(LastResultDependency);
-			free(ResultCrossIndexDependency);
-			free(DirectIndexSetDependency);
-		}
-		
 	}
 	
 	void Clear()
@@ -497,12 +481,11 @@ struct value_set_accessor
 		}
 		else
 		{
-			memset(ParameterDependency, 0, sizeof(size_t)*Model->FirstUnusedParameterHandle);
-			memset(InputDependency, 0, sizeof(size_t)*Model->FirstUnusedInputHandle);
-			memset(ResultDependency, 0, sizeof(size_t)*Model->FirstUnusedEquationHandle);
-			memset(LastResultDependency, 0, sizeof(size_t)*Model->FirstUnusedEquationHandle);
-			memset(ResultCrossIndexDependency, 0, sizeof(size_t)*Model->FirstUnusedEquationHandle);
-			memset(DirectIndexSetDependency, 0, sizeof(size_t)*Model->FirstUnusedIndexSetHandle);
+			ParameterDependencies.clear();
+			InputDependencies.clear();
+			ResultDependencies.clear();
+			LastResultDependencies.clear();
+			DirectIndexSetDependencies.clear();
 		}
 	}
 };
@@ -1195,47 +1178,31 @@ GetCurrentInput(value_set_accessor *ValueSet, input_h Input)
 
 
 
-inline double
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double_h Parameter)
-{
-	ValueSet->ParameterDependency[Parameter.Handle]++;
-	return 0.0;
-}
+
 
 template<typename... T> double
 RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double_h Parameter, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ParameterDependencies.push_back({Parameter.Handle, OverrideCount});
 	
 	return 0.0;
-}
-
-inline u64
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint_h Parameter)
-{
-	ValueSet->ParameterDependency[Parameter.Handle]++;
-	return 0;
 }
 
 template<typename... T> double
 RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint_h Parameter, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ParameterDependencies.push_back({Parameter.Handle, OverrideCount});
 	
 	return 0.0;
-}
-
-inline bool
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Parameter)
-{
-	ValueSet->ParameterDependency[Parameter.Handle]++;
-	return false;
 }
 
 template<typename... T> double
 RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Parameter, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ParameterDependencies.push_back({Parameter.Handle, OverrideCount});
 	
 	return 0.0;
 }
@@ -1243,37 +1210,25 @@ RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Param
 inline double
 RegisterInputDependency(value_set_accessor *ValueSet, input_h Input)
 {
-	ValueSet->InputDependency[Input.Handle]++;
-	return 0.0;
-}
-
-inline double
-RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result)
-{
-	ValueSet->ResultDependency[Result.Handle]++;
+	ValueSet->InputDependencies.push_back({Input.Handle, 0});
+	//ValueSet->InputDependency[Input.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
 RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	//TODO: May need to do more stuff here
-	ValueSet->ResultCrossIndexDependency[Result.Handle]++;
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ResultDependencies.push_back({Result.Handle, OverrideCount});
 	
-	return 0.0;
-}
-
-inline double
-RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result)
-{
-	ValueSet->LastResultDependency[Result.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
 RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->LastResultDependencies.push_back({Result.Handle, OverrideCount});
 	
 	return 0.0;
 }
@@ -1301,7 +1256,7 @@ SetResult(value_set_accessor *ValueSet, double Value, equation_h Result, T... In
 inline index_t
 RegisterIndexSetDependency(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
-	ValueSet->DirectIndexSetDependency[IndexSet.Handle]++;
+	ValueSet->DirectIndexSetDependencies.push_back(IndexSet);
 	return 0;
 }
 

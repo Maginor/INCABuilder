@@ -268,7 +268,7 @@ EndModelDefinition(inca_model *Model)
 		}
 	}
 	
-	/////////////////////// Find all dependencies of equations on parameters and other results /////////////////////
+	/////////////////////// Find all dependencies of equations on parameters, inputs and other results /////////////////////
 	
 	value_set_accessor ValueSet(Model);
 	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
@@ -309,23 +309,24 @@ EndModelDefinition(inca_model *Model)
 				std::cout << "ERROR: In equation " << Spec.Name << ". The parameter " << ParSpec.Name << " is referenced with more explicit indexes than the number of index sets this parameter depends on." << std::endl;
 				exit(0);
 			}
-			size_t ImplicitIndexCount = IndexSetDependencies.size() - ParameterDependency.NumExplicitIndexes;
+			size_t NumImplicitIndexes = IndexSetDependencies.size() - ParameterDependency.NumExplicitIndexes;
 			
-			if(ImplicitIndexCount > 0)
+			if(NumImplicitIndexes > 0)
 			{
-				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.begin() + ImplicitIndexCount);
+				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.begin() + NumImplicitIndexes);
 			}
 			
 			if(ParameterDependency.NumExplicitIndexes == 0)
 			{
-				//NOTE: We only store the parameters that should be hotloaded at the start of the batch in this vector: For various reasons we can't do that with parameters that are refered to by explicit indexing.
+				//NOTE: We only store the parameters that should be hotloaded at the start of the batch in this vector: For various reasons we can't do that with parameters that are referred to by explicit indexing.
+				//TODO: We should maybe store a cross-index parameter dependency list for easy referencing later (during debugging etc.).
 				Spec.ParameterDependencies.insert(ParameterHandle);
 			}
 		}
 		
 		for(dependency_registration InputDependency : ValueSet.InputDependencies)
 		{
-			//TODO: This one has to be updated to match the parameter registration above if we later allow for explicitly indexed inputs.
+			//TODO: This block has to be updated to match the parameter registration above if we later allow for explicitly indexed inputs.
 			entity_handle InputHandle = InputDependency.Handle;
 			std::vector<index_set_h>& IndexSetDependencies = Model->InputSpecs[InputHandle].IndexSetDependencies;
 			Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
@@ -333,7 +334,7 @@ EndModelDefinition(inca_model *Model)
 		}
 		
 		//NOTE: Every equation always depends on its initial value parameter if it has one.
-		//TODO: We should have a specialized system for this, because this currently causes the initial value parameter to be loaded into the CurParameters buffer at each step, which is unnecessary.
+		//TODO: We should have a specialized system for this, because this currently causes the initial value parameter to be loaded into the CurParameters buffer at each step (instead of just during the initial value step), which is unnecessary.
 		if(IsValid(Spec.InitialValue))
 		{
 			std::vector<index_set_h>& IndexSetDependencies = Model->ParameterSpecs[Spec.InitialValue.Handle].IndexSetDependencies;
@@ -389,9 +390,9 @@ EndModelDefinition(inca_model *Model)
 	///////////////////// Resolve indirect dependencies of equations on index sets.
 	
 	//TODO: This is probably an inefficient way to do it, we should instead use some kind of graph traversal, but it is tricky. We need a way to do it properly with collapsing the dependency graph (including both results and lastresults) by its strongly connected components, then resolving the dependencies between the components.
-	//NOTE: We stop the iteraton at 100 so that if the dependencies are unresolvable, we don't crash. (they can probably never become unresolvable though??)
+	//NOTE: We stop the iteraton at 1000 so that if the dependencies are unresolvable, we don't go in an infinite loop. (they can probably never become unresolvable though??)
 	bool DependenciesWereResolved = false;
-	for(size_t It = 0; It < 100; ++It)
+	for(size_t It = 0; It < 1000; ++It)
 	{
 		bool Changed = false;
 		for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
@@ -426,7 +427,7 @@ EndModelDefinition(inca_model *Model)
 		if(!Changed)
 		{
 			DependenciesWereResolved = true;
-			//std::cout << "Dependencies solved at " << It << " iterations." << std::endl;
+			//std::cout << "Dependencies resolved at " << It + 1 << " iterations." << std::endl;
 			break;
 		}
 	}
@@ -703,7 +704,7 @@ EndModelDefinition(inca_model *Model)
 		}
 	}
 	
-	//NOTE: Erase Batch templates that got all its equations removed
+	//NOTE: Erase Batch templates that got all their equations removed
 	{
 		s64 BatchIdx = BatchBuild.size()-1;
 		while(BatchIdx >= 0)
@@ -796,7 +797,7 @@ EndModelDefinition(inca_model *Model)
 		free(Counts);
 	}
 	
-	///////////////// Find out which parameters, results and last_results that need to be loaded into the CurParameters, CurInputs etc. buffers in the value_set_accessor at each iteration stage during model run. /////////////////
+	///////////////// Find out which parameters, results and last_results that need to be hotloaded into the CurParameters, CurInputs etc. buffers in the value_set_accessor at each iteration stage during model run. /////////////////
 	
 	{
 		size_t BatchGroupIdx = 0;
@@ -1239,7 +1240,7 @@ SetupInitialValue(inca_data_set *DataSet, value_set_accessor *ValueSet, equation
 	if(IsValid(Spec.InitialValue))
 	{
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Spec.InitialValue.Handle);
-		//NOTE: We should not get a type mismatch here since we only allow for registering initial values using handles of type parameter_double. Thus we do not need to test for which type it is.
+		//NOTE: We should not get a type mismatch here since we only allow for registering initial values using handles of type parameter_double_h. Thus we do not need to test for which type it is.
 		Initial = DataSet->ParameterData[Offset].ValDouble;
 	}
 	else if(Spec.HasExplicitInitialValue)

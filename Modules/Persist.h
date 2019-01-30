@@ -161,7 +161,7 @@ AddPersistModel(inca_model *Model)
 	auto TotalRunoffToReach = RegisterEquationCumulative(Model, "Total runoff to reach", RunoffToReach, SoilBoxes);
 	
 	EQUATION(Model, PercolationInput,
-		LAST_RESULT(WaterDepth2); //NOTE: To force a dependency
+		LAST_RESULT(WaterDepth2); //NOTE: To force index set dependencies
 		
 		return RESULT(PercolationInput, CURRENT_INDEX(SoilBoxes)); //NOTE: Hack to make it not overwrite the value that is set in PercolationOut.
 	)

@@ -7,7 +7,7 @@
 
 #include "../../inca.h"
 
-#include "../../Modules/PersistModel.h"
+#include "../../Modules/Persist.h"
 #include "../../Modules/INCA-Sed.h"
 
 int main()

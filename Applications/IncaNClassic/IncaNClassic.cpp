@@ -6,10 +6,10 @@
 
 #include "../../inca.h"
 
-#include "../../Modules/SnowMeltModel.h"
-#include "../../Modules/SoilTemperatureModel.h"
-#include "../../Modules/WaterTemperatureModel.h"
-#include "../../Modules/INCA-N_ClassicModel.h"
+#include "../../Modules/SnowMelt.h"
+#include "../../Modules/SoilTemperature.h"
+#include "../../Modules/WaterTemperature.h"
+#include "../../Modules/INCA-N_Classic.h"
 
 #include "../../sqlite3/sqlite3.h"
 #include "../../inca_database_io.cpp"

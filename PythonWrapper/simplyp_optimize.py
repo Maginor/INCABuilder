@@ -8,6 +8,7 @@ inca.initialize('simplyp.dll')
 
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/SimplyP/tarlandparameters.dat', '../Applications/SimplyP/tarlandinputs.dat')
 
+
 #NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
 	('Proportion of precipitation that contributes to quick flow', ['Tarland1']),
@@ -53,6 +54,10 @@ print_matrix(inv_hess)
 # NOTE: Write the optimal values back to the dataset and then generate a new parameter file that has these values.
 set_values(dataset, param_est, calibration)
 dataset.write_parameters_to_file('optimal_parameters.dat')
+
+# NOTE: Run the model one more time with the optimal parameters and plot them
+dataset.run_model()
+plot_objective(dataset, objective, "simplyp_plots\\optimizer_MAP.png")
 
 
 

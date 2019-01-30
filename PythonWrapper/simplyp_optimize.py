@@ -8,7 +8,6 @@ inca.initialize('simplyp.dll')
 
 dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/SimplyP/tarlandparameters.dat', '../Applications/SimplyP/tarlandinputs.dat')
 
-
 #NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
 	('Proportion of precipitation that contributes to quick flow', ['Tarland1']),

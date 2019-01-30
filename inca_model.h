@@ -543,8 +543,7 @@ inline Type Get##Typename2##Handle(const inca_model *Model, const char *Name) \
 	} \
 	else \
 	{ \
-		std::cout << "ERROR: Tried to look up the handle of the " << #Typename << " \"" << Name << "\", but it was not registered with the model." << std::endl; \
-		exit(0);\
+		INCA_FATAL_ERROR("ERROR: Tried to look up the handle of the " << #Typename << " \"" << Name << "\", but it was not registered with the model." << std::endl); \
 	} \
 	return { Handle }; \
 }
@@ -572,8 +571,7 @@ GetParameterHandle(const inca_model *Model, const char *Name) //NOTE: In case we
 	}
 	else
 	{
-		std::cout << "ERROR: Tried to find the Parameter \"" << Name << "\", but it was not registered with the model." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to find the Parameter \"" << Name << "\", but it was not registered with the model." << std::endl);
 	}
 	return Handle;
 }
@@ -582,8 +580,7 @@ GetParameterHandle(const inca_model *Model, const char *Name) //NOTE: In case we
 #define REGISTRATION_BLOCK(Model) \
 if(Model->Finalized) \
 { \
-	std::cout << "ERROR: You can not call the function " << __func__ << " on the model after it has been finalized using EndModelDefinition." << std::endl; \
-	exit(0); \
+	INCA_FATAL_ERROR("ERROR: You can not call the function " << __func__ << " on the model after it has been finalized using EndModelDefinition." << std::endl); \
 }
 
 #define REGISTER_MODEL_ENTITY(Model, Typename, Handlename, Name) \
@@ -647,8 +644,7 @@ RequireIndex(inca_model *Model, index_set_h IndexSet, const char *IndexName)
 	if(Spec.Type != IndexSetType_Basic)
 	{
 		//TODO: Get rid of this requirement? However that may lead to issues with index order in branched index sets later.
-		std::cout << "ERROR: We only allow requiring indexes for basic index sets, " << Spec.Name << " is of a different type." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: We only allow requiring indexes for basic index sets, " << Spec.Name << " is of a different type." << std::endl);
 	}
 	auto Find = std::find(Spec.RequiredIndexes.begin(), Spec.RequiredIndexes.end(), IndexName);
 	if(Find != Spec.RequiredIndexes.end())
@@ -685,8 +681,7 @@ SetParentGroup(inca_model *Model, parameter_group_h Child, parameter_group_h Par
 	parameter_group_spec &ParentSpec = Model->ParameterGroupSpecs[Parent.Handle];
 	if(IsValid(ChildSpec.ParentGroup) && ChildSpec.ParentGroup.Handle != Parent.Handle)
 	{
-		std::cout << "ERROR: Setting a parent group for the parameter group " << ChildSpec.Name << ", but it already has a different parent group " << GetName(Model, ChildSpec.ParentGroup) << ".";
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Setting a parent group for the parameter group " << ChildSpec.Name << ", but it already has a different parent group " << GetName(Model, ChildSpec.ParentGroup) << ".");
 	}
 	ChildSpec.ParentGroup = Parent;
 	ParentSpec.ChildrenGroups.push_back(Child);
@@ -786,8 +781,7 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 	
 	if(!ParseSuccess)
 	{
-		std::cout << "ERROR: Unrecognized date format for default, min or max value when registering the parameter " << Name << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Unrecognized date format for default, min or max value when registering the parameter " << Name << std::endl);
 	}
 	
 	Spec.Group = Group;
@@ -804,14 +798,12 @@ SetEquation(inca_model *Model, equation_h Equation, inca_equation EquationBody, 
 	//REGISTRATION_BLOCK(Model) //NOTE: We can't use REGISTRATION_BLOCK since the user don't call the SetEquation explicitly, it is called through the macro EQUATION, and so they would not understand the error message.
 	if(Model->Finalized)
 	{
-		std::cout << "ERROR: You can not define an EQUATION body for the model after it has been finalized using EndModelDefinition." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: You can not define an EQUATION body for the model after it has been finalized using EndModelDefinition." << std::endl);
 	}
 	
 	if(!Override && Model->EquationSpecs[Equation.Handle].EquationIsSet)
 	{
-		std::cout << "ERROR: The equation body for " << GetName(Model, Equation) << " is already defined. It can not be defined twice unless it is explicitly overridden." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The equation body for " << GetName(Model, Equation) << " is already defined. It can not be defined twice unless it is explicitly overridden." << std::endl);
 	}
 	
 	Model->Equations[Equation.Handle] = EquationBody;
@@ -866,8 +858,7 @@ RegisterEquationCumulative(inca_model *Model, const char *Name, equation_h Cumul
 	equation_spec &CumulateSpec = Model->EquationSpecs[Cumulates.Handle];
 	if(CumulateSpec.Type == EquationType_InitialValue)
 	{
-		std::cout << "ERROR: The cumulation equation " << Name << " was set to cumulate an initial value equation (" << CumulateSpec.Name << "). This is not supported." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The cumulation equation " << Name << " was set to cumulate an initial value equation (" << CumulateSpec.Name << "). This is not supported." << std::endl);
 	}
 	
 	unit_h Unit = Model->EquationSpecs[Cumulates.Handle].Unit;
@@ -927,8 +918,7 @@ SetInitialValue(inca_model *Model, equation_h Equation, equation_h InitialValueE
 	REGISTRATION_BLOCK(Model)
 	if(Model->EquationSpecs[InitialValueEquation.Handle].Type != EquationType_InitialValue)
 	{
-		std::cout << "ERROR: Tried to set the equation " << GetName(Model, InitialValueEquation) << " as an initial value of another equation, but it was not registered as an equation of type EquationInitialValue." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set the equation " << GetName(Model, InitialValueEquation) << " as an initial value of another equation, but it was not registered as an equation of type EquationInitialValue." << std::endl);
 	}
 	
 	Model->EquationSpecs[Equation.Handle].InitialValueEquation = InitialValueEquation;
@@ -948,8 +938,7 @@ ResetEveryTimestep(inca_model *Model, equation_h Equation)
 	
 	if(Spec.Type != EquationType_ODE)
 	{
-		std::cout << "ERROR: Called ResetEveryTimestep on the equation " << Spec.Name << ", but this functionality is only available for ODE equations." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Called ResetEveryTimestep on the equation " << Spec.Name << ", but this functionality is only available for ODE equations." << std::endl);
 	}
 	
 	Spec.ResetEveryTimestep = true;
@@ -968,8 +957,7 @@ RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_setup_
 	
 	if(h <= 0.0 || h > 1.0)
 	{
-		std::cout << "ERROR: The timestep of the solver " << Name << " can not be smaller than 0.0 or larger than 1.0" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The timestep of the solver " << Name << " can not be smaller than 0.0 or larger than 1.0" << std::endl);
 	}
 	
 	solver_spec &Spec = Model->SolverSpecs[Solver.Handle];
@@ -1007,8 +995,7 @@ SetSolver(inca_model *Model, equation_h Equation, solver_h Solver)
 	equation_type Type = Model->EquationSpecs[Equation.Handle].Type;
 	if(Type != EquationType_Basic && Type != EquationType_ODE)
 	{
-		std::cout << "ERROR: Tried to set a solver for the equation " << GetName(Model, Equation) << ", but it is not a basic equation or ODE equation, and so can not be given a solver." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set a solver for the equation " << GetName(Model, Equation) << ", but it is not a basic equation or ODE equation, and so can not be given a solver." << std::endl);
 	}
 	Model->EquationSpecs[Equation.Handle].Solver = Solver;
 }

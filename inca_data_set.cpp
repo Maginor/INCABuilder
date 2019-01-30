@@ -449,20 +449,17 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 	
 	if(Spec.Type != IndexSetType_Basic)
 	{
-		std::cout << "ERROR: Can not use the method SetIndexes for the index set " << Spec.Name << ", use a method that is specific to the type of that index set instead." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Can not use the method SetIndexes for the index set " << Spec.Name << ", use a method that is specific to the type of that index set instead." << std::endl);
 	}
 	
 	if(DataSet->IndexNames[IndexSetHandle] != 0)
 	{
-		std::cout << "ERROR: Tried to set the indexes for the index set " << Spec.Name << " more than once." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set the indexes for the index set " << Spec.Name << " more than once." << std::endl);
 	}
 	
 	if(IndexNames.empty())
 	{
-		std::cout << "ERROR: Tried to set indexes for the index set " << Spec.Name << ", but no indexes were provided" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set indexes for the index set " << Spec.Name << ", but no indexes were provided" << std::endl);
 	}
 	
 	if(!Spec.RequiredIndexes.empty())
@@ -483,12 +480,17 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 
 		if(!Correct)
 		{
-			std::cout << "ERROR: The model requires the following indexes to be the first indexes for the index set " << Spec.Name << ":" << std::endl;
-			for(const char *IndexName :  Spec.RequiredIndexes) std::cout << "\"" << IndexName << "\" ";
-			std::cout << std::endl << "in that order. We got the indexes: " << std::endl;
-			for(const char *IndexName : IndexNames)  std::cout << "\"" << IndexName << "\" ";
-			std::cout << std::endl;
-			exit(0);
+			INCA_PARTIAL_ERROR("ERROR: The model requires the following indexes to be the first indexes for the index set " << Spec.Name << ":" << std::endl);
+			for(const char *IndexName :  Spec.RequiredIndexes)
+			{
+				INCA_PARTIAL_ERROR("\"" << IndexName << "\" ");
+			}
+			INCA_PARTIAL_ERROR(std::endl << "in that order. We got the indexes: " << std::endl);
+			for(const char *IndexName : IndexNames)
+			{
+				INCA_PARTIAL_ERROR("\"" << IndexName << "\" ");
+			}
+			INCA_FATAL_ERROR(std::endl);
 		}
 	}
 	
@@ -504,8 +506,7 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 	
 	if(DataSet->IndexNamesToHandle[IndexSetHandle].size() != IndexNames.size())
 	{
-		std::cout << "ERROR: Got duplicate indexes for index set " << Spec.Name << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Got duplicate indexes for index set " << Spec.Name << std::endl);
 	}
 	
 	bool AllSet = true;
@@ -530,19 +531,17 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 	
 	if(Spec.Type != IndexSetType_Branched)
 	{
-		std::cout << "ERROR: Can not use the method SetBranchIndexes for the index set " << IndexSetName << ", use a method that is specific to the type of that index set instead." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Can not use the method SetBranchIndexes for the index set " << IndexSetName << ", use a method that is specific to the type of that index set instead." << std::endl);
 	}
 	
 	if(DataSet->IndexNames[IndexSetHandle] != 0)
 	{
-		std::cout << "ERROR: Tried to set the indexes for the index set " << Spec.Name << " more than once." << std::endl;
+		INCA_FATAL_ERROR("ERROR: Tried to set the indexes for the index set " << Spec.Name << " more than once." << std::endl);
 	}
 	
 	if(Inputs.empty())
 	{
-		std::cout << "ERROR: Tried to set indexes for the index set " << Spec.Name << ", but no indexes were provided" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set indexes for the index set " << Spec.Name << ", but no indexes were provided" << std::endl);
 	}
 	
 	DataSet->IndexCounts[IndexSetHandle] = Inputs.size();
@@ -557,9 +556,7 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 		const std::vector<const char *> &InputNames = Data.second;
 		if(DataSet->IndexNamesToHandle[IndexSetHandle].find(IndexName) != DataSet->IndexNamesToHandle[IndexSetHandle].end())
 		{
-			
-			std::cout << "ERROR: Got duplicate indexes for index set " << IndexSetName << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("ERROR: Got duplicate indexes for index set " << IndexSetName << std::endl);
 		}
 		
 		DataSet->IndexNamesToHandle[IndexSetHandle][IndexName] = IndexIndex;
@@ -574,8 +571,7 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 			auto Find = DataSet->IndexNamesToHandle[IndexSetHandle].find(InputName);
 			if(Find == DataSet->IndexNamesToHandle[IndexSetHandle].end())
 			{
-				std::cout << "ERROR: The index \"" << InputName << "\" appears an input to the index \"" << IndexName << "\", in the index set " << IndexSetName << ", before it itself is declared." << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("ERROR: The index \"" << InputName << "\" appears an input to the index \"" << IndexName << "\", in the index set " << IndexSetName << ", before it itself is declared." << std::endl);
 			}
 			index_t InputIndex = Find->second;
 			DataSet->BranchInputs[IndexSetHandle][IndexIndex].Inputs[InputIdxIdx] = InputIndex;
@@ -604,14 +600,12 @@ AllocateParameterStorage(inca_data_set *DataSet)
 	
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
-		std::cout << "ERROR: Tried to allocate parameter storage before all index sets were filled." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to allocate parameter storage before all index sets were filled." << std::endl);
 	}
 	
 	if(DataSet->ParameterData)
 	{
-		std::cout << "ERROR: Tried to allocate parameter storage twice." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to allocate parameter storage twice." << std::endl);
 	}
 	
 	std::map<std::vector<index_set_h>, std::vector<entity_handle>> TransposedParameterDependencies;
@@ -666,14 +660,12 @@ AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 	
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
-		std::cout << "ERROR: Tried to allocate input storage before all index sets were filled." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to allocate input storage before all index sets were filled." << std::endl);
 	}
 	
 	if(DataSet->InputData)
 	{
-		std::cout << "ERROR: Tried to allocate input storage twice." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to allocate input storage twice." << std::endl);
 	}
 
 	std::map<std::vector<index_set_h>, std::vector<entity_handle>> TransposedInputDependencies;
@@ -709,14 +701,12 @@ AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 	
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
-		std::cout << "ERROR: Tried to allocate result storage before all index sets were filled." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to allocate result storage before all index sets were filled." << std::endl);
 	}
 	
 	if(DataSet->ResultData)
 	{
-		std::cout << "ERROR: Tried to allocate result storage twice." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to allocate result storage twice." << std::endl);
 	}
 	
 	//NOTE: We set up a storage structure for results that mirrors the equation batch group structure. This simplifies things a lot in other code.
@@ -759,8 +749,7 @@ GetIndex(inca_data_set *DataSet, index_set_h IndexSet, const char *IndexName)
 	}
 	else
 	{
-		std::cout << "ERROR: Tried the index name " << IndexName << " with the index set " << GetName(DataSet->Model, IndexSet) << ", but that index set does not contain that index." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried the index name " << IndexName << " with the index set " << GetName(DataSet->Model, IndexSet) << ", but that index set does not contain that index." << std::endl);
 	}
 	return 0;
 }
@@ -770,8 +759,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 {
 	if(!DataSet->AllIndexesHaveBeenSet)
 	{
-		std::cout << "ERROR: Tried to set a parameter value before all index sets have been filled with indexes" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set a parameter value before all index sets have been filled with indexes" << std::endl);
 	}
 	if(DataSet->ParameterData == 0)
 	{
@@ -794,8 +782,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 	
 	if(IndexCount != IndexSetDependencies.size())
 	{
-		std::cout << "ERROR; Tried to set the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << IndexCount << ", expected " << IndexSetDependencies.size() << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR; Tried to set the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << IndexCount << ", expected " << IndexSetDependencies.size() << std::endl);
 	}
 
 	//TODO: This crashes if somebody have more than 256 index sets for a parameter, but that is highly unlikely. Still, this is not clean code...
@@ -841,8 +828,7 @@ SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<co
 	
 	if(!ParseSuccess)
 	{
-		std::cout << "ERROR: Unrecognized date format when setting the value of the parameter " << Name << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Unrecognized date format when setting the value of the parameter " << Name << std::endl);
 	}
 	
 	SetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), Val, ParameterType_Time);
@@ -853,8 +839,7 @@ GetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 {
 	if(DataSet->ParameterData == 0)
 	{
-		std::cout << "ERROR: Tried to get a parameter value before parameter storage was allocated." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to get a parameter value before parameter storage was allocated." << std::endl);
 	}
 	
 	const inca_model *Model = DataSet->Model;
@@ -871,8 +856,7 @@ GetParameterValue(inca_data_set *DataSet, const char *Name, const char * const *
 	
 	if(IndexCount != IndexSetDependencies.size())
 	{
-		std::cout << "ERROR; Tried to get the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << IndexCount << ", expected " << IndexSetDependencies.size() << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR; Tried to get the value of the parameter " << Name << ", but an incorrect number of indexes were provided. Got " << IndexCount << ", expected " << IndexSetDependencies.size() << std::endl);
 	}
 
 	//TODO: This crashes if somebody have more than 256 index sets for a parameter, but that is highly unlikely. Still, this is not clean code...
@@ -991,8 +975,7 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 	
 	if(IndexCount != IndexSets.size())
 	{
-		std::cout << "ERROR: Got the wrong amount of indexes when setting the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Got the wrong amount of indexes when setting the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl);
 	}
 	index_t Indexes[256];
 	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
@@ -1026,8 +1009,7 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const char* const* Ind
 {	
 	if(!DataSet->HasBeenRun || !DataSet->ResultData)
 	{
-		std::cout << "ERROR: Tried to extract result series before the model was run at least once." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to extract result series before the model was run at least once.")
 	}
 	
 	const inca_model *Model = DataSet->Model;
@@ -1043,8 +1025,7 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const char* const* Ind
 
 	if(IndexCount != IndexSets.size())
 	{
-		std::cout << "ERROR: Got the wrong amount of indexes when getting the result series for " << GetName(Model, Equation) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Got the wrong amount of indexes when getting the result series for " << GetName(Model, Equation) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl);
 	}
 	index_t Indexes[256];
 	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
@@ -1073,8 +1054,7 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 {	
 	if(!DataSet->InputData)
 	{
-		std::cout << "ERROR: Tried to extract input series before input data was allocated." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to extract input series before input data was allocated." << std::endl);
 	}
 	
 	const inca_model *Model = DataSet->Model;
@@ -1090,8 +1070,7 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 
 	if(IndexCount != IndexSets.size())
 	{
-		std::cout << "ERROR: Got the wrong amount of indexes when getting the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Got the wrong amount of indexes when getting the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl);
 	}
 	index_t Indexes[256];
 	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)

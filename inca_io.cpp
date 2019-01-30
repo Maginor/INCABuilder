@@ -15,8 +15,7 @@ DlmWriteResultSeriesToFile(inca_data_set *DataSet, const char *Filename, std::ve
 	FILE *file = fopen(Filename, "w");
 	if(!file)
 	{	
-		std::cout << "Tried to open file " << Filename << ", but were not able to." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("Tried to open file " << Filename << ", but were not able to." << std::endl);
 	}
 	else
 	{
@@ -103,14 +102,13 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 {
 	if(!DataSet->ParameterData)
 	{
-		std::cout << "ERROR: Tried to write parameters to a file before parameter data was allocated." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to write parameters to a file before parameter data was allocated." << std::endl);
 	}
 	
 	FILE *File = fopen(Filename, "w");
 	if(!File)
 	{	
-		std::cout << "Tried to open file " << Filename << ", but were not able to." << std::endl;
+		INCA_PARTIAL_ERROR("Tried to open file " << Filename << ", but were not able to." << std::endl);
 		return;
 	}
 	
@@ -245,8 +243,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Unrecognized section type: " << Section << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Unrecognized section type: " << Section << std::endl);
 		}
 		
 		if(Mode == 0)
@@ -278,8 +275,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 							if(Indexes.empty())
 							{
 								Stream.PrintErrorHeader();
-								std::cout << "Expected one or more indexes for index set " << IndexSetName << std::endl;
-								exit(0);
+								INCA_FATAL_ERROR("Expected one or more indexes for index set " << IndexSetName << std::endl);
 							}
 							else
 							{
@@ -303,8 +299,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 									if(!IndexName || Inputs.empty())
 									{
 										Stream.PrintErrorHeader();
-										std::cout << "No inputs in the braced list for one of the indexes of index set " << IndexSetName << std::endl;
-										exit(0);
+										INCA_FATAL_ERROR("No inputs in the braced list for one of the indexes of index set " << IndexSetName << std::endl);
 									}
 									break;
 								}
@@ -316,8 +311,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 								else
 								{
 									Stream.PrintErrorHeader();
-									std::cout << "Expected either the quoted name of an index or a }" << std::endl;
-									exit(0);
+									INCA_FATAL_ERROR("Expected either the quoted name of an index or a }" << std::endl);
 								}
 							}
 							Indexes.push_back({IndexName, Inputs});
@@ -325,8 +319,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 						else
 						{
 							Stream.PrintErrorHeader();
-							std::cout << "Expected either the quoted name of an index or a }" << std::endl;
-							exit(0);
+							INCA_FATAL_ERROR("Expected either the quoted name of an index or a }" << std::endl);
 						}
 					}
 				}
@@ -377,8 +370,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 					if(Values.size() != ExpectedCount)                                                                   
 					{                                                                                                    
 						Stream.PrintErrorHeader();                                                                       
-						std::cout << "Did not get the expected number of values for " << ParameterName << std::endl;     
-						exit(0);                                                                                         
+						INCA_FATAL_ERROR("Did not get the expected number of values for " << ParameterName << std::endl); 
 					}                                                                                                    
 					SetMultipleValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
 				}
@@ -406,8 +398,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		if(Token->Type == TokenType_EOF)
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Expected one of the code words timesteps, start_date, inputs, additional_timeseries or index_set_dependencies" << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Expected one of the code words timesteps, start_date, inputs, additional_timeseries or index_set_dependencies" << std::endl);
 		}
 		
 		const char *Section = Stream.ExpectUnquotedString();
@@ -418,8 +409,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			Timesteps = Stream.ExpectUInt();
 			if(Timesteps == 0)
 			{
-				std::cout << "ERROR: Timesteps in the input file " << Filename << " is set to 0." << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("ERROR: Timesteps in the input file " << Filename << " is set to 0." << std::endl);
 			}
 			AllocateInputStorage(DataSet, Timesteps);
 			FoundTimesteps = true;
@@ -446,16 +436,8 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Unrecognized section name " << Section << "." << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Unrecognized section name " << Section << "." << std::endl);
 		}
-	}
-
-	
-	if(Timesteps == 0)
-	{
-		std::cout << "ERROR: in input file " << Filename << ", did not find the codeword timesteps to declare how many timesteps of inputs are provided." << std::endl;
-		exit(0);
 	}
 	
 	if(!DataSet->InputDataHasSeparateStartDate)
@@ -473,8 +455,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		if(Token->Type != TokenType_QuotedString)
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Expected the quoted name of an input" << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Expected the quoted name of an input" << std::endl);
 		}
 		const char *InputName = Token->StringValue;
 		
@@ -493,8 +474,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		if(IndexNames.size() != IndexSets.size())
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Did not get the right amount of indexes for input " << InputName << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Did not get the right amount of indexes for input " << InputName << std::endl);
 		}
 		index_t Indexes[256]; //This could cause a buffer overflow, but will not do so in practice.
 		for(size_t IdxIdx = 0; IdxIdx < IndexNames.size(); ++IdxIdx)
@@ -534,8 +514,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Inputs are to be provided either as a series of numbers or a series of dates together with numbers" << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Inputs are to be provided either as a series of numbers or a series of dates together with numbers" << std::endl);
 		}
 		
 		if(FormatType == 0)
@@ -565,8 +544,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					if(CurTimestep < 0 || CurTimestep >= (s64)Timesteps)
 					{
 						Stream.PrintErrorHeader();
-						std::cout << "The date " << Token->StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl;
-						exit(0);
+						INCA_FATAL_ERROR("The date " << Token->StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
 					}
 				}
 				else if(Token->Type == TokenType_UnquotedString)
@@ -578,15 +556,13 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					else
 					{
 						Stream.PrintErrorHeader();
-						std::cout << "Unexpected command word: " << Token->StringValue << std::endl;
-						exit(0);
+						INCA_FATAL_ERROR("Unexpected command word: " << Token->StringValue << std::endl);
 					}
 				}
 				else
 				{
 					Stream.PrintErrorHeader();
-					std::cout << "Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl);
 				}
 				
 				*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Stream.ExpectDouble();
@@ -627,8 +603,7 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 					if(!IndexSets.empty()) //TODO: OR we could just clear it and give a warning..
 					{
 						Stream.PrintErrorHeader();
-						std::cout << "Tried to set index set dependencies for the input " << InputName << " for a second time." << std::endl;
-						exit(0);
+						INCA_FATAL_ERROR("Tried to set index set dependencies for the input " << InputName << " for a second time." << std::endl);
 					}
 					Stream.ExpectToken(TokenType_Colon);
 					

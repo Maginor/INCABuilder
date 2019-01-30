@@ -91,7 +91,12 @@ DllSetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCo
 {
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	parameter_value Value;
-	Value.ValTime = ParseSecondsSinceEpoch(Val);
+	bool ParseSuccess = ParseSecondsSinceEpoch(Val, &Value.ValTime);
+	if(!ParseSuccess)
+	{
+		std::cout << "ERROR: Unrecognized date format provided for the value of the parameter " << Name << " during DllSetParameterTime" << std::endl;
+		exit(0);
+	}
 	SetParameterValue(DataSet, Name, IndexNames, (size_t)IndexCount, Value, ParameterType_Time);
 }
 

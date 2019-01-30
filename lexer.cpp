@@ -121,6 +121,7 @@ struct token_stream
 	double ExpectDouble();
 	u64    ExpectUInt();
 	bool   ExpectBool();
+	s64    ExpectDate();
 	const char * ExpectQuotedString();
 	const char * ExpectUnquotedString();
 	
@@ -488,6 +489,20 @@ bool token_stream::ExpectBool()
 {
 	token *Token = ExpectToken(TokenType_Bool);
 	return Token->BoolValue;
+}
+
+s64 token_stream::ExpectDate()
+{
+	s64 Date;
+	const char *DateStr = ExpectQuotedString();
+	bool ParseSuccess = ParseSecondsSinceEpoch(DateStr, &Date);
+	if(!ParseSuccess)
+	{
+		PrintErrorHeader();
+		std::cout << "Unrecognized date format \"" << DateStr << "\" Supported format: Y-m-d" << std::endl;
+		exit(0);
+	}
+	return Date;
 }
 
 const char * token_stream::ExpectQuotedString()

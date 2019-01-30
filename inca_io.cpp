@@ -365,7 +365,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 					
 					for(size_t ValIdx = 0; ValIdx < ExpectedCount; ++ValIdx)
 					{
-						Values[ValIdx].ValTime = ParseSecondsSinceEpoch(Stream.ExpectQuotedString());
+						Values[ValIdx].ValTime = Stream.ExpectDate();
 					}
 					SetMultipleValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
 				}
@@ -426,9 +426,8 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		else if(strcmp(Section, "start_date") == 0)
 		{
-			s64 StartDate = ParseSecondsSinceEpoch(Stream.ExpectQuotedString());
+			DataSet->InputDataStartDate = Stream.ExpectDate();
 			DataSet->InputDataHasSeparateStartDate = true;
-			DataSet->InputDataStartDate = StartDate;
 		}
 		else if(strcmp(Section, "inputs") == 0)
 		{
@@ -555,11 +554,11 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			{
 				s64 CurTimestep;
 				
-				Token = Stream.ReadToken(); //TODO: Use the PeekToken functionality above instead
+				Token = Stream.PeekToken();
 				
 				if(Token->Type == TokenType_QuotedString)
 				{
-					s64 Date = ParseSecondsSinceEpoch(Token->StringValue);
+					s64 Date = Stream.ExpectDate();
 					
 					CurTimestep = DayOffset(StartDate, Date); //NOTE: Only one-day timesteps currently supported.
 					
@@ -572,7 +571,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 				}
 				else if(Token->Type == TokenType_UnquotedString)
 				{
-					if(strcmp(Token->StringValue, "end_timeseries") == 0)
+					if(strcmp(Stream.ExpectUnquotedString(), "end_timeseries") == 0)
 					{
 						break;
 					}

@@ -88,17 +88,20 @@ MonthOffset(int Year, int Month)
 
 //NOTE: Apparently the c++ standard library can not do this for us until c++20, so we have to do it ourselves... (could use boost::ptime, but it has to be compiled separately, and that is asking a lot of the user...)
 //NOTE: Does not account for leap seconds, but that should not be a problem.
-inline s64
-ParseSecondsSinceEpoch(const char *DateString)
+inline bool
+ParseSecondsSinceEpoch(const char *DateString, s64 *SecondsSinceEpochOut)
 {
 	int Day, Month, Year;
 	
 	int Found = sscanf(DateString, "%d-%d-%d", &Year, &Month, &Day);
 	if(Found != 3)
 	{
-		std::cout << "ERROR: Dates have to be on the format YYYY-MM-DD, we got " << DateString <<std::endl;
-		exit(0);
+		return false;
 	}
+	
+	if(Day < 0 || Day > 31) return false; //TODO: Should we test this more thoroughly depending on the month?
+	if(Month < 0 || Month > 12) return false;
+	
 	s64 Result = 0;
 	if(Year > 1970)
 	{
@@ -117,7 +120,8 @@ ParseSecondsSinceEpoch(const char *DateString)
 	
 	Result += MonthOffset(Year, Month-1)*24*60*60;
 	Result += (Day-1)*24*60*60;
-	return Result;
+	*SecondsSinceEpochOut = Result;
+	return true;
 }
 
 inline u32

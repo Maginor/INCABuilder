@@ -837,7 +837,14 @@ inline void
 SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes, const char *TimeValue)
 {
 	parameter_value Val;
-	Val.ValTime = ParseSecondsSinceEpoch(TimeValue);
+	bool ParseSuccess = ParseSecondsSinceEpoch(TimeValue, &Val.ValTime);
+	
+	if(!ParseSuccess)
+	{
+		std::cout << "ERROR: Unrecognized date format when setting the value of the parameter " << Name << std::endl;
+		exit(0);
+	}
+	
 	SetParameterValue(DataSet, Name, Indexes.data(), Indexes.size(), Val, ParameterType_Time);
 }
 

@@ -778,9 +778,18 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Time;
-	Spec.Default.ValTime = ParseSecondsSinceEpoch(Default);
-	Spec.Min.ValTime = ParseSecondsSinceEpoch(Min);
-	Spec.Max.ValTime = ParseSecondsSinceEpoch(Max);
+	
+	bool ParseSuccess = true;
+	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Default, &Spec.Default.ValTime);
+	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Min, &Spec.Min.ValTime);
+	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Max, &Spec.Max.ValTime);
+	
+	if(!ParseSuccess)
+	{
+		std::cout << "ERROR: Unrecognized date format for default, min or max value when registering the parameter " << Name << std::endl;
+		exit(0);
+	}
+	
 	Spec.Group = Group;
 	Spec.Description = Description;
 	

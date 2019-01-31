@@ -7,13 +7,15 @@
 
 #include "python_wrapper.h"
 
-#include "../Modules/PersistModel.h"
+#include "../Modules/Persist.h"
 
 
 
 DLLEXPORT void *
 DllSetupModel(char *ParameterFilename, char *InputFilename) {
     
+	CHECK_ERROR_BEGIN
+	
 	inca_model *Model = BeginModelDefinition("PERSiST", "1.0");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
@@ -33,4 +35,6 @@ DllSetupModel(char *ParameterFilename, char *InputFilename) {
 	ReadInputsFromFile(DataSet, InputFilename);
 	
 	return (void *)DataSet;
+	
+	CHECK_ERROR_END
 }

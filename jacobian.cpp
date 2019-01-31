@@ -66,7 +66,7 @@ BuildJacobianInfo(inca_model *Model)
 }
 
 
-#define USE_JACOBIAN_OPTIMIZATION 1
+#define USE_JACOBIAN_OPTIMIZATION 1          //Ooops, don't turn this off if you don't know what you are doing. It could break some solvers.
 
 static void
 EstimateJacobian(double *X, inca_matrix_insertion_function & MatrixInserter, double *FBaseVec, const inca_model *Model, value_set_accessor *ValueSet, const equation_batch &Batch)

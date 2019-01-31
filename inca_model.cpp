@@ -30,17 +30,26 @@ BeginModelDefinition(const char *Name = "(unnamed model)", const char *Version =
 static void
 PrintPartialDependencyTrace(inca_model *Model, equation_h Equation, bool First = false)
 {
-	if(!First) std::cout << "<- ";
-	else       std::cout << "   ";
+	if(!First)
+	{
+		INCA_PARTIAL_ERROR("<- ");
+	}
+	else
+	{
+		INCA_PARTIAL_ERROR("   ");
+	}
 	
 	equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
 	if(IsValid(Spec.Solver))
 	{
-		std::cout << "\"" << GetName(Model, Spec.Solver) << "\" (";
+		INCA_PARTIAL_ERROR("\"" << GetName(Model, Spec.Solver) << "\" (");
 	}
-	std::cout << "\"" << GetName(Model, Equation) << "\"";
-	if(IsValid(Spec.Solver)) std::cout << ")";
-	std::cout << std::endl;
+	INCA_PARTIAL_ERROR("\"" << GetName(Model, Equation) << "\"");
+	if(IsValid(Spec.Solver))
+	{
+		INCA_PARTIAL_ERROR(")")
+	}
+	INCA_PARTIAL_ERROR(std::endl);
 }
 
 static bool
@@ -56,7 +65,7 @@ TopologicalSortEquationsVisit(inca_model *Model, equation_h Equation, std::vecto
 	if(Visited) return true;
 	if(TempVisited)
 	{
-		std::cout << "ERROR: There is a circular dependency between the equations :" << std::endl;
+		INCA_PARTIAL_ERROR("ERROR: There is a circular dependency between the equations :" << std::endl);
 		PrintPartialDependencyTrace(Model, Equation, true);
 		return false;
 	}
@@ -86,7 +95,7 @@ TopologicalSortEquationsInSolverVisit(inca_model *Model, equation_h Equation, st
 	if(Spec.Visited) return true;
 	if(Spec.TempVisited)
 	{
-		std::cout << "ERROR: There is a circular dependency between the non-ode equations within a solver :" << std::endl;
+		INCA_PARTIAL_ERROR("ERROR: There is a circular dependency between the non-ode equations within a solver :" << std::endl);
 		PrintPartialDependencyTrace(Model, Equation, true);
 		return false;
 	}
@@ -123,7 +132,7 @@ TopologicalSortEquationsInitialValueVisit(inca_model *Model, equation_h Equation
 	if(Spec.Visited) return true;
 	if(Spec.TempVisited)
 	{
-		std::cout << "ERROR: There is a circular dependency between the initial value of the equations :" << std::endl;
+		INCA_PARTIAL_ERROR("ERROR: There is a circular dependency between the initial value of the equations :" << std::endl);
 		PrintPartialDependencyTrace(Model, Equation, true);
 		return false;
 	}
@@ -161,7 +170,7 @@ TopologicalSortEquations(inca_model *Model, std::vector<equation_h> &Equations, 
 		bool Success = Visit(Model, Equation, Temporary);
 		if(!Success)
 		{
-			exit(0);
+			INCA_FATAL_ERROR("");
 		}
 	}
 	
@@ -246,8 +255,7 @@ EndModelDefinition(inca_model *Model)
 {
 	if(Model->Finalized)
 	{
-		std::cout << "ERROR: Called EndModelDefinition twice on the same model." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Called EndModelDefinition twice on the same model." << std::endl);
 	}
 	
 	///////////// Find out what index sets each parameter depends on /////////////
@@ -268,7 +276,7 @@ EndModelDefinition(inca_model *Model)
 		}
 	}
 	
-	/////////////////////// Find all dependencies of equations on parameters and other results /////////////////////
+	/////////////////////// Find all dependencies of equations on parameters, inputs and other results /////////////////////
 	
 	value_set_accessor ValueSet(Model);
 	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
@@ -284,49 +292,55 @@ EndModelDefinition(inca_model *Model)
 		
 		if(!Model->EquationSpecs[EquationHandle].EquationIsSet)
 		{
-			std::cout << "ERROR: The equation body for the registered equation " << GetName(Model, equation_h {EquationHandle}) << " has not been defined." << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("ERROR: The equation body for the registered equation " << GetName(Model, equation_h {EquationHandle}) << " has not been defined." << std::endl);
 		}
 		
-		// Clear dependency markers
+		// Clear dependency registrations from evaluation of previous equation.
 		ValueSet.Clear();
 		
-		//Evaluate the equations. Since we are in ValueSet.Running=false mode, the equations will register which values they tried to access.
+		//Call the equation. Since we are in ValueSet.Running==false mode, the equation will register which values it tried to access.
 		Model->Equations[EquationHandle](&ValueSet);
 		
 		//std::cout << GetName(Model, equation {EquationHandle}) << std::endl;
 		
-		for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
-		{
-			//NOTE: Direct dependency on an index set coming from looking up a CURRENT_INDEX inside the equation.
-			if(ValueSet.DirectIndexSetDependency[IndexSetHandle] != 0)
-			{
-				Spec.IndexSetDependencies.insert(index_set_h {IndexSetHandle});
-			}
-		}
+		Spec.IndexSetDependencies.insert(ValueSet.DirectIndexSetDependencies.begin(), ValueSet.DirectIndexSetDependencies.end());
 		
-		for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+		for(dependency_registration ParameterDependency : ValueSet.ParameterDependencies)
 		{
-			if(ValueSet.ParameterDependency[ParameterHandle] != 0) // The equation requested a read of this parameter.
+			entity_handle ParameterHandle = ParameterDependency.Handle;
+			
+			parameter_spec &ParSpec = Model->ParameterSpecs[ParameterHandle];
+			std::vector<index_set_h>& IndexSetDependencies = ParSpec.IndexSetDependencies;
+			if(ParameterDependency.NumExplicitIndexes > IndexSetDependencies.size())
 			{
-				std::vector<index_set_h>& IndexSetDependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
-				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
+				INCA_FATAL_ERROR("ERROR: In equation " << Spec.Name << ". The parameter " << ParSpec.Name << " is referenced with more explicit indexes than the number of index sets this parameter depends on." << std::endl);
+			}
+			size_t NumImplicitIndexes = IndexSetDependencies.size() - ParameterDependency.NumExplicitIndexes;
+			
+			if(NumImplicitIndexes > 0)
+			{
+				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.begin() + NumImplicitIndexes);
+			}
+			
+			if(ParameterDependency.NumExplicitIndexes == 0)
+			{
+				//NOTE: We only store the parameters that should be hotloaded at the start of the batch in this vector: For various reasons we can't do that with parameters that are referred to by explicit indexing.
+				//TODO: We should maybe store a cross-index parameter dependency list for easy referencing later (during debugging etc.).
 				Spec.ParameterDependencies.insert(ParameterHandle);
 			}
 		}
 		
-		for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
+		for(dependency_registration InputDependency : ValueSet.InputDependencies)
 		{
-			if(ValueSet.InputDependency[InputHandle] != 0)
-			{
-				std::vector<index_set_h>& IndexSetDependencies = Model->InputSpecs[InputHandle].IndexSetDependencies;
-				Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
-				Spec.InputDependencies.insert(input_h {InputHandle});
-			}
+			//TODO: This block has to be updated to match the parameter registration above if we later allow for explicitly indexed inputs.
+			entity_handle InputHandle = InputDependency.Handle;
+			std::vector<index_set_h>& IndexSetDependencies = Model->InputSpecs[InputHandle].IndexSetDependencies;
+			Spec.IndexSetDependencies.insert(IndexSetDependencies.begin(), IndexSetDependencies.end());
+			Spec.InputDependencies.insert(input_h {InputHandle});
 		}
 		
 		//NOTE: Every equation always depends on its initial value parameter if it has one.
-		//TODO: We should have a specialized system for this, because this currently causes the initial value parameter to be loaded into the CurParameters buffer at each step, which is unnecessary.
+		//TODO: We should have a specialized system for this, because this currently causes the initial value parameter to be loaded into the CurParameters buffer at each step (instead of just during the initial value step), which is unnecessary.
 		if(IsValid(Spec.InitialValue))
 		{
 			std::vector<index_set_h>& IndexSetDependencies = Model->ParameterSpecs[Spec.InitialValue.Handle].IndexSetDependencies;
@@ -334,34 +348,39 @@ EndModelDefinition(inca_model *Model)
 			Spec.ParameterDependencies.insert(Spec.InitialValue.Handle);
 		}
 		
-		for(entity_handle DepResultHandle = 1; DepResultHandle < Model->FirstUnusedEquationHandle; ++DepResultHandle)
+		for(dependency_registration ResultDependency : ValueSet.ResultDependencies)
 		{
-			if(ValueSet.ResultDependency[DepResultHandle] != 0)
+			entity_handle DepResultHandle = ResultDependency.Handle;
+			
+			if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
 			{
-				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
-				{
-					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
-				}
+				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
+			}
+			
+			if(ResultDependency.NumExplicitIndexes == 0)
+			{
 				Spec.DirectResultDependencies.insert(equation_h {DepResultHandle});
 			}
-			
-			if(ValueSet.LastResultDependency[DepResultHandle] != 0)
+			else
 			{
-				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
-				{
-					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
-				}
-				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
-			}
-			
-			if(ValueSet.ResultCrossIndexDependency[DepResultHandle] != 0)
-			{
-				if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
-				{
-					std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
-				}
+				//TODO: For index set dependency resolution below, we should really keep the full information about the number of explicit indexes, however it is very tricky to actually use that correctly in the resolution...
 				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle});
 			}
+		}
+		
+		for(dependency_registration ResultDependency : ValueSet.LastResultDependencies)
+		{
+			entity_handle DepResultHandle = ResultDependency.Handle;
+			if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
+			{
+				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
+			}
+			
+			if(ResultDependency.NumExplicitIndexes == 0)
+			{
+				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
+			}
+			//else     TODO: We should keep info about this. See note above ( but tricky )
 		}
 		
 		//NOTE: Every equation always depends on its initial value equation if it has one.
@@ -377,9 +396,9 @@ EndModelDefinition(inca_model *Model)
 	///////////////////// Resolve indirect dependencies of equations on index sets.
 	
 	//TODO: This is probably an inefficient way to do it, we should instead use some kind of graph traversal, but it is tricky. We need a way to do it properly with collapsing the dependency graph (including both results and lastresults) by its strongly connected components, then resolving the dependencies between the components.
-	//NOTE: We stop the iteraton at 100 so that if the dependencies are unresolvable, we don't crash. (they can probably never become unresolvable though??)
+	//NOTE: We stop the iteraton at 1000 so that if the dependencies are unresolvable, we don't go in an infinite loop. (they can probably never become unresolvable though??)
 	bool DependenciesWereResolved = false;
-	for(size_t It = 0; It < 100; ++It)
+	for(size_t It = 0; It < 1000; ++It)
 	{
 		bool Changed = false;
 		for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
@@ -414,15 +433,14 @@ EndModelDefinition(inca_model *Model)
 		if(!Changed)
 		{
 			DependenciesWereResolved = true;
-			//std::cout << "Dependencies solved at " << It << " iterations." << std::endl;
+			//std::cout << "Dependencies resolved at " << It + 1 << " iterations." << std::endl;
 			break;
 		}
 	}
 	
 	if(!DependenciesWereResolved)
 	{
-		std::cout << "ERROR: We were unable to resolve all equation dependencies!" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: We were unable to resolve all equation dependencies!" << std::endl);
 	}
 	
 	/////////////// Sorting the equations into equation batches ///////////////////////////////
@@ -456,8 +474,7 @@ EndModelDefinition(inca_model *Model)
 		{
 			if(Spec.Type == EquationType_ODE)
 			{
-				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " is registered as an ODE equation, but it has not been given a solver." << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " is registered as an ODE equation, but it has not been given a solver." << std::endl);
 			}
 			
 			EquationsToSort.push_back(equation_h {EquationHandle});
@@ -617,7 +634,7 @@ EndModelDefinition(inca_model *Model)
 #endif
 	
 	//NOTE: We do a second pass to see if some equations can be shifted to a later batch. This may ultimately reduce the amount of batch groups and speed up execution. It will also make sure that cross indexing between results is more likely to be correct.
-	// (TODO: this needs a better explanation, but for now suffice to say that inca-N-classic is not correct without this second pass).
+	// (TODO: this needs a better explanation, but for instance SimplyP gets a more fragmented run structure without this second pass).
 	//TODO: Maaybe this could be done in the same pass as above, but I haven't figured out how. The problem is that while we are building the batches above, we don't know about any of the batches that will appear after the current batch we are building.
 
 #if 1
@@ -691,7 +708,7 @@ EndModelDefinition(inca_model *Model)
 		}
 	}
 	
-	//NOTE: Erase Batch templates that got all its equations removed
+	//NOTE: Erase Batch templates that got all their equations removed
 	{
 		s64 BatchIdx = BatchBuild.size()-1;
 		while(BatchIdx >= 0)
@@ -784,7 +801,7 @@ EndModelDefinition(inca_model *Model)
 		free(Counts);
 	}
 	
-	///////////////// Find out which parameters, results and last_results that need to be loaded into the CurParameters, CurInputs etc. buffers in the value_set_accessor at each iteration stage during model run. /////////////////
+	///////////////// Find out which parameters, results and last_results that need to be hotloaded into the CurParameters, CurInputs etc. buffers in the value_set_accessor at each iteration stage during model run. /////////////////
 	
 	{
 		size_t BatchGroupIdx = 0;
@@ -965,13 +982,13 @@ NaNTest(const inca_model *Model, value_set_accessor *ValueSet, double ResultValu
 	if(std::isnan(ResultValue) || std::isinf(ResultValue))
 	{
 		//TODO: We should be able to report the timestep here.
-		std::cout << "ERROR: Got a NaN or Inf value as the result of the equation " << GetName(Model, Equation) << " at timestep " << ValueSet->Timestep << std::endl;
+		INCA_PARTIAL_ERROR("ERROR: Got a NaN or Inf value as the result of the equation " << GetName(Model, Equation) << " at timestep " << ValueSet->Timestep << std::endl);
 		const equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
-		std::cout << "Indexes:" << std::endl;
+		INCA_PARTIAL_ERROR("Indexes:" << std::endl);
 		for(index_set_h IndexSet : Spec.IndexSetDependencies)
 		{
 			const char *IndexName = ValueSet->DataSet->IndexNames[IndexSet.Handle][ValueSet->CurrentIndexes[IndexSet.Handle]];
-			std::cout << GetName(Model, IndexSet) << ": " << IndexName << std::endl;
+			INCA_PARTIAL_ERROR(GetName(Model, IndexSet) << ": " << IndexName << std::endl);
 		}
 		for(entity_handle Par : Spec.ParameterDependencies )
 		{
@@ -979,26 +996,26 @@ NaNTest(const inca_model *Model, value_set_accessor *ValueSet, double ResultValu
 			const parameter_spec &ParSpec = Model->ParameterSpecs[Par];
 			if(ParSpec.Type == ParameterType_Double)
 			{
-				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValDouble << std::endl;
+				INCA_PARTIAL_ERROR("Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValDouble << std::endl);
 			}
 			else if(ParSpec.Type == ParameterType_UInt)
 			{
-				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValUInt << std::endl;
+				INCA_PARTIAL_ERROR("Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValUInt << std::endl);
 			}
 			else if(ParSpec.Type == ParameterType_Bool)
 			{
-				std::cout << "Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValBool << std::endl;
+				INCA_PARTIAL_ERROR("Value of " << GetParameterName(Model, Par) << " was " << ValueSet->CurParameters[Par].ValBool << std::endl);
 			}
 		}
 		for(equation_h Res : Spec.DirectResultDependencies )
 		{
-			std::cout << "Current value of " << GetName(Model, Res) << " was " << ValueSet->CurResults[Res.Handle] << std::endl;
+			INCA_PARTIAL_ERROR("Current value of " << GetName(Model, Res) << " was " << ValueSet->CurResults[Res.Handle] << std::endl);
 		}
 		for(equation_h Res : Spec.DirectLastResultDependencies )
 		{
-			std::cout << "Last value of " << GetName(Model, Res) << " was " << ValueSet->LastResults[Res.Handle] << std::endl;
+			INCA_PARTIAL_ERROR("Last value of " << GetName(Model, Res) << " was " << ValueSet->LastResults[Res.Handle] << std::endl);
 		}
-		exit(0);
+		INCA_FATAL_ERROR("");
 	}
 }
 
@@ -1227,7 +1244,7 @@ SetupInitialValue(inca_data_set *DataSet, value_set_accessor *ValueSet, equation
 	if(IsValid(Spec.InitialValue))
 	{
 		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Spec.InitialValue.Handle);
-		//NOTE: We should not get a type mismatch here since we only allow for registering initial values using handles of type parameter_double. Thus we do not need to test for which type it is.
+		//NOTE: We should not get a type mismatch here since we only allow for registering initial values using handles of type parameter_double_h. Thus we do not need to test for which type it is.
 		Initial = DataSet->ParameterData[Offset].ValDouble;
 	}
 	else if(Spec.HasExplicitInitialValue)
@@ -1302,8 +1319,7 @@ RunModel(inca_data_set *DataSet)
 	{
 		if(DataSet->IndexCounts[IndexSetHandle] == 0)
 		{
-			std::cout << "ERROR: The index set " << GetName(Model, index_set_h {IndexSetHandle}) << " does not contain any indexes." << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("ERROR: The index set " << GetName(Model, index_set_h {IndexSetHandle}) << " does not contain any indexes." << std::endl);
 		}
 	}
 	
@@ -1335,15 +1351,13 @@ RunModel(inca_data_set *DataSet)
 		InputDataStartOffsetTimesteps = DayOffset(DataSet->InputDataStartDate, ModelStartTime); //NOTE: Only one-day timesteps currently supported.
 		if(InputDataStartOffsetTimesteps < 0)
 		{
-			std::cout << "ERROR: The input data starts at a later date than the model run." << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("ERROR: The input data starts at a later date than the model run." << std::endl);
 		}
 	}
 	
 	if(((s64)DataSet->InputDataTimesteps - InputDataStartOffsetTimesteps) < (s64)Timesteps)
 	{
-		std::cout << "ERROR: The input data provided has fewer timesteps than the number of timesteps the model is running for." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The input data provided has fewer timesteps than the number of timesteps the model is running for." << std::endl);
 	}
 	
 	//std::cout << "Input data start offset timesteps was " << InputDataStartOffsetTimesteps << std::endl;

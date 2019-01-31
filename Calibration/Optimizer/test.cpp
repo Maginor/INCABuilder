@@ -1,8 +1,14 @@
 
-#include "../../inca.h"
-#include "../../Modules/PersistModel.h"
 
-#include "inca_mcmc.h"
+//NOTE: This is an example of how to use the optimizer with the Persist model.
+
+
+#include "../../inca.h"
+#include "../../Modules/Persist.h"
+
+#define CALIBRATION_PRINT_DEBUG_INFO 0
+
+#include "optimizer.h"
 
 int main()
 {
@@ -28,34 +34,16 @@ int main()
 	ReadParametersFromFile(DataSet, ParameterFile);
 	ReadInputsFromFile(DataSet, InputFile);
 	
-	mcmc_setup Setup = {};
+	optimization_setup Setup;
 	
-	ReadMCMCSetupFromFile(&Setup, "mcmc_setup.dat");
-
-	mcmc_results Results;
+	ReadOptimizationSetup(&Setup, "optimization_setup.dat");
 	
-	timer MCMCTimer = BeginTimer();
-	RunMCMC(DataSet, &Setup, &Results);
+	auto Result = RunOptimizer(DataSet, &Setup);
 	
-	u64 Ms = GetTimerMilliseconds(&MCMCTimer);
+	std::cout << std::endl;
+	PrintOptimizationResult(&Setup, Result);
 	
-	std::cout << "Total MCMC run time : " << Ms << " milliseconds." << std::endl;
+	WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
 	
-	std::cout << "Acceptance rate: " << Results.AcceptanceRate << std::endl;
-	//TODO: post-processing / store results
-	
-	if(Setup.Algorithm == MCMCAlgorithm_DifferentialEvolution)
-	{
-		arma::cube& Draws = Results.DrawsOut;
-	
-		Draws.slice(Draws.n_slices - 1).print();
-		Draws.save("mcmc_results.dat", arma::arma_ascii);
-	}
-	else
-	{
-		arma::mat& Draws2 = Results.DrawsOut2;
-	
-		Draws2.row(Draws2.n_rows - 1).print();
-		Draws2.save("mcmc_results.dat", arma::arma_ascii);
-	}
+	WriteParametersToFile(DataSet, "optimal_parameters.dat");
 }

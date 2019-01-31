@@ -1,14 +1,23 @@
 
 
-//NOTE: This is an example of how to use the optimizer with the Persist model.
 
+
+// NOTE: This is an example of a GLUE setup for HBV.
+
+
+#define INCA_TIMESTEP_VERBOSITY 0
+#define INCA_TEST_FOR_NAN 0
+#define INCA_EQUATION_PROFILING 0
+#define INCA_PRINT_TIMING_INFO 0
 
 #include "../../inca.h"
-#include "../../Modules/PersistModel.h"
+
+#include "../../Modules/Persist.h"
 
 #define CALIBRATION_PRINT_DEBUG_INFO 0
+#define GLUE_MULTITHREAD 1
 
-#include "optimizer.h"
+#include "glue.h"
 
 int main()
 {
@@ -34,16 +43,17 @@ int main()
 	ReadParametersFromFile(DataSet, ParameterFile);
 	ReadInputsFromFile(DataSet, InputFile);
 	
-	optimization_setup Setup;
+	glue_setup Setup;
+	glue_results Results;
 	
-	ReadOptimizationSetup(&Setup, "optimization_setup.dat");
+	ReadSetupFromFile(&Setup, "GLUE_setup.dat");
 	
-	auto Result = RunOptimizer(DataSet, &Setup);
+	timer RunGlueTimer = BeginTimer();
+	RunGLUE(DataSet, &Setup, &Results);
+	u64 Ms = GetTimerMilliseconds(&RunGlueTimer);
 	
-	std::cout << std::endl;
-	PrintOptimizationResult(&Setup, Result);
+	std::cout << "GLUE finished. Running the model " << Setup.NumRuns << " times with " << Setup.NumThreads << " threads took " << Ms << " milliseconds." << std::endl;
 	
-	WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
-	
-	WriteParametersToFile(DataSet, "optimal_parameters.dat");
+	//NOTE: We have to rewrite the following function, it does not work at the moment.
+	//WriteGLUEResultsToDatabase("GLUE_results.db", &Setup, &Results, DataSet);
 }

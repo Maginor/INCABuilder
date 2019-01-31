@@ -3,6 +3,8 @@ from scipy import optimize
 import numpy as np
 import numdifftools as nd
 from scipy.stats import norm
+import pandas as pd
+import datetime as dt
 
 #from emcee.utils import MPIPool
 
@@ -101,5 +103,28 @@ def log_likelyhood(params, dataset, calibration, objective):
 	
 	return like	
 		
-		
+def plot_objective(dataset, objective, filename):
+
+	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+
+	sim = dataset.get_result_series(simname, simindexes)
+	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+
+	start_date = dt.datetime.strptime(dataset.get_parameter_time('Start date', []),'%Y-%m-%d')
+	timesteps = dataset.get_parameter_uint('Timesteps', [])
+	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
+
+	df = pd.DataFrame({'Date' : date_idx, '%s [%s]' % (obsname, ', '.join(obsindexes)) :  obs, '%s [%s]' % (simname, ', '.join(simindexes)) : sim })
+	df.set_index('Date', inplace=True)
+
+	unit = dataset.get_result_unit(simname) # Assumes that the unit is the same for obs and sim
+
+	ax = df.plot(figsize=(20,10))
+	ax.set_ylabel('$%s$' % unit)
+	ax.figure.savefig(filename)
+	
+	
+	
+	
+	
 	

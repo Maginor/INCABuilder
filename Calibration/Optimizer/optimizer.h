@@ -66,8 +66,7 @@ public:
 		
 		if(Setup->Objectives.size() != 1)
 		{
-			std::cout << "ERROR: At the moment we only support having a single optimization objective." << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("ERROR: At the moment we only support having a single optimization objective." << std::endl);
 		}
 	}
 	

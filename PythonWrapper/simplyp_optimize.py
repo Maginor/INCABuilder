@@ -54,5 +54,9 @@ print_matrix(inv_hess)
 set_values(dataset, param_est, calibration)
 dataset.write_parameters_to_file('optimal_parameters.dat')
 
+# NOTE: Run the model one more time with the optimal parameters and plot them
+dataset.run_model()
+plot_objective(dataset, objective, "simplyp_plots\\optimizer_MAP.png")
+
 
 

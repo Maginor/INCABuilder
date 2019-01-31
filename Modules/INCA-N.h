@@ -1,12 +1,18 @@
 
 #if !defined INCAN_MODEL_H
 
+inline double
+SafeDivide(double A, double B)
+{
+	if(B == 0.0) return 0.0;     //TODO: Do we need to check if |B| < epsilon instead?
+	return A / B;
+}
+
+
 static void
 AddIncaNModel(inca_model *Model)
 {
 	//NOTE: Uses Persist, SoilTemperature, WaterTemperature
-	
-	//TODO: General todo for this model: If the water depth in some soil compartments become 0, we get a lot of division by 0 errors. We should prevent against that.
 	
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
 	auto Reach          = GetIndexSetHandle(Model, "Reaches");
@@ -225,28 +231,28 @@ AddIncaNModel(inca_model *Model)
 
 	EQUATION(Model, SoilwaterToDirectRunoffNitrate,
 		return 
-			  RESULT(SaturationExcessInput, DirectRunoff) * RESULT(SoilwaterNitrate) / RESULT(WaterDepth, Soilwater) //NOTE: We assume that groundwater will not contribute to saturation excess, so it can only come from soil water.
-			- RESULT(PercolationInput, Soilwater) * RESULT(DirectRunoffNitrate) / RESULT(WaterDepth, DirectRunoff);  //NOTE: Perc in to soilwater can only come from direct runoff
+			  RESULT(SaturationExcessInput, DirectRunoff) * SafeDivide(RESULT(SoilwaterNitrate), RESULT(WaterDepth, Soilwater)); //NOTE: We assume that groundwater will not contribute to saturation excess, so it can only come from soil water.
+			- RESULT(PercolationInput, Soilwater) * SafeDivide(RESULT(DirectRunoffNitrate), RESULT(WaterDepth, DirectRunoff));  //NOTE: Perc in to soilwater can only come from direct runoff
 	)
 	
 	EQUATION(Model, SoilwaterToDirectRunoffAmmonium,
 		return
-		  RESULT(SaturationExcessInput, DirectRunoff) * RESULT(SoilwaterAmmonium) / RESULT(WaterDepth, Soilwater);
-		- RESULT(PercolationInput, Soilwater) * RESULT(DirectRunoffAmmonium) / RESULT(WaterDepth, DirectRunoff);   //NOTE: Perc in to soilwater can only come from direct runoff
+		  RESULT(SaturationExcessInput, DirectRunoff) * SafeDivide(RESULT(SoilwaterAmmonium), RESULT(WaterDepth, Soilwater));
+		- RESULT(PercolationInput, Soilwater) * SafeDivide(RESULT(DirectRunoffAmmonium), RESULT(WaterDepth, DirectRunoff));   //NOTE: Perc in to soilwater can only come from direct runoff
 	)
 	
 	EQUATION(Model, SoilwaterToGroundwaterNitrate,
-		return RESULT(PercolationOut, Soilwater) * RESULT(SoilwaterNitrate) / RESULT(WaterDepth, Soilwater); //NOTE: The percolation output of the soil water can only go to the groundwater.
+		return RESULT(PercolationOut, Soilwater) * SafeDivide(RESULT(SoilwaterNitrate), RESULT(WaterDepth, Soilwater)); //NOTE: The percolation output of the soil water can only go to the groundwater.
 	)
 	
 	EQUATION(Model, SoilwaterToGroundwaterAmmonium,
-		return RESULT(PercolationOut, Soilwater) * RESULT(SoilwaterAmmonium) / RESULT(WaterDepth, Soilwater); //NOTE: The percolation output of the soil water can only go to the groundwater.
+		return RESULT(PercolationOut, Soilwater) * SafeDivide(RESULT(SoilwaterAmmonium), RESULT(WaterDepth, Soilwater)); //NOTE: The percolation output of the soil water can only go to the groundwater.
 	)
 	
 	//NOTE: We also Assume that percolation from direct runoff to groundwater is zero (i.e. top right of perc. matrix).
 
 	EQUATION(Model, DirectRunoffNitrateOutput,
-		return RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
+		return RESULT(DirectRunoffNitrate) * SafeDivide(RESULT(DirectRunoffFlow) * 86400.0, RESULT(DirectRunoffVolume));
 	)
 
 	EQUATION(Model, DirectRunoffNitrate,
@@ -254,7 +260,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DirectRunoffAmmoniumOutput,
-		return RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffFlow) * 86400.0 / RESULT(DirectRunoffVolume);
+		return RESULT(DirectRunoffAmmonium) * SafeDivide(RESULT(DirectRunoffFlow) * 86400.0, RESULT(DirectRunoffVolume));
 	)
 
 	EQUATION(Model, DirectRunoffAmmonium,
@@ -333,7 +339,7 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterNitrateOutput,
-		return RESULT(SoilwaterNitrate) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(SoilwaterVolume);
+		return RESULT(SoilwaterNitrate) * SafeDivide(RESULT(SoilwaterFlow) * 86400.0, RESULT(SoilwaterVolume));
 	)
 
 	EQUATION(Model, SoilwaterNitrateInput,
@@ -393,7 +399,7 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterAmmoniumOutput,
-		return RESULT(SoilwaterAmmonium) * RESULT(SoilwaterFlow) * 86400.0 / RESULT(SoilwaterVolume);
+		return RESULT(SoilwaterAmmonium) * SafeDivide(RESULT(SoilwaterFlow) * 86400.0, RESULT(SoilwaterVolume));
 	)
 
 	EQUATION(Model, SoilwaterAmmoniumInput,
@@ -424,11 +430,11 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, GroundwaterDenitrification,
-		return RESULT(GroundwaterNitrate) * PARAMETER(GroundwaterDenitrificationRate) * RESULT(TemperatureFactor) / RESULT(GroundwaterVolume) * 1000000.0;
+		return SafeDivide(RESULT(GroundwaterNitrate) * PARAMETER(GroundwaterDenitrificationRate) * RESULT(TemperatureFactor), RESULT(GroundwaterVolume)) * 1000000.0;
 	)
 
 	EQUATION(Model, GroundwaterNitrateOutput,
-		return RESULT(GroundwaterNitrate) * RESULT(GroundwaterFlow) * 86400.0 / RESULT(GroundwaterVolume);
+		return RESULT(GroundwaterNitrate) * SafeDivide(RESULT(GroundwaterFlow) * 86400.0, RESULT(GroundwaterVolume));
 	)
 	
 	EQUATION(Model, GroundwaterNitrate,
@@ -439,7 +445,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, GroundwaterAmmoniumOuput,
-		return RESULT(GroundwaterAmmonium) * RESULT(GroundwaterFlow) * 86400.0 / RESULT(GroundwaterVolume);
+		return RESULT(GroundwaterAmmonium) * SafeDivide(RESULT(GroundwaterFlow) * 86400.0, RESULT(GroundwaterVolume));
 	)
 	
 	EQUATION(Model, GroundwaterAmmonium,
@@ -520,7 +526,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachNitrateOutput,
-		return RESULT(ReachNitrate) * RESULT(ReachFlow) * 86400.0 / RESULT(ReachVolume);
+		return RESULT(ReachNitrate) * SafeDivide(RESULT(ReachFlow) * 86400.0, RESULT(ReachVolume));
 	)
 	
 	auto WaterTemperature = GetEquationHandle(Model, "Water temperature");
@@ -600,7 +606,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachAmmoniumOutput,
-		return RESULT(ReachAmmonium) * RESULT(ReachFlow) * 86400.0 / RESULT(ReachVolume);
+		return RESULT(ReachAmmonium) * SafeDivide(RESULT(ReachFlow) * 86400.0, RESULT(ReachVolume));
 	)
 	
 	EQUATION(Model, ReachAmmoniumInitialValue,
@@ -614,7 +620,7 @@ AddIncaNModel(inca_model *Model)
 	//NOTE: Added this for easier calibration - MDN
 	auto ReachNitrateConcentration = RegisterEquation(Model, "Reach nitrate concentration", KgPerM3);
 	EQUATION(Model, ReachNitrateConcentration,
-		return RESULT(ReachNitrate) / RESULT(ReachVolume);
+		return SafeDivide(RESULT(ReachNitrate), RESULT(ReachVolume));
 	)
 }
 

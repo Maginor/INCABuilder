@@ -82,9 +82,9 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
 	auto Days              = RegisterUnit(Model, "days");
 	auto MmPerDay          = RegisterUnit(Model, "mm/day");
-	auto PerM3             = RegisterUnit(Model, "/m3");
-	auto M3PerSecond       = RegisterUnit(Model, "m3/s");
-	auto Km2               = RegisterUnit(Model, "km2");
+	auto PerM3             = RegisterUnit(Model, "m^{-3}");
+	auto M3PerSecond       = RegisterUnit(Model, "m^3/s");
+	auto Km2               = RegisterUnit(Model, "km^2");
 	auto M                 = RegisterUnit(Model, "m");
 	
 	auto Reach = RegisterIndexSetBranched(Model, "Reaches");
@@ -564,7 +564,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto Kg             = RegisterUnit(Model, "kg");
 	auto Mm             = RegisterUnit(Model, "mm");
 	auto MmPerKg        = RegisterUnit(Model, "mm/kg");
-	auto KgPerM2        = RegisterUnit(Model, "kg/m2");
+	auto KgPerM2        = RegisterUnit(Model, "kg/m^2");
 	auto MgPerL         = RegisterUnit(Model, "mg/l");
 	auto MgPerKg        = RegisterUnit(Model, "mg/kg");
 	auto KgPerHaPerYear = RegisterUnit(Model, "kg/ha/year");
@@ -1062,7 +1062,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 static void
 AddSimplyPInputToWaterBodyModule(inca_model *Model)
 {
-	auto M3PerSecond = RegisterUnit(Model, "m3/s");
+	auto M3PerSecond = RegisterUnit(Model, "m^3/s");
 	auto KgPerDay    = RegisterUnit(Model, "kg/day");
 	
 	auto Reach = GetIndexSetHandle(Model, "Reaches");

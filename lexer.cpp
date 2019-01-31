@@ -91,9 +91,8 @@ struct token_stream
 		this->Filename = Filename;
 		File = fopen(Filename, "r");
 		if(!File)
-		{	
-			std::cout << "Tried to open file " << Filename << ", but was not able to." << std::endl;
-			exit(0);
+		{
+			INCA_FATAL_ERROR("ERROR: Tried to open file " << Filename << ", but was not able to.");
 		}
 		
 		StartLine = 0; StartColumn = 0; Line = 0; Column = 0; PreviousColumn = 0;
@@ -121,6 +120,7 @@ struct token_stream
 	double ExpectDouble();
 	u64    ExpectUInt();
 	bool   ExpectBool();
+	s64    ExpectDate();
 	const char * ExpectQuotedString();
 	const char * ExpectUnquotedString();
 	
@@ -139,7 +139,7 @@ token_stream::PrintErrorHeader(bool CurrentColumn)
 {
 	u32 Col = StartColumn;
 	if(CurrentColumn) Col = Column;
-	std::cout << "ERROR: In file " << Filename << " line " << (StartLine+1) << " column " << (Col) << ": ";
+	INCA_PARTIAL_ERROR("ERROR: In file " << Filename << " line " << (StartLine+1) << " column " << (Col) << ": ");
 }
 
 static bool
@@ -216,8 +216,7 @@ ReadTokenInternal_(token_stream *Stream)
 			else
 			{
 				Stream->PrintErrorHeader(true);
-				std::cout << "Found a token of unknown type" << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("Found a token of unknown type" << std::endl);
 			}
 			TokenHasStarted = true;
 			Stream->StartLine = Stream->Line;
@@ -240,8 +239,7 @@ ReadTokenInternal_(token_stream *Stream)
 				if(c == '\n')
 				{
 					Stream->PrintErrorHeader();
-					std::cout << "Newline within quoted string." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("Newline within quoted string." << std::endl);
 				}
 				TokenBuffer[TokenBufferPos] = c;
 				++TokenBufferPos;
@@ -275,8 +273,7 @@ ReadTokenInternal_(token_stream *Stream)
 				if( (Token.HasComma && !Token.HasExponent) || (Token.IsNegative && !Token.HasExponent) || NumericPos != 0)
 				{
 					Stream->PrintErrorHeader();
-					std::cout << "Misplaced minus in numeric literal." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("Misplaced minus in numeric literal." << std::endl);
 				}
 				
 				if(Token.HasExponent)
@@ -294,8 +291,7 @@ ReadTokenInternal_(token_stream *Stream)
 				if(!Token.HasExponent || NumericPos != 0)
 				{
 					Stream->PrintErrorHeader();
-					std::cout << "Misplaced plus in numeric literal." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("Misplaced plus in numeric literal." << std::endl);
 				}
 				//ignore the plus.
 			}
@@ -304,14 +300,12 @@ ReadTokenInternal_(token_stream *Stream)
 				if(Token.HasExponent)
 				{
 					Stream->PrintErrorHeader();
-					std::cout << "Comma in exponent in numeric literal." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("Comma in exponent in numeric literal." << std::endl);
 				}
 				if(Token.HasComma)
 				{
 					Stream->PrintErrorHeader();
-					std::cout << "More than one comma in a numeric literal." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("More than one comma in a numeric literal." << std::endl);
 				}
 				NumericPos = 0;
 				Token.HasComma = true;
@@ -321,8 +315,7 @@ ReadTokenInternal_(token_stream *Stream)
 				if(Token.HasExponent)
 				{
 					Stream->PrintErrorHeader();
-					std::cout << "More than one exponent sign ('e' or 'E') in a numeric literal." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("More than one exponent sign ('e' or 'E') in a numeric literal." << std::endl);
 				}
 				NumericPos = 0;
 				Token.HasExponent = true;
@@ -336,8 +329,7 @@ ReadTokenInternal_(token_stream *Stream)
 					if(Token.Exponent > MaxExponent)
 					{
 						Stream->PrintErrorHeader();
-						std::cout << "Too large exponent in numeric literal" << std::endl;
-						exit(0);
+						INCA_FATAL_ERROR("Too large exponent in numeric literal" << std::endl);
 					}
 				}
 				else if(Token.HasComma)
@@ -345,8 +337,7 @@ ReadTokenInternal_(token_stream *Stream)
 					if(!MultiplyByTenAndAdd(&Token.AfterComma, (u64)(c - '0')))
 					{
 						Stream->PrintErrorHeader();
-						std::cout << "Numeric overflow after comma in numeric literal (too many digits)." << std::endl;
-						exit(0);
+						INCA_FATAL_ERROR("Numeric overflow after comma in numeric literal (too many digits)." << std::endl);
 					}
 					Token.DigitsAfterComma++;
 				}
@@ -355,8 +346,7 @@ ReadTokenInternal_(token_stream *Stream)
 					if(!MultiplyByTenAndAdd(&Token.BeforeComma, (u64)(c - '0')))
 					{
 						Stream->PrintErrorHeader();
-						std::cout << "Numeric overflow in numeric literal (too many digits). If this is a double, try to use scientific notation instead." << std::endl;
-						exit(0);
+						INCA_FATAL_ERROR("Numeric overflow in numeric literal (too many digits). If this is a double, try to use scientific notation instead." << std::endl);
 					}
 				}
 				++NumericPos;
@@ -414,8 +404,7 @@ AssertInt(token_stream &Stream, token& Token)
 	if(Token.HasComma || Token.HasExponent || Token.IsNAN)
 	{
 		Stream.PrintErrorHeader();
-		std::cout << "Got a value of type double when expecting an integer." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("Got a value of type double when expecting an integer." << std::endl);
 	}
 }
 
@@ -426,8 +415,7 @@ AssertUInt(token_stream &Stream, token& Token)
 	if(Token.IsNegative)
 	{
 		Stream.PrintErrorHeader();
-		std::cout << "Got a signed value when expecting an unsigned integer." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("Got a signed value when expecting an unsigned integer." << std::endl);
 	}
 }
 
@@ -460,13 +448,12 @@ token_stream::ExpectToken(token_type Type)
 	if(Token->Type != Type)
 	{
 		PrintErrorHeader();
-		std::cout << "Expected a token of type " << TokenNames[Type] << ", got a " << TokenNames[Token->Type];
+		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a " << TokenNames[Token->Type]);
 		if(Token->Type == TokenType_QuotedString || Token->Type == TokenType_UnquotedString)
 		{
-			std::cout << " (" << Token->StringValue << ")";
+			INCA_PARTIAL_ERROR(" (" << Token->StringValue << ")");
 		}
-		std::cout << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR(std::endl);
 	}
 	return Token;
 }
@@ -488,6 +475,19 @@ bool token_stream::ExpectBool()
 {
 	token *Token = ExpectToken(TokenType_Bool);
 	return Token->BoolValue;
+}
+
+s64 token_stream::ExpectDate()
+{
+	s64 Date;
+	const char *DateStr = ExpectQuotedString();
+	bool ParseSuccess = ParseSecondsSinceEpoch(DateStr, &Date);
+	if(!ParseSuccess)
+	{
+		PrintErrorHeader();
+		INCA_FATAL_ERROR("Unrecognized date format \"" << DateStr << "\" Supported format: Y-m-d" << std::endl);
+	}
+	return Date;
 }
 
 const char * token_stream::ExpectQuotedString()
@@ -530,13 +530,12 @@ ReadQuotedStringList(token_stream &Stream, std::vector<const char *> &ListOut, b
 		else if(Token->Type == TokenType_EOF)
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "End of file before list was ended." << std::endl;
+			INCA_FATAL_ERROR("End of file before list was ended." << std::endl);
 		}
 		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Unexpected token." << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Unexpected token." << std::endl);
 		}
 	}
 }

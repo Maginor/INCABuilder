@@ -372,6 +372,12 @@ struct inca_data_set
 	~inca_data_set();
 };
 
+struct dependency_registration
+{
+	entity_handle Handle;
+	size_t NumExplicitIndexes;
+};
+
 struct value_set_accessor
 {
 	// The purpose of the value set accessor is to store state during the run of the model as well as providing access to various values to each equation that gets evaluated.
@@ -387,43 +393,37 @@ struct value_set_accessor
 	u64 DaysThisYear;
 	s64 Timestep; //NOTE: We make this a signed integer so that it can be set to -1 during the "initial value" step.
 
-	//NOTE: A trained eye probably recognize this class as one that should be inherited by two subclasses. The problem with doing that is that it would slow down model execution a lot if you can't do direct access of member data.
-	union
-	{
-		struct //NOTE: For use during model execution
-		{
-			parameter_value *CurParameters;
-			double          *CurInputs;
-			double          *CurResults;
-			double          *LastResults;
-			
-			index_t *CurrentIndexes; //NOTE: Contains the current index of each index set during execution.	
-			
-			double *AllCurResultsBase;
-			double *AllLastResultsBase;
-			
-			double *AllCurInputsBase;
-			
-			double *AtResult;
-			double *AtLastResult;
-			
-			
-			parameter_value *AtParameterLookup;
-			size_t *AtInputLookup;
-			size_t *AtResultLookup;
-			size_t *AtLastResultLookup;
-		};
-		
-		struct //NOTE: For use during dependency registration
-		{
-			size_t *ParameterDependency;
-			size_t *InputDependency;
-			size_t *ResultDependency;
-			size_t *LastResultDependency;
-			size_t *ResultCrossIndexDependency;
-			size_t *DirectIndexSetDependency;
-		};
-	};
+
+	//NOTE: For use during model execution		
+	parameter_value *CurParameters;
+	double          *CurInputs;
+	double          *CurResults;
+	double          *LastResults;
+	
+	index_t *CurrentIndexes; //NOTE: Contains the current index of each index set during execution.	
+	
+	double *AllCurResultsBase;
+	double *AllLastResultsBase;
+	
+	double *AllCurInputsBase;
+	
+	double *AtResult;
+	double *AtLastResult;
+	
+	
+	parameter_value *AtParameterLookup;
+	size_t *AtInputLookup;
+	size_t *AtResultLookup;
+	size_t *AtLastResultLookup;
+
+	
+	//NOTE: For use during dependency registration:
+	std::vector<dependency_registration> ParameterDependencies;
+	std::vector<dependency_registration> InputDependencies;
+	std::vector<dependency_registration> ResultDependencies;
+	std::vector<dependency_registration> LastResultDependencies;
+	std::vector<index_set_h> DirectIndexSetDependencies;
+
 	
 #if INCA_EQUATION_PROFILING
 	size_t *EquationHits;
@@ -436,12 +436,6 @@ struct value_set_accessor
 		Running = false;
 		DataSet = 0;
 		this->Model = Model;
-		ParameterDependency         = AllocClearedArray(size_t, Model->FirstUnusedParameterHandle);
-		InputDependency             = AllocClearedArray(size_t, Model->FirstUnusedInputHandle);
-		ResultDependency            = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);
-		LastResultDependency        = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);
-		ResultCrossIndexDependency  = AllocClearedArray(size_t, Model->FirstUnusedEquationHandle);
-		DirectIndexSetDependency    = AllocClearedArray(size_t, Model->FirstUnusedIndexSetHandle);
 	}
 	
 	//NOTE: For proper run:
@@ -473,16 +467,6 @@ struct value_set_accessor
 			free(CurrentIndexes);
 
 		}
-		else
-		{
-			free(ParameterDependency);
-			free(InputDependency);
-			free(ResultDependency);
-			free(LastResultDependency);
-			free(ResultCrossIndexDependency);
-			free(DirectIndexSetDependency);
-		}
-		
 	}
 	
 	void Clear()
@@ -497,12 +481,11 @@ struct value_set_accessor
 		}
 		else
 		{
-			memset(ParameterDependency, 0, sizeof(size_t)*Model->FirstUnusedParameterHandle);
-			memset(InputDependency, 0, sizeof(size_t)*Model->FirstUnusedInputHandle);
-			memset(ResultDependency, 0, sizeof(size_t)*Model->FirstUnusedEquationHandle);
-			memset(LastResultDependency, 0, sizeof(size_t)*Model->FirstUnusedEquationHandle);
-			memset(ResultCrossIndexDependency, 0, sizeof(size_t)*Model->FirstUnusedEquationHandle);
-			memset(DirectIndexSetDependency, 0, sizeof(size_t)*Model->FirstUnusedIndexSetHandle);
+			ParameterDependencies.clear();
+			InputDependencies.clear();
+			ResultDependencies.clear();
+			LastResultDependencies.clear();
+			DirectIndexSetDependencies.clear();
 		}
 	}
 };
@@ -560,8 +543,7 @@ inline Type Get##Typename2##Handle(const inca_model *Model, const char *Name) \
 	} \
 	else \
 	{ \
-		std::cout << "ERROR: Tried to look up the handle of the " << #Typename << " \"" << Name << "\", but it was not registered with the model." << std::endl; \
-		exit(0);\
+		INCA_FATAL_ERROR("ERROR: Tried to look up the handle of the " << #Typename << " \"" << Name << "\", but it was not registered with the model." << std::endl); \
 	} \
 	return { Handle }; \
 }
@@ -589,8 +571,7 @@ GetParameterHandle(const inca_model *Model, const char *Name) //NOTE: In case we
 	}
 	else
 	{
-		std::cout << "ERROR: Tried to find the Parameter \"" << Name << "\", but it was not registered with the model." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to find the Parameter \"" << Name << "\", but it was not registered with the model." << std::endl);
 	}
 	return Handle;
 }
@@ -599,8 +580,7 @@ GetParameterHandle(const inca_model *Model, const char *Name) //NOTE: In case we
 #define REGISTRATION_BLOCK(Model) \
 if(Model->Finalized) \
 { \
-	std::cout << "ERROR: You can not call the function " << __func__ << " on the model after it has been finalized using EndModelDefinition." << std::endl; \
-	exit(0); \
+	INCA_FATAL_ERROR("ERROR: You can not call the function " << __func__ << " on the model after it has been finalized using EndModelDefinition." << std::endl); \
 }
 
 #define REGISTER_MODEL_ENTITY(Model, Typename, Handlename, Name) \
@@ -664,8 +644,7 @@ RequireIndex(inca_model *Model, index_set_h IndexSet, const char *IndexName)
 	if(Spec.Type != IndexSetType_Basic)
 	{
 		//TODO: Get rid of this requirement? However that may lead to issues with index order in branched index sets later.
-		std::cout << "ERROR: We only allow requiring indexes for basic index sets, " << Spec.Name << " is of a different type." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: We only allow requiring indexes for basic index sets, " << Spec.Name << " is of a different type." << std::endl);
 	}
 	auto Find = std::find(Spec.RequiredIndexes.begin(), Spec.RequiredIndexes.end(), IndexName);
 	if(Find != Spec.RequiredIndexes.end())
@@ -702,8 +681,7 @@ SetParentGroup(inca_model *Model, parameter_group_h Child, parameter_group_h Par
 	parameter_group_spec &ParentSpec = Model->ParameterGroupSpecs[Parent.Handle];
 	if(IsValid(ChildSpec.ParentGroup) && ChildSpec.ParentGroup.Handle != Parent.Handle)
 	{
-		std::cout << "ERROR: Setting a parent group for the parameter group " << ChildSpec.Name << ", but it already has a different parent group " << GetName(Model, ChildSpec.ParentGroup) << ".";
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Setting a parent group for the parameter group " << ChildSpec.Name << ", but it already has a different parent group " << GetName(Model, ChildSpec.ParentGroup) << ".");
 	}
 	ChildSpec.ParentGroup = Parent;
 	ParentSpec.ChildrenGroups.push_back(Child);
@@ -795,9 +773,17 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Time;
-	Spec.Default.ValTime = ParseSecondsSinceEpoch(Default);
-	Spec.Min.ValTime = ParseSecondsSinceEpoch(Min);
-	Spec.Max.ValTime = ParseSecondsSinceEpoch(Max);
+	
+	bool ParseSuccess = true;
+	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Default, &Spec.Default.ValTime);
+	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Min, &Spec.Min.ValTime);
+	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Max, &Spec.Max.ValTime);
+	
+	if(!ParseSuccess)
+	{
+		INCA_FATAL_ERROR("ERROR: Unrecognized date format for default, min or max value when registering the parameter " << Name << std::endl);
+	}
+	
 	Spec.Group = Group;
 	Spec.Description = Description;
 	
@@ -812,14 +798,12 @@ SetEquation(inca_model *Model, equation_h Equation, inca_equation EquationBody, 
 	//REGISTRATION_BLOCK(Model) //NOTE: We can't use REGISTRATION_BLOCK since the user don't call the SetEquation explicitly, it is called through the macro EQUATION, and so they would not understand the error message.
 	if(Model->Finalized)
 	{
-		std::cout << "ERROR: You can not define an EQUATION body for the model after it has been finalized using EndModelDefinition." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: You can not define an EQUATION body for the model after it has been finalized using EndModelDefinition." << std::endl);
 	}
 	
 	if(!Override && Model->EquationSpecs[Equation.Handle].EquationIsSet)
 	{
-		std::cout << "ERROR: The equation body for " << GetName(Model, Equation) << " is already defined. It can not be defined twice unless it is explicitly overridden." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The equation body for " << GetName(Model, Equation) << " is already defined. It can not be defined twice unless it is explicitly overridden." << std::endl);
 	}
 	
 	Model->Equations[Equation.Handle] = EquationBody;
@@ -874,8 +858,7 @@ RegisterEquationCumulative(inca_model *Model, const char *Name, equation_h Cumul
 	equation_spec &CumulateSpec = Model->EquationSpecs[Cumulates.Handle];
 	if(CumulateSpec.Type == EquationType_InitialValue)
 	{
-		std::cout << "ERROR: The cumulation equation " << Name << " was set to cumulate an initial value equation (" << CumulateSpec.Name << "). This is not supported." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The cumulation equation " << Name << " was set to cumulate an initial value equation (" << CumulateSpec.Name << "). This is not supported." << std::endl);
 	}
 	
 	unit_h Unit = Model->EquationSpecs[Cumulates.Handle].Unit;
@@ -935,8 +918,7 @@ SetInitialValue(inca_model *Model, equation_h Equation, equation_h InitialValueE
 	REGISTRATION_BLOCK(Model)
 	if(Model->EquationSpecs[InitialValueEquation.Handle].Type != EquationType_InitialValue)
 	{
-		std::cout << "ERROR: Tried to set the equation " << GetName(Model, InitialValueEquation) << " as an initial value of another equation, but it was not registered as an equation of type EquationInitialValue." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set the equation " << GetName(Model, InitialValueEquation) << " as an initial value of another equation, but it was not registered as an equation of type EquationInitialValue." << std::endl);
 	}
 	
 	Model->EquationSpecs[Equation.Handle].InitialValueEquation = InitialValueEquation;
@@ -956,8 +938,7 @@ ResetEveryTimestep(inca_model *Model, equation_h Equation)
 	
 	if(Spec.Type != EquationType_ODE)
 	{
-		std::cout << "ERROR: Called ResetEveryTimestep on the equation " << Spec.Name << ", but this functionality is only available for ODE equations." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Called ResetEveryTimestep on the equation " << Spec.Name << ", but this functionality is only available for ODE equations." << std::endl);
 	}
 	
 	Spec.ResetEveryTimestep = true;
@@ -976,8 +957,7 @@ RegisterSolver(inca_model *Model, const char *Name, double h, inca_solver_setup_
 	
 	if(h <= 0.0 || h > 1.0)
 	{
-		std::cout << "ERROR: The timestep of the solver " << Name << " can not be smaller than 0.0 or larger than 1.0" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: The timestep of the solver " << Name << " can not be smaller than 0.0 or larger than 1.0" << std::endl);
 	}
 	
 	solver_spec &Spec = Model->SolverSpecs[Solver.Handle];
@@ -1015,8 +995,7 @@ SetSolver(inca_model *Model, equation_h Equation, solver_h Solver)
 	equation_type Type = Model->EquationSpecs[Equation.Handle].Type;
 	if(Type != EquationType_Basic && Type != EquationType_ODE)
 	{
-		std::cout << "ERROR: Tried to set a solver for the equation " << GetName(Model, Equation) << ", but it is not a basic equation or ODE equation, and so can not be given a solver." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Tried to set a solver for the equation " << GetName(Model, Equation) << ", but it is not a basic equation or ODE equation, and so can not be given a solver." << std::endl);
 	}
 	Model->EquationSpecs[Equation.Handle].Solver = Solver;
 }
@@ -1195,47 +1174,31 @@ GetCurrentInput(value_set_accessor *ValueSet, input_h Input)
 
 
 
-inline double
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double_h Parameter)
-{
-	ValueSet->ParameterDependency[Parameter.Handle]++;
-	return 0.0;
-}
+
 
 template<typename... T> double
 RegisterParameterDependency(value_set_accessor *ValueSet, parameter_double_h Parameter, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ParameterDependencies.push_back({Parameter.Handle, OverrideCount});
 	
 	return 0.0;
-}
-
-inline u64
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint_h Parameter)
-{
-	ValueSet->ParameterDependency[Parameter.Handle]++;
-	return 0;
 }
 
 template<typename... T> double
 RegisterParameterDependency(value_set_accessor *ValueSet, parameter_uint_h Parameter, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ParameterDependencies.push_back({Parameter.Handle, OverrideCount});
 	
 	return 0.0;
-}
-
-inline bool
-RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Parameter)
-{
-	ValueSet->ParameterDependency[Parameter.Handle]++;
-	return false;
 }
 
 template<typename... T> double
 RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Parameter, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ParameterDependencies.push_back({Parameter.Handle, OverrideCount});
 	
 	return 0.0;
 }
@@ -1243,37 +1206,25 @@ RegisterParameterDependency(value_set_accessor *ValueSet, parameter_bool_h Param
 inline double
 RegisterInputDependency(value_set_accessor *ValueSet, input_h Input)
 {
-	ValueSet->InputDependency[Input.Handle]++;
-	return 0.0;
-}
-
-inline double
-RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result)
-{
-	ValueSet->ResultDependency[Result.Handle]++;
+	ValueSet->InputDependencies.push_back({Input.Handle, 0});
+	//ValueSet->InputDependency[Input.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
 RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	//TODO: May need to do more stuff here
-	ValueSet->ResultCrossIndexDependency[Result.Handle]++;
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->ResultDependencies.push_back({Result.Handle, OverrideCount});
 	
-	return 0.0;
-}
-
-inline double
-RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result)
-{
-	ValueSet->LastResultDependency[Result.Handle]++;
 	return 0.0;
 }
 
 template<typename... T> double
 RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	//TODO: @ImplementMe!
+	size_t OverrideCount = sizeof...(Indexes);
+	ValueSet->LastResultDependencies.push_back({Result.Handle, OverrideCount});
 	
 	return 0.0;
 }
@@ -1301,7 +1252,7 @@ SetResult(value_set_accessor *ValueSet, double Value, equation_h Result, T... In
 inline index_t
 RegisterIndexSetDependency(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
-	ValueSet->DirectIndexSetDependency[IndexSet.Handle]++;
+	ValueSet->DirectIndexSetDependencies.push_back(IndexSet);
 	return 0;
 }
 

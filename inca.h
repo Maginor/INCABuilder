@@ -72,6 +72,20 @@ typedef size_t entity_handle;
 //typedef u32    index_t; //NOTE: We get an error on the 64 bit compilation with this, and I have not entirely figured out why yet
 typedef size_t index_t;
 
+
+//NOTE: We allow the error handling to be replaced by the application. This is for instance useful for the python wrapper.
+#if !defined(INCA_PARTIAL_ERROR)
+	#define INCA_PARTIAL_ERROR(Msg) \
+		std::cout << Msg;
+#endif
+
+#if !defined(INCA_FATAL_ERROR)	
+	#define INCA_FATAL_ERROR(Msg) \
+		INCA_PARTIAL_ERROR(Msg) \
+		exit(0);
+#endif
+
+
 #include "inca_util.h"
 #include "inca_model.h"
 #include "inca_data_set.cpp"

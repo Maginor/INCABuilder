@@ -83,14 +83,12 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	
 	if(Setup->Objectives.size() != 1)
 	{
-		std::cout << "Sorry, we only support having a single objective at the moment." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: (GLUE) Sorry, we only support having a single objective at the moment." << std::endl);
 	}
 	
 	if(Setup->Quantiles.empty())
 	{
-		std::cout << "ERROR: GLUE requires at least 1 quantile" << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: (GLUE) Requires at least 1 quantile" << std::endl;
 	}
 	
 	Results->RunData.resize(Setup->NumRuns);

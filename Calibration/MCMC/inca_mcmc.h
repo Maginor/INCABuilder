@@ -102,8 +102,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			else
 			{
 				Stream.PrintErrorHeader();
-				std::cout << "Unknown or unimplemented algorithm " << Alg << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("Unknown or unimplemented algorithm " << Alg << std::endl);
 			}
 		}
 		else if(strcmp(Section, "chains") == 0)
@@ -153,8 +152,7 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Unknown section name: " << Token->StringValue << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Unknown section name: " << Token->StringValue << std::endl);
 		}
 	}
 	
@@ -215,8 +213,7 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	
 	if(Dimensions == 0)
 	{
-		std::cout << "ERROR: (MCMC) Need at least one parameter to calibrate." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: (MCMC) Need at least one parameter to calibrate." << std::endl);
 	}
 	
 	arma::vec InitialGuess(Dimensions + 1);
@@ -298,16 +295,14 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	
 	if(Setup->Objectives.size() != 1)
 	{
-		std::cout << "ERROR: (MCMC) We currently support having only one objective." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: (MCMC) We currently support having only one objective." << std::endl);
 	}
 	
 	RunData.Objective = Setup->Objectives[0];
 	
 	if(!IsLogLikelyhoodMeasure(RunData.Objective.PerformanceMeasure))
 	{
-		std::cout << "ERROR: (MCMC) A performance measure was selected that was not a log likelyhood measure." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: (MCMC) A performance measure was selected that was not a log likelyhood measure." << std::endl);
 	}
 	
 	RunData.DiscardTimesteps = Setup->DiscardTimesteps;
@@ -315,8 +310,7 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	u64 Timesteps = GetTimesteps(DataSet);
 	if(RunData.DiscardTimesteps >= Timesteps)
 	{
-		std::cout << "ERROR: (MCMC) We are told to discard the first " << RunData.DiscardTimesteps << " timesteps when evaluating the objective, but we only run the model for " << Timesteps << " timesteps." << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: (MCMC) We are told to discard the first " << RunData.DiscardTimesteps << " timesteps when evaluating the objective, but we only run the model for " << Timesteps << " timesteps." << std::endl);
 	}
 	
 	if(Setup->NumChains > 1)

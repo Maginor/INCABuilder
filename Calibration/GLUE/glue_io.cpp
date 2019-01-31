@@ -28,8 +28,7 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 			if(NumRuns == 0)
 			{
 				Stream.PrintErrorHeader();
-				std::cout << "Expected at least 1 run." << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("Expected at least 1 run." << std::endl);
 			}
 			Setup->NumRuns = NumRuns;
 		}
@@ -39,8 +38,7 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 			if(NumThreads == 0)
 			{
 				Stream.PrintErrorHeader();
-				std::cout << "Expected at least 1 thread." << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("Expected at least 1 thread." << std::endl);
 			}
 			Setup->NumThreads = NumThreads;
 		}
@@ -63,8 +61,7 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			std::cout << "Unknown section name: " << Section << std::endl;
-			exit(0);
+			INCA_FATAL_ERROR("Unknown section name: " << Section << std::endl);
 		}
 	}
 	
@@ -82,8 +79,7 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	if(rc != SQLITE_OK)
 	{
-		std::cout << "ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	rc = sqlite3_exec(Db, "BEGIN TRANSACTION;", 0, 0, 0);

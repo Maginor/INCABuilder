@@ -94,15 +94,15 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 	
 	if(!CorrectUse)
 	{
-		std::cout << "Incorrect use of the executable. Correct use is one of: " << std::endl;
-		std::cout << " <exename> run <inputfile(.dat)> <parameterfile(.db or .dat)>" << std::endl;
-		std::cout << " <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl;
-		std::cout << " <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl;
-		std::cout << " <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl;
+		INCA_PARTIAL_ERROR("Incorrect use of the executable. Correct use is one of: " << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat)> <parameterfile(.db or .dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER
-		std::cout << " <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat or .db)>" << std::endl;
+		INCA_PARTIAL_ERROR(" <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat or .db)>" << std::endl);
 #endif
-		exit(0);
+		INCA_FATAL_ERROR("");
 	}
 }
 
@@ -132,8 +132,7 @@ IncaviewParseFileType(const char *Filename)
 	if(strcmp(Extension, "db") == 0) return 0;
 	if(strcmp(Extension, "dat") == 0) return 1;
 	
-	std::cout << "ERROR: Unsupported file extension: " << Extension << " for file " << Filename << std::endl;
-	exit(0);
+	INCA_FATAL_ERROR("ERROR: Unsupported file extension: " << Extension << " for file " << Filename << std::endl);
 }
 
 static void

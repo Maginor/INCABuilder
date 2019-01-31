@@ -170,8 +170,7 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	if(rc != SQLITE_OK)
 	{
-		std::cout << "ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	//TODO: Check if the tables already exist?
@@ -291,8 +290,7 @@ CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *
 	
 	if(rc != SQLITE_OK)
 	{
-		std::cout << "ERROR: Inserting model info in database " << Dbname << ". Message: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Inserting model info in database " << Dbname << ". Message: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	sqlite3_step(Statement);
@@ -375,8 +373,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE, 0);
 	if(rc != SQLITE_OK)
 	{
-		std::cout << "ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	const char *GetStructureCommand = 
@@ -398,8 +395,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 	
 	if(rc == SQLITE_ERROR)
 	{
-		std::cout << "ERROR while requesting parameter data from database: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR while requesting parameter data from database: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	while((rc = sqlite3_step(Statement)) != SQLITE_DONE)
@@ -553,8 +549,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 			{
 				if(rc == SQLITE_ERROR)
 				{
-					std::cout << "ERROR while requesting branch input data from database: " << sqlite3_errmsg(Db) << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("ERROR while requesting branch input data from database: " << sqlite3_errmsg(Db) << std::endl);
 				}
 				
 				int InputOf = sqlite3_column_int(Statement, 0);
@@ -744,8 +739,7 @@ WriteStructureEntryToDatabase(sqlite3 *Db, sqlite3_stmt *Statement, int ID, cons
 	
 	if(rc == SQLITE_ERROR)
 	{
-		std::cout << "ERROR while writing result data to database: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR while writing result data to database: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	sqlite3_reset(Statement);
@@ -845,8 +839,7 @@ WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructu
 	int rc = sqlite3_open_v2(Dbname, &Db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	if(rc != SQLITE_OK)
 	{
-		std::cout << "ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl;
-		exit(0);
+		INCA_FATAL_ERROR("ERROR: Unable to open database " << Dbname << " Message: " << sqlite3_errmsg(Db) << std::endl);
 	}
 	
 	//TODO: Check if the tables already exist?

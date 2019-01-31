@@ -104,8 +104,7 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 				if(WeAreInLink)
 				{
 					Stream.PrintErrorHeader();
-					std::cout << "Unexpected token inside link." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("Unexpected token inside link." << std::endl);
 				}
 				
 				if(strcmp(Token->StringValue, "link") == 0)
@@ -131,8 +130,7 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 				if(WeAreInLink)
 				{
 					Stream.PrintErrorHeader();
-					std::cout << "File ended unexpectedly." << std::endl;
-					exit(0);
+					INCA_FATAL_ERROR("File ended unexpectedly." << std::endl);
 				}
 				
 				return;
@@ -140,8 +138,7 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 			else
 			{
 				Stream.PrintErrorHeader();
-				std::cout << "Unexpected token." << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("Unexpected token." << std::endl);
 			}
 		}
 		WeAreInLink = false;
@@ -157,8 +154,7 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 			else
 			{
 				Stream.PrintErrorHeader();
-				std::cout << "Unsupported distribution: " << DistrName << std::endl;
-				exit(0);
+				INCA_FATAL_ERROR("Unsupported distribution: " << DistrName << std::endl);
 			}
 		}
 		

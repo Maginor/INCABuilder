@@ -3,11 +3,11 @@
 
 #include "../calibration.h"
 
-#include "Dlib/optimization.h"
-#include "Dlib/global_optimization.h"
+#include "dlib/optimization.h"
+#include "dlib/global_optimization.h"
 
-#include "Dlib/threads/thread_pool_extension.cpp"
-#include "Dlib/global_optimization/global_function_search.cpp"
+#include "dlib/threads/thread_pool_extension.cpp"
+#include "dlib/global_optimization/global_function_search.cpp"
 
 
 typedef dlib::matrix<double,0,1> column_vector;

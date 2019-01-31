@@ -7,7 +7,7 @@
 #endif
 
 #if INCAVIEW_INCLUDE_OPTIMIZER
-#include "Calibration\Optimizer\optimizer.h"
+#include "Calibration/Optimizer/optimizer.h"
 #endif
 
 enum incaview_run_mode

@@ -33,8 +33,8 @@ Other TODOs (low priority):
 */
 
 
-#if !defined(INCA_H)
-
+#ifndef INCA_H
+#define INCA_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -45,6 +45,8 @@ Other TODOs (low priority):
 #include <map>
 #include <set>
 #include <iostream>
+#include <fstream>
+#include <regex>
 #include <string.h>
 #include <assert.h>
 #include <float.h>
@@ -79,5 +81,5 @@ typedef size_t index_t;
 #include "inca_io.cpp"
 #include "inca_solvers.h"
 
-#define INCA_H
+
 #endif

@@ -180,119 +180,6 @@ AddPotentialEvapotranspirationModuleV3(inca_model *Model)
 		return etp;
 	)
 }
-/*
-void
-AddSoilMoistureRoutine(inca_model *Model)
-{
-	auto Mm                = RegisterUnit(Model, "mm");
-	auto MmPerDay          = RegisterUnit(Model, "mm/day");
-	auto DegreesCelsius    = RegisterUnit(Model, "°C");
-	auto Dimensionless     = RegisterUnit(Model);
-	auto PerDay            = RegisterUnit(Model, "/day");
-	
-	auto LandscapeUnits    = RegisterIndexSet(Model, "Landscape units");
-	auto SoilBoxes         = RegisterIndexSet(Model, "Soil boxes");
-	
-	auto Land              = GetParameterGroupHandle(Model, "Landscape units");
-	auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", SoilBoxes);
-	SetParentGroup(Model, SoilsLand, Land);	
-	auto Soils             = RegisterParameterGroup(Model, "Soils", SoilBoxes);
-	
-	auto Reaches = RegisterIndexSetBranched(Model, "Reaches");
-	auto ReachParameters = RegisterParameterGroup(Model, "Reach parameters", Reaches);
-	
-	auto LandscapePercentages = RegisterParameterGroup(Model, "Landscape percentages", LandscapeUnits);
-	SetParentGroup(Model, LandscapePercentages, ReachParameters);
-	auto Percent = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0, "How much of the catchment area that is made up by this type of land cover.");
-	
-	auto PercolationRateFromBox = RegisterParameterDouble(Model, Soils, "Percolation rate from soil box", MmPerDay, 2);
-	
-	//TODO: find good default (and min/max) values for these:
-	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Land, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
-	
-	auto FieldCapacity = RegisterParameterDouble(Model, SoilsLand, "Field capacity", Mm, 150.0, 100.0, 300.0, "Maximum soil moisture storage");
-	auto RelativeRunoffExponent = RegisterParameterDouble(Model, SoilsLand, "Relative runoff exponent", Dimensionless, 2.0, 1.0, 10.0, "Power parameter that determines the relative contribution to runoff");
-	auto InitialSoilMoisture = RegisterParameterDouble(Model, SoilsLand, "Initial soil moisture", Mm, 10.0); //TODO: Have an equation for this instead?
-	
-	auto AirTemperature = RegisterInput(Model, "Air temperature");
-	
-	auto WaterToSoil = GetEquationHandle(Model, "Water to soil"); //NOTE: from the snow model.
-	
-	auto PotentialEvapotranspiration = GetEquationHandle(Model, "Potential evapotranspiration"); //NOTE: from the potentialevapotranspiration module.
-	
-	auto WaterInputToBox             = RegisterEquation(Model, "Water input to box", MmPerDay);
-	auto RunoffFraction              = RegisterEquation(Model, "Runoff fraction", Dimensionless);
-	auto RunoffFromBox               = RegisterEquation(Model, "Runoff from box", MmPerDay);
-	auto SoilMoisture1               = RegisterEquation(Model, "Soil moisture (partial calculation) 1", Mm);
-	auto EvapotranspirationFraction  = RegisterEquation(Model, "Evapotranspiration fraction", Dimensionless);
-	auto Evapotranspiration          = RegisterEquation(Model, "Evapotranspiration", MmPerDay);
-	auto SoilMoisture2               = RegisterEquation(Model, "Soil moisture (partial calculation) 2", Mm);
-	auto PercolationFromBox          = RegisterEquation(Model, "Percolation from box", MmPerDay);
-	auto SoilMoisture                = RegisterEquation(Model, "Soil moisture", Mm);
-	SetInitialValue(Model, SoilMoisture, InitialSoilMoisture);
-	
-	auto GroundwaterRechargeFromLandscapeUnit = RegisterEquation(Model, "Groundwater recharge from landscape unit", MmPerDay);
-	auto GroundwaterRecharge    = RegisterEquationCumulative(Model, "Groundwater recharge", GroundwaterRechargeFromLandscapeUnit, LandscapeUnits);
-	
-	auto RunoffFromSoilInOneLandscapeUnit       = RegisterEquationCumulative(Model, "Runoff from soil in one landscape unit", RunoffFromBox, SoilBoxes);
-	auto RunoffFromLandscapeUnit                = RegisterEquation(Model, "Runoff from landscape unit", MmPerDay); //NOTE: This one is just to multiply in a percentage. Maybe we should add an option to RegisterEquationCumulative to do that automatically since it seems like this is something we have to do often.
-	auto RunoffFromSoil                         = RegisterEquationCumulative(Model, "Runoff from soil", RunoffFromLandscapeUnit, LandscapeUnits);
-	
-	auto Dummy                       = RegisterEquationCumulative(Model, "Dummy", SoilMoisture, SoilBoxes); //NOTE: stupid hack used to force GroundwaterRechargeFromUnit into the right place in the run tree.
-	
-	EQUATION(Model, WaterInputToBox,
-		double fromPrecipitationOrSnow = RESULT(WaterToSoil);
-		double fromBoxAbove = RESULT(PercolationFromBox, PREVIOUS_INDEX(SoilBoxes));
-		if(CURRENT_INDEX(SoilBoxes) == 0) return fromPrecipitationOrSnow;
-		return fromBoxAbove;
-	)
-	
-	EQUATION(Model, RunoffFraction,
-		return pow(LAST_RESULT(SoilMoisture) / PARAMETER(FieldCapacity), PARAMETER(RelativeRunoffExponent));
-	)
-	
-	EQUATION(Model, RunoffFromBox,
-		return RESULT(WaterInputToBox) * RESULT(RunoffFraction);
-	)
-	
-	EQUATION(Model, SoilMoisture1,
-		return LAST_RESULT(SoilMoisture) + RESULT(WaterInputToBox) - RESULT(RunoffFromBox);
-	)
-	
-	EQUATION(Model, EvapotranspirationFraction,
-		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(FieldCapacity);
-		double potentialetpfraction = Min(RESULT(SoilMoisture1), smmax) / smmax;
-		if(CURRENT_INDEX(SoilBoxes) == 0) return potentialetpfraction;
-		return 0.0;
-	)
-
-	EQUATION(Model, Evapotranspiration,
-		return Min(RESULT(PotentialEvapotranspiration) * RESULT(EvapotranspirationFraction), RESULT(SoilMoisture1));
-	)
-	
-	EQUATION(Model, SoilMoisture2,
-		return RESULT(SoilMoisture1) - RESULT(Evapotranspiration);
-	)
-	
-	EQUATION(Model, PercolationFromBox,
-		return Min(RESULT(SoilMoisture2), PARAMETER(PercolationRateFromBox));
-	)
-	
-	EQUATION(Model, SoilMoisture,
-		return RESULT(SoilMoisture2) - RESULT(PercolationFromBox);
-	)
-	
-	EQUATION(Model, GroundwaterRechargeFromLandscapeUnit,
-		RESULT(Dummy); //NOTE: Without this the equation is misplaced in the run structure since it falls outside the current dependency system. We may want to make a smarter dependency system.
-		
-		return RESULT(PercolationFromBox, FINAL_INDEX(SoilBoxes)) * PARAMETER(Percent) / 100.0;
-	)
-	
-	EQUATION(Model, RunoffFromLandscapeUnit,
-		return RESULT(RunoffFromSoilInOneLandscapeUnit) * PARAMETER(Percent) / 100.0;
-	)
-}
-*/
 
 void
 AddSoilMoistureRoutine(inca_model *Model)
@@ -320,19 +207,14 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetParentGroup(Model, LandscapePercentages, ReachParameters);
 	auto Percent                            = RegisterParameterDouble(Model, LandscapePercentages, "%", Dimensionless, 20.0, 0.0, 100.0, "How much of the catchment area that is made up by this type of land cover.");
 	
-	//auto RechargeRateFromBox                = RegisterParameterDouble(Model, Soils, "Percolation rate from soil box", MmPerDay, 2);
-	
-	//TODO: find good default (and min/max) values for these:
+        //TODO: find good default (and min/max) values for these:
 	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Land, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
 	
 	auto FieldCapacity                      = RegisterParameterDouble(Model, Land, "Field capacity", Mm, 150.0, 10., 600., "Maximum soil moisture storage");
 	auto Beta                               = RegisterParameterDouble(Model, Land, "Beta recharge exponent", Dimensionless, 1., 1.0, 10., "Power parameter that determines the relative contribution to recharge");
 	auto InitialSoilMoisture                = RegisterParameterDouble(Model, Land, "Initial soil moisture", Mm, 100.0); //TODO: Have an equation for this instead?
         
-        
-        
-	
-	auto AirTemperature = RegisterInput(Model, "Air temperature");
+        auto AirTemperature = RegisterInput(Model, "Air temperature");
 	
 	auto WaterToSoil = GetEquationHandle(Model, "Water to soil"); //NOTE: from the snow model.
 	
@@ -349,26 +231,13 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto Evapotranspiration          = RegisterEquation(Model, "Evapotranspiration", MmPerDay);
 	auto SoilMoisture                = RegisterEquation(Model, "Soil moisture", Mm);
 	
-//        SetSolver(Model, WaterInputToBox, SoilSolver);
-//        SetSolver(Model, RunoffFraction, SoilSolver);
-//        SetSolver(Model, RechargeFromBox, SoilSolver);
-//        SetSolver(Model, Runoff, SoilSolver);
-//        SetSolver(Model, EvapotranspirationFraction, SoilSolver);
-//        SetSolver(Model, Evapotranspiration, SoilSolver);
-//        SetSolver(Model, Abstraction, SoilSolver);
-//        SetSolver(Model, SoilMoisture, SoilSolver);
-	
-        
         SetInitialValue(Model, SoilMoisture, InitialSoilMoisture);
 	
 //	auto GroundwaterRechargeFromLandscapeUnit = RegisterEquation(Model, "Groundwater recharge from landscape unit", MmPerDay);
-	auto TotalRecharge                        = RegisterEquationCumulative(Model, "Total recharge", GroundwaterRecharge, LandscapeUnits, Percent);
+	auto TotalRecharge  = RegisterEquationCumulative(Model, "Total recharge", GroundwaterRecharge, LandscapeUnits, Percent);
+        auto TotalExcess    = RegisterEquationCumulative(Model, "Total excess soil moisture", ExcessSoilMoisture, LandscapeUnits, Percent);            
 	
-//	auto TotalExcessRunoff                    = RegisterEquationCumulative(Model, "Runoff from soil in all landscape units", ExcessSoilMoisture, LandscapeUnits);
-//	auto RunoffFromLandscapeUnit              = RegisterEquation(Model, "Runoff from landscape unit", MmPerDay); //NOTE: This one is just to multiply in a percentage. Maybe we should add an option to RegisterEquationCumulative to do that automatically since it seems like this is something we have to do often.
-//	auto RunoffFromBox                        = RegisterEquationCumulative(Model, "Runoff from soil", RunoffFromLandscapeUnit, LandscapeUnits);
-	
-	auto Dummy                                = RegisterEquationCumulative(Model, "Dummy", SoilMoisture, LandscapeUnits); //NOTE: stupid hack used to force GroundwaterRechargeFromUnit into the right place in the run tree.
+//	auto Dummy          = RegisterEquationCumulative(Model, "Dummy", SoilMoisture, LandscapeUnits); //NOTE: stupid hack used to force GroundwaterRechargeFromUnit into the right place in the run tree.
 
  	
         EQUATION(Model, RechargeFraction,
@@ -450,27 +319,28 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto InitialLowerStorage = RegisterParameterDouble(Model, Groundwater, "Initial lower groundwater storage", Mm, 200.0);
 	
 	auto Recharge = GetEquationHandle(Model, "Total recharge"); //NOTE: From the soil moisture routine.
+        auto DirectRunoff = GetEquationHandle(Model, "Total excess soil moisture");
 	
         auto FastFlow     = RegisterEquation(Model, "Fast flow", MmPerDay);
         auto SlowFlow     = RegisterEquation(Model, "Slow flow", MmPerDay);
         auto BaseFlow     = RegisterEquation(Model, "Baseflow", MmPerDay);
         auto Percolation  = RegisterEquation(Model, "Percolation", MmPerDay);
         auto UpperStorage = RegisterEquationODE(Model, "Upper groundwater storage", Mm);
-        
         auto LowerStorage = RegisterEquationODE(Model, "Lower groundwater storage", Mm);
+        auto TotalFlow    = RegisterEquation(Model, "Total flow",MmPerDay);
         
         SetInitialValue(Model, UpperStorage, InitialUpperStorage);
         SetInitialValue(Model, LowerStorage, InitialLowerStorage);
                 
-        auto UpperSolver = RegisterSolver(Model, "Upper solver", 0.1, IncaDascru);
-        SetSolver(Model, FastFlow,UpperSolver);
-        SetSolver(Model, SlowFlow,UpperSolver);
-        SetSolver(Model, Percolation,UpperSolver);
-        SetSolver(Model, UpperStorage, UpperSolver);
+        auto GroundwaterSolver = RegisterSolver(Model, "Upper solver", 0.1, IncaDascru);
+        SetSolver(Model, FastFlow,GroundwaterSolver);
+        SetSolver(Model, SlowFlow,GroundwaterSolver);
+        SetSolver(Model, Percolation,GroundwaterSolver);
+        SetSolver(Model, UpperStorage, GroundwaterSolver);
         
 //        auto LowerSolver = RegisterSolver(Model, "Lower solver", 0.1, IncaDascru);
-        SetSolver(Model, LowerStorage, UpperSolver);
-        SetSolver(Model, BaseFlow, UpperSolver);        
+        SetSolver(Model, LowerStorage, GroundwaterSolver);
+        SetSolver(Model, BaseFlow, GroundwaterSolver);        
         
         
         EQUATION(Model, UpperStorage,
@@ -505,8 +375,6 @@ AddGroundwaterResponseRoutine(inca_model *Model)
         EQUATION(Model, Percolation,
                 double percolation = PARAMETER(PercolationRate);
                 double storage = RESULT(UpperStorage);
-//                double slowflow = RESULT(SlowFlow);
-//                double fastflow = RESULT(FastFlow);
                 percolation = storage > percolation ? percolation : storage;
                 return percolation;
         )                
@@ -522,33 +390,13 @@ AddGroundwaterResponseRoutine(inca_model *Model)
                 double K2 = PARAMETER(LowerRecessionCoefficient);
                 double baseflow = RESULT(LowerStorage) * K2;
                 return baseflow;
-        )        
+        )  
+                        
+        EQUATION(Model, TotalFlow,
+                return RESULT(BaseFlow) + RESULT(FastFlow) + RESULT(SlowFlow) + RESULT(DirectRunoff);
+        )                        
 
-                
-//	EQUATION(Model, UpperGroundwaterRunoff,
-//		double K1 = PARAMETER(FirstUpperRecessionCoefficient);
-//		double K0 = PARAMETER(SecondUpperRecessionCoefficient);
-//		double UZL = PARAMETER(UpperSecondRunoffThreshold);
-//		double runoff = RESULT(UpperGroundwaterStorage) * K1;
-//		if(RESULT(UpperGroundwaterStorage) > UZL) runoff += (RESULT(UpperGroundwaterStorage) - UZL)*K0;
-//		return runoff;
-//	)
-	
-//	EQUATION(Model, LowerGroundwaterRunoff,
-//		return RESULT(LowerGroundwaterStorage) * PARAMETER(LowerRecessionCoefficient);
-//	)
-//	
-//	EQUATION(Model, GroundwaterPercolation,
-//		return RESULT(UpperGroundwaterStorage) * PARAMETER(PercolationRate);
-//	)
-//	
-//	EQUATION(Model, UpperGroundwaterStorage,
-//		return RESULT(Recharge) - RESULT(GroundwaterPercolation) - RESULT(UpperGroundwaterRunoff);
-//	)
-//	
-//	EQUATION(Model, LowerGroundwaterStorage,
-//		return RESULT(GroundwaterPercolation) - RESULT(LowerGroundwaterRunoff);
-//	)
+                        
 }
 
 inline double

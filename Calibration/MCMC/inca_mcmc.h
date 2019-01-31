@@ -6,6 +6,7 @@
 #include "de.cpp"
 #include "rwmh.cpp"
 #include "hmc.cpp"
+#include "mala.cpp"
 
 
 #include <boost/accumulators/accumulators.hpp>
@@ -22,6 +23,7 @@ enum mcmc_algorithm
 	MCMCAlgorithm_DifferentialEvolution,
 	MCMCAlgorithm_RandomWalkMetropolisHastings,
 	MCMCAlgorithm_HamiltonianMonteCarlo,
+	MCMCAlgorithm_MetropolisAdjustedLangevin,
 };
 
 struct mcmc_setup
@@ -37,7 +39,7 @@ struct mcmc_setup
 	bool   DeJumps;
 	double DeJumpGamma;
 	
-	double HMCStepSize;
+	double StepSize;
 	size_t HMCLeapSteps;
 	
 	std::vector<parameter_calibration> Calibration;
@@ -98,6 +100,10 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 			{
 				Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo;
 			}
+			else if(strcmp(Alg, "metropolis_adjusted_langevin") == 0)
+			{
+				Setup->Algorithm = MCMCAlgorithm_MetropolisAdjustedLangevin;
+			}
 			//else if ...
 			else
 			{
@@ -133,9 +139,9 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 		{
 			Setup->DeJumpGamma = Stream.ExpectDouble();
 		}
-		else if(strcmp(Section, "hmc_step_size") == 0)
+		else if(strcmp(Section, "step_size") == 0)
 		{
-			Setup->HMCStepSize = Stream.ExpectDouble();
+			Setup->StepSize = Stream.ExpectDouble();
 		}
 		else if(strcmp(Section, "hmc_leap_steps") == 0)
 		{
@@ -182,22 +188,25 @@ TargetLogKernelWithGradient(const arma::vec &Par, arma::vec* GradientOut, void *
 	mcmc_run_data *RunData = (mcmc_run_data *)Data;
 	
 	inca_data_set *DataSet = RunData->DataSets[ChainIdx];
+	
+	//static int GradCalls = 0;
+	//static int NonGradCalls = 0;
 
 	double LogLikelyhood;
 	if(GradientOut)
 	{
 		LogLikelyhood = EvaluateObjectiveAndGradientSingleForwardDifference(DataSet, RunData->Calibration, RunData->Objective, Par.memptr(), RunData->DiscardTimesteps, GradientOut->memptr());
+		//GradCalls++;
 	}
 	else
 	{
 		LogLikelyhood = EvaluateObjective(DataSet, RunData->Calibration, RunData->Objective, Par.memptr(), RunData->DiscardTimesteps);
+		//NonGradCalls++;
 	}
 	
 	double LogPriors = 0.0;  //NOTE: See above!
 	
-	static int NumRuns = 0;
-	
-	std::cout << "Run number " << NumRuns++ << " completed" << std::endl;
+	//std::cout << "Run number: " << NonGradCalls << " Gradient run number: " << GradCalls << std::endl;
 	
 	return LogPriors + LogLikelyhood;
 }
@@ -233,6 +242,18 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	InitialGuess[Dimensions] = 0.5;
 	LowerBounds [Dimensions] = 0.0;
 	UpperBounds [Dimensions] = 1.0;
+	
+	for(size_t CalIdx = 0; CalIdx < Dimensions; ++CalIdx)
+	{
+		if(
+				(LowerBounds[CalIdx] > UpperBounds[CalIdx])
+			||  (LowerBounds[CalIdx] > InitialGuess[CalIdx])
+			||  (InitialGuess[CalIdx] > UpperBounds[CalIdx])
+		)
+		{
+			INCA_FATAL_ERROR("The initial guess of calibration #" << CalIdx << " do not lie between the upper and lower bounds");
+		}
+	}
 	
 	mcmc::algo_settings_t Settings;
 	
@@ -270,10 +291,10 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		}
 		Setup->NumChains = 1; // :(
 	}
-	else if (Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo)
+	else if (Setup->Algorithm == MCMCAlgorithm_HamiltonianMonteCarlo)
 	{
 		Settings.hmc_n_draws = Setup->NumGenerations;
-		Settings.hmc_step_size = Setup->HMCStepSize;
+		Settings.hmc_step_size = Setup->StepSize;
 		Settings.hmc_leap_steps = Setup->HMCLeapSteps;
 		Settings.hmc_n_burnin = Setup->NumBurnin;
 		//hmc_precond_mat
@@ -281,6 +302,19 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		if(Setup->NumChains > 1)
 		{
 			std::cout << "WARNING (MCMC): Hamiltonian Monte Carlo does not support having more than one chain." << std::endl;
+		}
+		Setup->NumChains = 1;
+	}
+	else if(Setup->Algorithm == MCMCAlgorithm_MetropolisAdjustedLangevin)
+	{
+		Settings.mala_n_draws = Setup->NumGenerations;
+		Settings.mala_step_size = Setup->StepSize;
+		Settings.mala_n_burnin = Setup->NumBurnin;
+		//mala_precond_mat
+		
+		if(Setup->NumChains > 1)
+		{
+			std::cout << "WARNING (MCMC): Metropolis-Adjusted Langevin Algorithm does not support having more than one chain." << std::endl;
 		}
 		Setup->NumChains = 1;
 	}
@@ -332,13 +366,21 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 		
 		Results->AcceptanceRate = Settings.rwmh_accept_rate;
 	}
-	else if(Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo)
+	else if(Setup->Algorithm == MCMCAlgorithm_HamiltonianMonteCarlo)
 	{
 		mcmc::hmc(InitialGuess, Results->DrawsOut2,
 		[](const arma::vec& CalibrationIn, arma::vec* GradOut, void* Data){return TargetLogKernelWithGradient(CalibrationIn, GradOut, Data, 0);},
 		&RunData, Settings);
 		
 		Results->AcceptanceRate = Settings.hmc_accept_rate;
+	}
+	else if(Setup->Algorithm == MCMCAlgorithm_MetropolisAdjustedLangevin)
+	{
+		mcmc::mala(InitialGuess, Results->DrawsOut2,
+		[](const arma::vec& CalibrationIn, arma::vec* GradOut, void* Data){return TargetLogKernelWithGradient(CalibrationIn, GradOut, Data, 0);},
+		&RunData, Settings);
+		
+		Results->AcceptanceRate = Settings.mala_accept_rate;
 	}
 	
 	

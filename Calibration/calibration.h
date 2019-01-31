@@ -373,25 +373,29 @@ EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 
 static double
 EvaluateObjectiveAndGradientSingleForwardDifference(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, calibration_objective &Objective, const double *ParameterValues, size_t DiscardTimesteps, double *GradientOut)
-{
+{	
+	
 	//NOTE: This is a very cheap and probably not that good estimation of the gradient. It should only be used if you need the estimation to be very fast (such as if you are going to use it for each step of an MCMC run).
-	size_t Dimensions = Calibrations.size();
+	size_t Dimensions = Calibrations.size() + 1;    //IMPORTANT!! This is just for the particular LL function we have now. Should find a way to generalize this.
 	
 	double F0 = EvaluateObjective(DataSet, Calibrations, Objective, ParameterValues, DiscardTimesteps);
 	
 	double *XD = (double *)malloc(sizeof(double) * Dimensions);
+	for(size_t Dim = 0; Dim < Dimensions; ++Dim) XD[Dim] = ParameterValues[Dim];
 	
 	const double Epsilon = 1e-6;
 	
 	for(size_t Dim = 0; Dim < Dimensions; ++Dim)
 	{	
-		memcpy(XD, ParameterValues, sizeof(double) * Dimensions);
+		//for(size_t Idx = 0; Idx < Dimensions; ++Idx) std::cout << XD[Idx] << std::endl;
 		
 		double H0;
 		if(abs(XD[Dim]) > 1e-6)
 			H0 = sqrt(XD[Dim])*Epsilon;
 		else
 			H0 = 1e-9; //TODO: This was just completely arbitrary, it should be done properly
+		
+		//double H0 = 1e-3;
 		
 		volatile double Temp = XD[Dim] + H0;  //Volatile so that the compiler does not optimize it away
 		double H = Temp - XD[Dim];
@@ -400,9 +404,20 @@ EvaluateObjectiveAndGradientSingleForwardDifference(inca_data_set *DataSet, std:
 		
 		double FD = EvaluateObjective(DataSet, Calibrations, Objective, XD, DiscardTimesteps);
 		
-		GradientOut[Dim] = (FD - F0) / H;
+		double Grad = (FD - F0) / H;
+		//double Grad = (F0 - FD) / H;
+		
+		//std::cout << "H: " << H << " F0: " << F0 << " XD: " << XD[Dim] << " FD: " << FD << " Grad: " << Grad << std::endl;
+		
+		GradientOut[Dim] = Grad;
+		
+		XD[Dim] = ParameterValues[Dim]; // NOTE: Reset for the next evaluation
 	}
-	
+#if 0
+	std::cout << "F0: " << F0 << " Gradient: ";
+	for(size_t Dim = 0; Dim < Dimensions; ++Dim) std::cout << GradientOut[Dim] << " ";
+	std::cout << std::endl;
+#endif
 	free(XD);
 	
 	return F0;

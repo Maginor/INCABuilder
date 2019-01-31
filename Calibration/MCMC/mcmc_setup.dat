@@ -1,13 +1,14 @@
 
 
-#NOTE: currently only supports hamiltonian_monte_carlo, differential_evolution and metropolis_hastings
+#NOTE: currently supports hamiltonian_monte_carlo, differential_evolution, metropolis_hastings and metropolis_adjusted_langevin
 #algorithm         : metropolis_hastings
 #algorithm         : differential_evolution
-algorithm         : hamiltonian_monte_carlo
+#algorithm         : hamiltonian_monte_carlo
+algorithm        : metropolis_adjusted_langevin
 
-generations       : 1000      #NOTE: excluding burnin
+generations       : 50      #NOTE: excluding burnin
 
-burnin            : 100
+burnin            : 0
 
 discard_timesteps : 365       #NOTE: Skip these many of the first timesteps when doing objective evaluations
 
@@ -22,22 +23,17 @@ de_jumps          : true      #NOTE: whether or not DE should perform a (longer)
 de_jump_gamma     : 1.0       #NOTE: The gamma for the jump (if jumps are enabled)
 
 
-#HMC Specific
-hmc_step_size     : 0.01
+#HMC and MALA specific:
+step_size     : 0.0005
 
-hmc_leap_steps    : 2
+#HMC Specific
+hmc_leap_steps    : 1
 
 #TODO: add this:
-#rwmh_cov_mat
+#rwmh_cov_mat, hmc_precond_mat, mala_precond_mat
 
-
-
-objectives :
-
-"Reach flow" {"Tveitvatn"}     "Discharge"  {"Tveitvatn"}    ll_proportional_normal
 
 parameter_calibration :
-
 # Format:
 #           "name" {"index1" "index2" ..etc..}
 #           min max   initial_guess
@@ -48,20 +44,32 @@ parameter_calibration :
 #                ..etc..
 #           } min max  initial_guess
 
+"Proportion of precipitation that contributes to quick flow"  {"Tarland1"}
+0.01 0.08 0.02
 
-"a" {"Tveitvatn"}
-0.01 0.5 0.06
+"Baseflow index"                                              {"Tarland1"}
+0.18 1.0 0.7
 
-"b" {"Tveitvatn"}
-0.3 0.8 0.7
+"Groundwater time constant"                                   {"Tarland1"}
+90.0 200.0 100.0
 
-link {
-	"Time constant" {"Soil water" "Forest Productive"}
-	"Time constant" {"Soil water" "Forest Unproductive"}
-	"Time constant" {"Soil water" "Peat"}
-	"Time constant" {"Soil water" "Open mountainous landscape"}
-	"Time constant" {"Soil water" "Arable"}
-} 3 15 6
+"Gradient of stream velocity-discharge relationship"          {"Tarland1"}
+0.01 0.99 0.5
+
+"Exponent of stream velocity-discharge relationship"          {"Tarland1"}
+0.01 0.99 0.42
+
+"Soil water time constant"                                    {"Arable"}
+0.25 10.5 1
+
+"Soil water time constant"                                    {"Semi-natural"}
+2.5 40.0 10
+
+
+
+objectives:
+"Daily mean reach flow" {"Tarland1"}     "observed Q mm/d" {}     ll_proportional_normal
+
 
 
 

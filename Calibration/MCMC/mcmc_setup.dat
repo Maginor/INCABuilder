@@ -1,26 +1,29 @@
 
 
 #NOTE: currently supports hamiltonian_monte_carlo, differential_evolution, metropolis_hastings and metropolis_adjusted_langevin
+#    Differential Evolution seems to be the one out of these that is best suited for our type of models.
+
+
 #algorithm         : metropolis_hastings
-#algorithm         : differential_evolution
+algorithm         : differential_evolution
 #algorithm         : hamiltonian_monte_carlo
-algorithm        : metropolis_adjusted_langevin
+#algorithm        : metropolis_adjusted_langevin
 
-generations       : 50      #NOTE: excluding burnin
+generations       : 19000      #NOTE: excluding burnin
 
-burnin            : 0
+burnin            : 100
 
-discard_timesteps : 365       #NOTE: Skip these many of the first timesteps when doing objective evaluations
+discard_timesteps : 50       #NOTE: Skip these many of the first timesteps when doing objective evaluations
 
 # Differential Evolution specific:
-chains            : 8
+chains            : 20
 #chains            : 1
 
-de_b              : 0.1       #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space. Specific to differential evolution.
+de_b              : 0.01      #NOTE: each step each parameter can be perturbed [-de_b, de_b] (uniformly distributed) in the parameter space.
 
 de_jumps          : true      #NOTE: whether or not DE should perform a (longer) jump every 10 steps
 
-de_jump_gamma     : 1.0       #NOTE: The gamma for the jump (if jumps are enabled)
+de_jump_gamma     : 0.2       #NOTE: The gamma for the jump (if jumps are enabled)
 
 
 #HMC and MALA specific:

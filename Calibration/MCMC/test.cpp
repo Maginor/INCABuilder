@@ -2,6 +2,8 @@
 #include "../../inca.h"
 #include "../../Modules/SimplyP.h"
 
+#define CALIBRATION_PRINT_DEBUG_INFO 0
+
 #include "inca_mcmc.h"
 
 int main()
@@ -51,14 +53,14 @@ int main()
 	{
 		arma::cube& Draws = Results.DrawsOut;
 	
-		Draws.slice(Draws.n_slices - 1).print();
+		//Draws.slice(Draws.n_slices - 1).print();
 		Draws.save("mcmc_results.dat", arma::arma_ascii);
 	}
 	else
 	{
 		arma::mat& Draws2 = Results.DrawsOut2;
 	
-		Draws2.row(Draws2.n_rows - 1).print();
+		//Draws2.row(Draws2.n_rows - 1).print();
 		Draws2.save("mcmc_results.dat", arma::arma_ascii);
 	}
 }

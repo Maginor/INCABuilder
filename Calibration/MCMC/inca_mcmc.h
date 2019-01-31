@@ -261,8 +261,6 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	Settings.lower_bounds = LowerBounds;
 	Settings.upper_bounds = UpperBounds;
 	
-	Setup->NumChains = 1;
-	
 	if(Setup->Algorithm == MCMCAlgorithm_DifferentialEvolution)
 	{
 		Settings.de_n_pop = Setup->NumChains;

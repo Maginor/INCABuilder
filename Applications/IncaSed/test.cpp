@@ -43,11 +43,12 @@ int main()
 	//PrintInputStorageStructure(DataSet);
 	
 	
-	SetParameterValue(DataSet, "Timesteps", {}, (u64)100);
+	SetParameterValue(DataSet, "Timesteps", {}, (u64)1);
 	SetParameterValue(DataSet, "Start date", {}, "1996-5-1"); //No water input in january, so difficult to see any effect of erosion or splash detachment
 
 	RunModel(DataSet);
 	
+/*	
 	PrintResultSeries(DataSet, "Runoff to reach", {"Blackmill", "Arable", "Direct runoff"}, 10);
 	PrintResultSeries(DataSet, "Sediment mobilised via splash detachment", {"Blackmill", "Arable"}, 10);
 	PrintResultSeries(DataSet, "Flow erosion K factor", {"Blackmill", "Arable"}, 10);
@@ -57,5 +58,8 @@ int main()
 	PrintResultSeries(DataSet, "Sediment delivery to reach", {"Blackmill", "Arable"}, 10);
 	
 	PrintResultSeries(DataSet, "Total sediment delivery to reach", {"Blackmill"}, 10);
-	PrintResultSeries(DataSet, "Suspended sediment mass", {"Blackmill", "Clay"}, 100);
+	
+	std::vector<const char *> SizeIndexes = {"Clay", "Silt", "Fine sand", "Medium sand", "Coarse sand"};
+	for(const char *Idx : SizeIndexes) PrintResultSeries(DataSet, "Suspended sediment mass", {"Blackmill", Idx}, 100);
+*/
 }

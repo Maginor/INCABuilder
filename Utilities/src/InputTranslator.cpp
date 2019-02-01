@@ -137,9 +137,7 @@ void InputTranslator::parseMagnus()
             idxidx += "[" + (zi.get<0>()) + "," + (zi.get<1>()) + "]";
         }
         std::cout << idxidx << " " << key << std::endl;
-        if (std::find(data.additional_timeseries.begin(), //Means it's not a sparse timeseries
-                      data.additional_timeseries.end(),
-                      "parameter") == data.additional_timeseries.end())
+        if (*(inputs[key].rbegin()) != "end_timeseries")
         {
             for (auto&j : i.second)
             { 
@@ -152,10 +150,12 @@ void InputTranslator::parseMagnus()
                     std::cout << "could not convert <" << j << "> to double" << std::endl; 
                     throw;
                 }
-//                data.inputs[idxidx].push_back(boost::lexical_cast<double>(j)); 
-            }
-          
-        }    
+            }          
+        }
+        else
+        {
+            //parse sparse timeseries
+        }
     }   
 }
 

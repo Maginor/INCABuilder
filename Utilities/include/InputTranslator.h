@@ -11,7 +11,14 @@
  * Created on 30 January 2019, 10:04
  */
 #pragma once
-#include "../inca.h"
+#include "inca.h"
+#include "boost/lexical_cast.hpp"
+#include "boost/iterator/transform_iterator.hpp"
+#include "boost/algorithm/string.hpp"
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/iterator/zip_iterator.hpp>
+#include <boost/tuple/tuple.hpp>
+#include "boost/regex.hpp"
 #include "nlohmann/json.hpp"
 #include "yaml-cpp/yaml.h"
 

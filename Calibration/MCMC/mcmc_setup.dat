@@ -11,7 +11,7 @@ algorithm         : differential_evolution
 
 generations       : 19000      #NOTE: excluding burnin
 
-burnin            : 100
+burnin            : 1000
 
 discard_timesteps : 50       #NOTE: Skip these many of the first timesteps when doing objective evaluations
 

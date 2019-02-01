@@ -54,6 +54,6 @@ int main()
 	
 	std::cout << "GLUE finished. Running the model " << Setup.NumRuns << " times with " << Setup.NumThreads << " threads took " << Ms << " milliseconds." << std::endl;
 	
-	//NOTE: We have to rewrite the following function, it does not work at the moment.
-	//WriteGLUEResultsToDatabase("GLUE_results.db", &Setup, &Results, DataSet);
+
+	WriteGLUEResultsToDatabase("GLUE_results.db", &Setup, &Results, DataSet);
 }

@@ -2,7 +2,7 @@
 
 
 num_runs :
-4000
+16
 
 num_threads :
 8

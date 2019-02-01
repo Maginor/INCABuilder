@@ -26,6 +26,17 @@
 #define INPUTTRANSLATOR_H
 
 
+//Helper function that allow to iterate over two containers simultaneously
+
+// See https://stackoverflow.com/a/8513803/2706707
+template <typename... T>
+auto zip(T&&... containers) -> boost::iterator_range<boost::zip_iterator<decltype(boost::make_tuple(std::begin(containers)...))>>
+{
+    auto zip_begin = boost::make_zip_iterator(boost::make_tuple(std::begin(containers)...));
+    auto zip_end = boost::make_zip_iterator(boost::make_tuple(std::end(containers)...));
+    return boost::make_iterator_range(zip_begin, zip_end);
+}
+
 
 /*The way this class works is to read in inputs into a custom struct/map that can 
  * then be broadcast to the different type formats
@@ -63,74 +74,13 @@ private:
         size_t timesteps;
         std::vector<std::string> additional_timeseries;
         std::map<std::string,std::vector<std::string>> index_set_dependencies;
-        std::map< size_t , std::vector<double> > inputs;
-        std::map< size_t, std::vector<std::pair<std::string,double> > > sparseInputs;
+        std::map< std::string , std::vector<double> > inputs;
+        std::map< std::string, std::vector<std::pair<std::string,double> > > sparseInputs;
                 
     } data ;
     
-    typedef std::pair<std::string,std::string> idxidx;
-    
-    
-    typedef boost::tuple<
-    std::vector<double>::const_iterator,
-    std::vector<double>::const_iterator
-    > the_iterator_tuple;
-
-  typedef boost::zip_iterator<
-    the_iterator_tuple
-    > the_zip_iterator;
-
-  typedef boost::transform_iterator<
-    [](return void;),
-    the_zip_iterator
-    > the_transform_iterator;
-
-  the_transform_iterator it_begin(
-    the_zip_iterator(
-      the_iterator_tuple(
-        vect_1.begin(),
-        vect_2.begin()
-        )
-      ),
-    tuple_multiplies<double>()
-    );
-
-  the_transform_iterator it_end(
-    the_zip_iterator(
-      the_iterator_tuple(
-        vect_1.end(),
-        vect_2.end()
-        )
-      ),
-    tuple_multiplies<double>()
-    );
-    
-    
-   //std::function<std::string(> 
-    
-    
-    struct Key
-    {
-      std::string& first;
-      std::vector<idxidx>& second;
-      std::function<std::string(idxidx&)> one = [](idxidx& i){return i.first;};
-      std::function<std::string(idxidx&)> two = [](idxidx& i){return i.second;};
-      bool operator==(const Key &other) const
-      { return (first == other.first
-                && second == other.second
-                );
-      }
-    };
-    
-    
-    struct myHash
-    {
-        std::size_t operator()(const Key& k) const;
-    };
-    
     std::string findBetween(std::string,std::string,std::string);
-    static std::stringstream ss;
-    
+       
     void parse();
     void parseMagnus();
     

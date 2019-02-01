@@ -68,9 +68,8 @@ ReadSetupFromFile(glue_setup *Setup, const char *Filename)
 	//TODO: Check that the file contained enough data?
 }
 
-#if 0
 
-//TODO: This format does not support having linked parameters, so we have to rething it!!
+
 
 static void
 WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *Results, inca_data_set *DataSet)
@@ -121,24 +120,30 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 	
 	sqlite3_stmt *InsertParameterInfoStmt;
 	rc = sqlite3_prepare_v2(Db, InsertParameterInfo, -1, &InsertParameterInfoStmt, 0);
-	for(size_t Par = 0; Par < Setup->Calibration.size(); ++Par)
+	int ParID = 1;
+	
+	for(parameter_calibration &Cal : Setup->Calibration)
 	{
-		int ParID = (int)Par + 1;
-		
-		//TODO: Instead having the indexes as text (which is difficult to parse in an automatic system later), we should maybe instead hook the parameter ID to the structure ID you get when you export it using WriteParametersToDatabase from inca_database_io.cpp, however that is complicated..
-		const char *ParameterName = Setup->Calibration[Par].ParameterName;
-		rc = sqlite3_bind_int(InsertParameterInfoStmt, 1, ParID);
-		rc = sqlite3_bind_text(InsertParameterInfoStmt, 2, ParameterName, -1, SQLITE_STATIC);
-		char Indexes[4096];
-		char *Pos = Indexes;
-		for(const char *Index : Setup->Calibration[Par].Indexes)
+		for(size_t Par = 0; Par < Cal.ParameterNames.size(); ++Par)
 		{
-			Pos += sprintf(Pos, " \"%s\"", Index);
+			//TODO: Instead having the indexes as text (which is difficult to parse in an automatic system later), we should maybe instead hook the parameter ID to the structure ID you get when you export it using WriteParametersToDatabase from inca_database_io.cpp, however that is complicated..
+			
+			const char *ParameterName = Cal.ParameterNames[Par];
+			rc = sqlite3_bind_int(InsertParameterInfoStmt, 1, ParID);
+			rc = sqlite3_bind_text(InsertParameterInfoStmt, 2, ParameterName, -1, SQLITE_STATIC);
+			char Indexes[4096];
+			char *Pos = Indexes;
+			for(const char *Index : Cal.ParameterIndexes[Par])
+			{
+				Pos += sprintf(Pos, " \"%s\"", Index);
+			}
+			rc = sqlite3_bind_text(InsertParameterInfoStmt, 3, Indexes, -1, SQLITE_STATIC);
+			
+			rc = sqlite3_step(InsertParameterInfoStmt);
+			rc = sqlite3_reset(InsertParameterInfoStmt);
+			
+			++ParID;
 		}
-		rc = sqlite3_bind_text(InsertParameterInfoStmt, 3, Indexes, -1, SQLITE_STATIC);
-		
-		rc = sqlite3_step(InsertParameterInfoStmt);
-		rc = sqlite3_reset(InsertParameterInfoStmt);
 	}
 	rc = sqlite3_finalize(InsertParameterInfoStmt);
 	
@@ -165,17 +170,23 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 		rc = sqlite3_step(InsertRunInfoStmt);
 		rc = sqlite3_reset(InsertRunInfoStmt);
 		
-		for(size_t Par = 0; Par < Setup->Calibration.size(); ++Par)
+		int ParID = 0;
+		for(size_t CalIdx = 0; CalIdx < Setup->Calibration.size(); ++CalIdx)
 		{
-			int ParID = (int)Par + 1;
-			double Value = Results->RunData[Run].RandomParameters[Par].ValDouble;
-			
-			rc = sqlite3_bind_int(InsertParameterSetInfoStmt, 1, ParID);
-			rc = sqlite3_bind_int(InsertParameterSetInfoStmt, 2, RunID);
-			rc = sqlite3_bind_double(InsertParameterSetInfoStmt, 3, Value);
-			
-			rc = sqlite3_step(InsertParameterSetInfoStmt);
-			rc = sqlite3_reset(InsertParameterSetInfoStmt);
+			parameter_calibration &Cal = Setup->Calibration[CalIdx];
+			for(size_t Par = 0; Par < Cal.ParameterNames.size(); ++Par)
+			{
+				double Value = Results->RunData[Run].RandomParameters[CalIdx];
+				
+				rc = sqlite3_bind_int(InsertParameterSetInfoStmt, 1, ParID);
+				rc = sqlite3_bind_int(InsertParameterSetInfoStmt, 2, RunID);
+				rc = sqlite3_bind_double(InsertParameterSetInfoStmt, 3, Value);
+				
+				rc = sqlite3_step(InsertParameterSetInfoStmt);
+				rc = sqlite3_reset(InsertParameterSetInfoStmt);
+				
+				++ParID;
+			}
 		}
 	}
 	rc = sqlite3_finalize(InsertRunInfoStmt);
@@ -222,4 +233,3 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 	
 	sqlite3_close(Db);
 }
-#endif

@@ -2,25 +2,26 @@
 #include <sstream>
 
 static int Dll_GlobalErrorCode = 0;
-std::stringstream _Errstream;
+std::stringstream Dll_GlobalErrstream;
 
 #define INCA_PARTIAL_ERROR(Msg) \
-	_Errstream << Msg; \
+	Dll_GlobalErrstream << Msg; \
 	Dll_GlobalErrorCode = 1;
 	
 #define INCA_FATAL_ERROR(Msg) \
-	INCA_PARTIAL_ERROR(Msg) \
-	throw 0;
+	{INCA_PARTIAL_ERROR(Msg) \
+	throw 0;}
+
+
+#include "../inca.h"
+
 
 #define CHECK_ERROR_BEGIN \
 try {
 
 #define CHECK_ERROR_END \
 } catch(int Errcode) { \
-}	
-	
-
-#include "../inca.h"
+}
 
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
@@ -28,14 +29,14 @@ try {
 DLLEXPORT int
 DllEncounteredError(char *ErrmsgOut)
 {
-	std::string ErrStr = _Errstream.str();
+	std::string ErrStr = Dll_GlobalErrstream.str();
 	strcpy(ErrmsgOut, ErrStr.data());
 	
 	int Code = Dll_GlobalErrorCode;
 	
 	//NOTE: Since Jupyter does not seem to reload the dll when you restart it (normally), we have to clear this.
 	Dll_GlobalErrorCode = 0;
-	_Errstream.clear();
+	Dll_GlobalErrstream.clear();
 	
 	return Code;
 }
@@ -63,7 +64,11 @@ DllCopyDataSet(void *DataSetPtr)
 DLLEXPORT void
 DllDeleteDataSet(void *DataSetPtr)
 {
+	CHECK_ERROR_BEGIN
+	
 	delete (inca_data_set *)DataSetPtr;
+	
+	CHECK_ERROR_END
 }
 
 DLLEXPORT u64
@@ -79,8 +84,12 @@ DllGetTimesteps(void *DataSetPtr)
 DLLEXPORT u64
 DllGetInputTimesteps(void *DataSetPtr)
 {
+	CHECK_ERROR_BEGIN
+	
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	return DataSet->InputDataTimesteps;
+	
+	CHECK_ERROR_END
 }
 
 DLLEXPORT void

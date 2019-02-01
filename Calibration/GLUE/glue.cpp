@@ -1,15 +1,13 @@
 
 
 #include <random>
-#include <thread>
-#include <mutex>
-
+#include <omp.h>
 
 #include <boost/accumulators/statistics/weighted_extended_p_square.hpp>
 
 
 static double
-GetParameterRandomlyFromDistribution(parameter_calibration &ParSetting, std::mt19937_64 &Generator)
+DrawRandomParameter(parameter_calibration &ParSetting, std::mt19937_64 &Generator)
 {
 	//TODO: Other parameter types later
 	double NewValue;
@@ -29,10 +27,6 @@ typedef boost::accumulators::accumulator_set<double, boost::accumulators::stats<
 
 #if !defined(GLUE_MULTITHREAD)
 #define GLUE_MULTITHREAD 1
-#endif
-
-#if GLUE_MULTITHREAD
-std::mutex AccumulatorLock;
 #endif
 
 static std::pair<double, double>
@@ -59,16 +53,19 @@ ComputeWeightedPerformance(inca_data_set *DataSet, double Performance, calibrati
 	std::vector<double> ModeledSeries(Timesteps);
 	GetResultSeries(DataSet, Objective.ModeledName, Objective.ModeledIndexes, ModeledSeries.data(), ModeledSeries.size());
 	
+	//TODO: It is probably not optimal to lock the entire for loop..
 #if GLUE_MULTITHREAD
-	std::lock_guard<std::mutex> Lock(AccumulatorLock); //NOTE: I don't know if it is safe for several threads to write to the same accumulator without locking it, so I do this to be safe. If it is not a problem, just remove the mutex.
+	#pragma omp critical
+	{
 #endif
-	
 	//TODO! TODO! We should maybe also discard timesteps here too (but has to take care to do it correctly!)
 	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{
 		QuantileAccumulators[Timestep](ModeledSeries[Timestep], weight = StatWeight);
 	}
-	
+#if GLUE_MULTITHREAD
+	}
+#endif
 	return {Performance, WeightedPerformance};
 }
 
@@ -88,7 +85,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	
 	if(Setup->Quantiles.empty())
 	{
-		INCA_FATAL_ERROR("ERROR: (GLUE) Requires at least 1 quantile" << std::endl;
+		INCA_FATAL_ERROR("ERROR: (GLUE) Requires at least 1 quantile" << std::endl);
 	}
 	
 	Results->RunData.resize(Setup->NumRuns);
@@ -106,7 +103,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 
 		for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
 		{	
-			Results->RunData[Run].RandomParameters[ParIdx] = GetParameterRandomlyFromDistribution(ParSetting, Generator);
+			Results->RunData[Run].RandomParameters[ParIdx] = DrawRandomParameter(ParSetting, Generator);
 		}
 	}
 	
@@ -121,75 +118,25 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	}
 	
 #if GLUE_MULTITHREAD
-	auto RunFunc =
-		[&] (size_t RunID, inca_data_set *DataSet)
-		{
-			/*
-			for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
-			{
-				glue_parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
-				
-				//TODO: Other value types later
-				double NewValue = Results->RunData[RunID].RandomParameters[ParIdx];
 
-				SetParameterValue(DataSet, ParSetting.ParameterName, ParSetting.Indexes, NewValue);
-			}
-			
-			RunModel(DataSet);
-			*/
-			calibration_objective &Objective = Setup->Objectives[0];
-			
-			const double *ParValues = Results->RunData[RunID].RandomParameters.data();
-			
-			double Performance = EvaluateObjective(DataSet, Setup->Calibration, Objective, ParValues, Setup->DiscardTimesteps);
+	omp_set_num_threads(Setup->NumThreads);
 
-			auto Perf = ComputeWeightedPerformance(DataSet, Performance, Objective, QuantileAccumulators, Setup->DiscardTimesteps);
-
-			Results->RunData[RunID].PerformanceMeasures[0] = Perf;
-
-		};
-	
-	size_t NumThreads = Setup->NumThreads;
-	size_t RunsPerThread = Setup->NumRuns / NumThreads;
-	if(Setup->NumRuns % NumThreads != 0) RunsPerThread++;
-
-	std::vector<std::thread> Threads;
-	Threads.reserve(NumThreads);
-	
-	//NOTE: Each thread has to work on its own dataset (otherwise they would overwrite each others results).
-	std::vector<inca_data_set *> DataSets(NumThreads);
-	DataSets[0] = DataSet;
-	for(size_t ThreadId = 1; ThreadId < NumThreads; ++ThreadId)
+	#pragma omp parallel for
+	for(size_t RunID = 0; RunID < Setup->NumRuns; ++RunID)
 	{
-		DataSets[ThreadId] = CopyDataSet(DataSet);
-	}
-	
-	//TODO: This is an inefficient way to do it, instead we should have a batch system.
-	for(size_t Run = 0; Run < RunsPerThread; ++Run)
-	{
-		size_t RunIDBase = Run * NumThreads;
+		inca_data_set *DataSet0 = CopyDataSet(DataSet); //NOTE: We have to work with a copy, otherwise the various threads will overwrite each other.
 		
-		for(size_t ThreadIdx = 0; ThreadIdx < NumThreads; ++ThreadIdx)
-		{
-			size_t RunID = RunIDBase + ThreadIdx;
-			if(RunID < Setup->NumRuns)
-			{
-				Threads.push_back(std::thread(RunFunc, RunID, DataSets[ThreadIdx]));
-			}
-		}
+		calibration_objective &Objective = Setup->Objectives[0];
+			
+		const double *ParValues = Results->RunData[RunID].RandomParameters.data();
 		
-		for(auto &Thread : Threads)
-		{
-			Thread.join();
-		}
+		double Performance = EvaluateObjective(DataSet0, Setup->Calibration, Objective, ParValues, Setup->DiscardTimesteps);
+
+		auto Perf = ComputeWeightedPerformance(DataSet0, Performance, Objective, QuantileAccumulators, Setup->DiscardTimesteps);
+
+		Results->RunData[RunID].PerformanceMeasures[0] = Perf;
 		
-		Threads.clear();
-	}
-	
-	//NOTE: We leave it up to the caller to delete the original dataset if they want to.
-	for(size_t ThreadId = 1; ThreadId < NumThreads; ++ThreadId)
-	{
-		delete DataSets[ThreadId];
+		delete DataSet0;
 	}
 	
 #else

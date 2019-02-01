@@ -84,13 +84,13 @@ typedef size_t index_t;
 //NOTE: We allow the error handling to be replaced by the application. This is for instance useful for the python wrapper.
 #if !defined(INCA_PARTIAL_ERROR)
 	#define INCA_PARTIAL_ERROR(Msg) \
-		std::cout << Msg;
+		std::cerr << Msg;
 #endif
 
 #if !defined(INCA_FATAL_ERROR)	
 	#define INCA_FATAL_ERROR(Msg) \
-		INCA_PARTIAL_ERROR(Msg) \
-		exit(0);
+	{INCA_PARTIAL_ERROR(Msg) \
+	exit(1);}
 #endif
 
 

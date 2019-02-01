@@ -203,20 +203,20 @@ true true true true
 2 2 2 2
 
 "Bank erosion scaling factor" :     #(kg/m2/m3 s/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-1 1 1 1
+0 0 0 0
 
 "Bank erosion non-linear coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1 1 1 1
 
 "Shear velocity coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1 1 1 1
+1e-7 1e-7 1e-7 1e-7
 
 "Mean channel slope" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1 1 1 1
 
 "Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
 #1 1 1 1
-1e-6 1e-6 1e-6 1e-6
+2e-7 2e-7 2e-7 2e-7
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
@@ -243,3 +243,9 @@ true true true true
 0 0 0 0
 0 0 0 0
 
+"Initial suspended sediment mass" :
+100 100 100 100
+100 100 100 100
+100 100 100 100
+100 100 100 100
+100 100 100 100

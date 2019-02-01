@@ -159,9 +159,10 @@ ReadTokenInternal_(token_stream *Stream)
 	Stream->Tokens.resize(Stream->Tokens.size()+1, {});
 	token &Token = Stream->Tokens[Stream->Tokens.size()-1];
 	
+	const size_t TOKEN_BUFFER_SIZE = 1024;
 	
-	char TokenBuffer[512]; //TODO: Error handle in case of a too long token!
-	for(size_t I = 0; I < 512; ++I) TokenBuffer[I] = 0;
+	char TokenBuffer[TOKEN_BUFFER_SIZE];
+	for(size_t I = 0; I < TOKEN_BUFFER_SIZE; ++I) TokenBuffer[I] = 0;
 	size_t TokenBufferPos = 0;
 	
 	s32 NumericPos = 0;
@@ -351,7 +352,6 @@ ReadTokenInternal_(token_stream *Stream)
 				}
 				++NumericPos;
 			}
-			
 			else
 			{
 				char ug = ungetc((int)c, Stream->File);
@@ -365,6 +365,12 @@ ReadTokenInternal_(token_stream *Stream)
 				
 				break;
 			}
+		}
+		
+		if(TokenBufferPos >= TOKEN_BUFFER_SIZE)
+		{
+			Stream->PrintErrorHeader();
+			INCA_FATAL_ERROR("ERROR: Encountered a token longer than " << TOKEN_BUFFER_SIZE << " characters." << std::endl);
 		}
 		
 	}
@@ -485,7 +491,7 @@ s64 token_stream::ExpectDate()
 	if(!ParseSuccess)
 	{
 		PrintErrorHeader();
-		INCA_FATAL_ERROR("Unrecognized date format \"" << DateStr << "\" Supported format: Y-m-d" << std::endl);
+		INCA_FATAL_ERROR("Unrecognized date format \"" << DateStr << "\". Supported format: Y-m-d" << std::endl);
 	}
 	return Date;
 }

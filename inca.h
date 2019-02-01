@@ -46,15 +46,6 @@ Other TODOs (low priority):
 #include <set>
 #include <iostream>
 #include <fstream>
-//#include <regex>
-#include <sstream>
-#include "boost/lexical_cast.hpp"
-#include "boost/iterator/transform_iterator.hpp"
-#include "boost/algorithm/string.hpp"
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/iterator/zip_iterator.hpp>
-#include <boost/tuple/tuple.hpp>
-#include "boost/regex.hpp"
 #include <string.h>
 #include <assert.h>
 #include <float.h>

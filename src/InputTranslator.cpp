@@ -58,10 +58,10 @@ void InputTranslator::parse()
 
 void InputTranslator::parseMagnus()
 {
-    std::regex header("^[^\"].+:");
-    std::regex empty("^\\s*$");
-    std::regex comment("^[!#]");
-    std::regex input("^inputs");
+    boost::regex header("^[^\"].+:");
+    boost::regex empty("^\\s*$");
+    boost::regex comment("^[!#]");
+    boost::regex input("^inputs");
     std::map<std::string,std::vector<std::string>> settings,inputs;
     std::map<std::string,std::vector<std::string>>* mapPnt;    
     std::ifstream infile(filename);
@@ -73,41 +73,30 @@ void InputTranslator::parseMagnus()
     {
        while (std::getline(infile, line))
         {
+//           std::cout << line << std::endl;
             std::istringstream iss(line);
-            if (std::regex_search(line,header))
+            if (boost::regex_search(line,header))
             {
                 if (!inputStart)
                 {
-                    inputStart = std::regex_search(line,input);
+                    inputStart = boost::regex_search(line,input);
                     if (inputStart) header=":";
                     mapPnt = &settings;
                 }
                 else mapPnt = &inputs;
-                key = findBetween(line,"^\\s*","\\s*:");
-                //std:: cout << "key ->" << key << std::endl;
-                std::string after = findBetween(line,":\\s*","\\s*$");
-                if (after != "")
-                {
-                    std::string trim = findBetween(after,"\"" , "\"");
-                    if ( trim != "")
-                    {
-                        (*mapPnt)[key].push_back(trim);
-                    } 
-                    else (*mapPnt)[key].push_back(after);
-                }
-                
+                key = findBetween(line,"^",":");
+                std::string after = findBetween(line,":","$");
+                if (after != "") (*mapPnt)[key].push_back(after);                
             }
             else
             {
-                if (!std::regex_search(line,comment) && !std::regex_search(line,empty))
+                if (!boost::regex_search(line,comment) && !boost::regex_search(line,empty))
                 {
+                    boost::algorithm::trim_if(line,boost::algorithm::is_any_of("\" "));
                     (*mapPnt)[key].push_back(line);
 //                     std::cout << line << std::endl;
                 }
-                
             }
-            
-            // process pair (a,b)
         }
     }
     else
@@ -115,26 +104,75 @@ void InputTranslator::parseMagnus()
         std::cout << "Couldn't open file: " << filename << std::endl;
         throw;
     }
-    //Second pass, storing in data structure
-    for(auto &i:inputs) std::cout << i.first << std::endl;
-    std::cout << "lololo" << std::endl;
-    for(auto &i:settings) std::cout << i.first << std::endl;
+    //Assigning values to data structure
+    data.timesteps = boost::lexical_cast<size_t>(settings["timesteps"][0]);
+    data.start_date = settings["start_date"][0];
+    if (settings.find("index_set_dependencies") != settings.end())
+    {
+       for (auto&i: settings["index_set_dependencies"])
+       {
+           std::string parameter = findBetween(i,"^",":");
+           std::vector<std::string> indexers;
+           std::string str = findBetween(i,"{","}");
+           boost::split(indexers, str, boost::is_any_of(","));
+           data.index_set_dependencies[parameter]=indexers;
+        }
+    }
+    if (settings.find("additional_timeseries") != settings.end())
+    {
+        for(auto&i: settings["additional_timeseries"])
+        {
+            boost::algorithm::trim_if(i, boost::algorithm::is_any_of("\" "));
+            data.additional_timeseries.push_back(i);
+        }
+    }     
+    for(auto&i: inputs)
+    {
+        std::string parameter = findBetween(i,"\"","\"");
+        std::vector<std::string> indices;
+        std::string str = findBetween(i,"{","}");
+        boost::split(indices, str, boost::is_any_of(","));
+        
+        
+    }
+    
+    
     
 }
 
 std::string InputTranslator::findBetween(std::string str,std::string start, std::string finish)
 {
-    start = "(?:" + start + ")";
-    finish = "(?:" + finish + ")";
-    std::regex re(start + "(.*)" + finish);
-    std::smatch match;
-    if (std::regex_search(str,match,re))
+    start = "(?<=" + start + ")";
+    finish = "(?=" + finish + ")";
+    std::string val = start + "(.*)" + finish;
+    boost::regex re(val);
+    boost::smatch match;
+    if (boost::regex_search(str,match,re))
     {
         //Should probably add a smarter way to process this in case there is more than one match
-        return match[1];
+        std::string res = match[1];
+        //Getting rid of quotes and spaces
+        boost::algorithm::trim_if(res,boost::algorithm::is_any_of("\" "));
+        return res;
     }
-    else return "";
-    
+    else return str;
 }
+std::stringstream InputTranslator::ss;
 
+std::size_t InputTranslator::myHash::operator ()(const Key& k) const
+{
+    ss.clear();
+    ss << k.first;
+    ss << '[';
+    std::copy(boost::make_transform_iterator(k.second.begin(),k.one),
+              boost::make_transform_iterator(k.second.end(), k.one),
+              std::ostream_iterator<std::string>(ss,","));
+    ss << ']';
+    ss << '{';
+    std::copy(boost::make_transform_iterator(k.second.begin(),k.two),
+              boost::make_transform_iterator(k.second.end(), k.two),
+              std::ostream_iterator<std::string>(ss,","));
+    ss << '}';
+    return std::hash<std::string>()(ss.str());
+}
 

@@ -50,17 +50,79 @@ private:
     void getFormat();
     
     //Internal format for file conversion
-    struct data
+    struct modelData
     {
         std::string start_date;
         size_t timesteps;
         std::vector<std::string> additional_timeseries;
-        std::map< std::pair<std::string, std::vector<std::string>>, std::vector<double> > inputs;
-        std::map< std::pair<std::string, std::vector<std::string>>, std::vector<std::pair<size_t,double> > > sparseInputs;
+        std::map<std::string,std::vector<std::string>> index_set_dependencies;
+        std::map< size_t , std::vector<double> > inputs;
+        std::map< size_t, std::vector<std::pair<std::string,double> > > sparseInputs;
                 
+    } data ;
+    
+    typedef std::pair<std::string,std::string> idxidx;
+    
+    
+    typedef boost::tuple<
+    std::vector<double>::const_iterator,
+    std::vector<double>::const_iterator
+    > the_iterator_tuple;
+
+  typedef boost::zip_iterator<
+    the_iterator_tuple
+    > the_zip_iterator;
+
+  typedef boost::transform_iterator<
+    [](return void;),
+    the_zip_iterator
+    > the_transform_iterator;
+
+  the_transform_iterator it_begin(
+    the_zip_iterator(
+      the_iterator_tuple(
+        vect_1.begin(),
+        vect_2.begin()
+        )
+      ),
+    tuple_multiplies<double>()
+    );
+
+  the_transform_iterator it_end(
+    the_zip_iterator(
+      the_iterator_tuple(
+        vect_1.end(),
+        vect_2.end()
+        )
+      ),
+    tuple_multiplies<double>()
+    );
+    
+    
+   //std::function<std::string(> 
+    
+    
+    struct Key
+    {
+      std::string& first;
+      std::vector<idxidx>& second;
+      std::function<std::string(idxidx&)> one = [](idxidx& i){return i.first;};
+      std::function<std::string(idxidx&)> two = [](idxidx& i){return i.second;};
+      bool operator==(const Key &other) const
+      { return (first == other.first
+                && second == other.second
+                );
+      }
+    };
+    
+    
+    struct myHash
+    {
+        std::size_t operator()(const Key& k) const;
     };
     
     std::string findBetween(std::string,std::string,std::string);
+    static std::stringstream ss;
     
     void parse();
     void parseMagnus();

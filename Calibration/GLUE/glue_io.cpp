@@ -2,13 +2,11 @@
 
 
 static void
-ReadSetupFromFile(glue_setup *Setup, const char *Filename)
+ReadGLUESetupFromFile(glue_setup *Setup, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
 	token *Token;
-	
-	
 	
 	while(true)
 	{

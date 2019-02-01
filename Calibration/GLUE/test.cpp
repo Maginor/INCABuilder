@@ -2,7 +2,7 @@
 
 
 
-// NOTE: This is an example of a GLUE setup for HBV.
+// NOTE: This is an example of a GLUE setup for Persist.
 
 
 #define INCA_TIMESTEP_VERBOSITY 0
@@ -46,7 +46,7 @@ int main()
 	glue_setup Setup;
 	glue_results Results;
 	
-	ReadSetupFromFile(&Setup, "GLUE_setup.dat");
+	ReadGLUESetupFromFile(&Setup, "GLUE_setup.dat");
 	
 	timer RunGlueTimer = BeginTimer();
 	RunGLUE(DataSet, &Setup, &Results);

@@ -35,7 +35,7 @@ auto zip(T&&... containers) -> boost::iterator_range<boost::zip_iterator<decltyp
     auto zip_begin = boost::make_zip_iterator(boost::make_tuple(std::begin(containers)...));
     auto zip_end = boost::make_zip_iterator(boost::make_tuple(std::end(containers)...));
     return boost::make_iterator_range(zip_begin, zip_end);
-}
+} //This doesn't do any checks and is bound to fail horribly
 
 
 /*The way this class works is to read in inputs into a custom struct/map that can 
@@ -83,11 +83,6 @@ private:
        
     void parse();
     void parseMagnus();
-    
-    
-    
-       
-           
 };
 
 #endif /* INPUTTRANSLATOR_H */

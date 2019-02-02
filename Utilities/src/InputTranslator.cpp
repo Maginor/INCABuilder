@@ -89,7 +89,7 @@ void InputTranslator::parseMagnus()
             {
                 if (!boost::regex_search(line,comment) && !boost::regex_search(line,empty))
                 {
-                    boost::algorithm::trim_if(line,boost::algorithm::is_any_of(" "));
+                    boost::algorithm::trim(line);
                     (*mapPnt)[key].push_back(line);
                 }
             }
@@ -102,7 +102,10 @@ void InputTranslator::parseMagnus()
     }
     //Assigning values to data structure
     data.timesteps = boost::lexical_cast<size_t>(settings["timesteps"][0]);
+    
     data.start_date = settings["start_date"][0];
+    boost::algorithm::trim_if(data.start_date, boost::algorithm::is_any_of("\""));
+    
     if (settings.find("index_set_dependencies") != settings.end())
     {
        for (auto&i: settings["index_set_dependencies"])
@@ -112,6 +115,7 @@ void InputTranslator::parseMagnus()
            std::vector<std::string> indexers;
            std::string str = findBetween(i,"{","}");
            boost::split(indexers, str, boost::is_any_of(","));
+           for (auto&j: indexers) boost::algorithm::trim_if(j,boost::algorithm::is_any_of("\""));
            data.index_set_dependencies[parameter]=indexers;
         }
     }
@@ -132,7 +136,8 @@ void InputTranslator::parseMagnus()
         boost::algorithm::trim_if(str, boost::algorithm::is_any_of("\" "));
         boost::split(indices, str, boost::is_any_of(","));
         std::string idxidx = parameter;
-        for (auto zi : zip( data.index_set_dependencies[parameter], indices))
+        //This is dangerous. Should check vectors exist and are the same length
+        for (auto zi : zip( data.index_set_dependencies[parameter], indices)) 
         {
             idxidx += "[" + (zi.get<0>()) + "," + (zi.get<1>()) + "]";
         }
@@ -154,7 +159,25 @@ void InputTranslator::parseMagnus()
         }
         else
         {
-            //parse sparse timeseries
+            i.second.pop_back(); //Might want to add a check to see if it's "end_timeseeries"
+            for (auto&j : i.second)
+            {
+                std::string date = findBetween(j,"^\"","\"");
+                std::string value = findBetween(j,"[0-9]\"","$");
+                try
+                {
+                    data.sparseInputs[idxidx].push_back(
+                            std::make_pair<std::string&,double>(date,
+                                                               boost::lexical_cast<double>(value)
+                                                               )
+                            );
+                }
+                catch(...)
+                {
+                    std::cout << "could not convert <" << j << "> to sparse input" << std::endl; 
+                    throw;
+                }
+            }
         }
     }   
 }
@@ -171,7 +194,7 @@ std::string InputTranslator::findBetween(std::string str,std::string start, std:
         //Should probably add a smarter way to process this in case there is more than one match
         std::string res = match[1];
         //Getting rid of quotes and spaces
-        boost::algorithm::trim_if(res,boost::algorithm::is_any_of(" "));
+        boost::algorithm::trim(res);
         return res;
     }
     else return str;

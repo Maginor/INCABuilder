@@ -87,6 +87,7 @@ private:
     void parseMagnus();
     
     void saveJson();
+    void saveYaml();
     
 };
 

@@ -179,7 +179,8 @@ void InputTranslator::parseMagnus()
                 }
             }
         }
-    }   
+    }
+    saveJson();
 }
 
 std::string InputTranslator::findBetween(std::string str,std::string start, std::string finish)
@@ -200,4 +201,85 @@ std::string InputTranslator::findBetween(std::string str,std::string start, std:
     else return str;
 }
 
+
+void InputTranslator::saveJson()
+{
+    using nlohmann::json;
+    
+    json ats(data.additional_timeseries);
+    auto t = std::chrono::system_clock::now();
+    auto tt = std::chrono::system_clock::to_time_t(t);
+    
+    json j = {
+                {"creation_date",strtok(std::ctime(&tt), "\n")},
+                {"start_date", data.start_date},
+                {"timesteps", data.timesteps},
+                {"additional_timeseries", ats},
+                {"data", nullptr},
+            };
+    
+    std::vector<json> jVec;
+    for (auto&i : data.inputs)
+    {
+        //Separating list of indexers/indices
+        std::string parameter = findBetween(i.first,"^","\\[");
+        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
+        std::vector<std::string> idxvec; 
+        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
+        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
+        
+        json idxi,idxj;
+        for (auto& j: idxvec)
+        {
+            idxi.emplace_back(findBetween(j,"^",","));
+            idxj.emplace_back(findBetween(j,",","$"));
+        }
+        
+        json v(i.second);
+        
+        json jobj
+        {
+            {"indexers", idxi},
+            {"indices", idxj},
+            {"values", v},
+        };
+        
+        j["data"][parameter].push_back(jobj);
+    }
+    
+        for (auto&i : data.sparseInputs)
+    {
+        //Separating list of indexers/indices
+        std::string parameter = findBetween(i.first,"^","\\[");
+        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
+        std::vector<std::string> idxvec; 
+        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
+        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
+        
+        json idxi,idxj;
+        for (auto& j: idxvec)
+        {
+            idxi.emplace_back(findBetween(j,"^",","));
+            idxj.emplace_back(findBetween(j,",","$"));
+        }
+        
+        json v(i.second);
+        
+        json jobj
+        {
+            {"indexers", idxi},
+            {"indices", idxj},
+            {"values", v},
+        };
+        
+        j["data"][parameter].push_back(jobj);
+    }
+    //
+    //auto tt = ctime(&t);
+    //Checking unique index_set_dependencies
+    
+    
+    std::ofstream out("pretty.json");
+    out << std::setw(1) << j << std::endl;
+}
 

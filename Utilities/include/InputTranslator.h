@@ -19,6 +19,8 @@
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
 #include "boost/regex.hpp"
+#include <chrono>
+#include <ctime>
 #include "nlohmann/json.hpp"
 #include "yaml-cpp/yaml.h"
 
@@ -83,6 +85,9 @@ private:
        
     void parse();
     void parseMagnus();
+    
+    void saveJson();
+    
 };
 
 #endif /* INPUTTRANSLATOR_H */

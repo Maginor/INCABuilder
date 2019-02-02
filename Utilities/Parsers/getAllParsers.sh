@@ -9,15 +9,15 @@ mkdir build
 cd build
 cmake .. -DBUILD_SHARED_LIBS=ON
 make
-cp -P *.so ../../lib
+cp -P *.so.* ../../../lib/Unix
 cd ..
 mkdir buildStatic
 cd buildStatic
 cmake ..
 make
+cp *.a ../../../lib/Unix/
 
 cd $START
-cp *.a ../lib/
 rm -rf ../include/yaml-cpp/
 cp -rf yaml-cpp/include/yaml-cpp ../include/yaml-cpp/
 

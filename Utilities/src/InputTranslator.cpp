@@ -181,6 +181,7 @@ void InputTranslator::parseMagnus()
         }
     }
     saveJson();
+    saveYaml();
 }
 
 std::string InputTranslator::findBetween(std::string str,std::string start, std::string finish)
@@ -247,7 +248,7 @@ void InputTranslator::saveJson()
         j["data"][parameter].push_back(jobj);
     }
     
-        for (auto&i : data.sparseInputs)
+    for (auto&i : data.sparseInputs)
     {
         //Separating list of indexers/indices
         std::string parameter = findBetween(i.first,"^","\\[");
@@ -283,3 +284,50 @@ void InputTranslator::saveJson()
     out << std::setw(1) << j << std::endl;
 }
 
+void InputTranslator::saveYaml()
+{
+    auto t = std::chrono::system_clock::now();
+    auto tt = std::chrono::system_clock::to_time_t(t);
+    
+    YAML::Emitter out;
+    out.SetDoublePrecision(6);
+    
+    out << YAML::BeginDoc << YAML::BeginMap;
+    out << YAML::Key << "creation_date" << YAML::Value << strtok(std::ctime(&tt), "\n");
+    out << YAML::Key << "start_date" << YAML::Value << data.start_date;
+    out << YAML::Key << "timesteps" << YAML::Value << data.timesteps;
+    out << YAML::Key << "data" << YAML::BeginSeq;
+       
+    for (auto&i : data.inputs)
+    {
+        //Separating list of indexers/indices
+        std::string parameter = findBetween(i.first,"^","\\[");
+        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
+        std::vector<std::string> idxvec; 
+        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
+        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
+        
+        std::vector<std::string> idxi,idxj;
+        for (auto& j: idxvec)
+        {
+            idxi.emplace_back(findBetween(j,"^",","));
+            idxj.emplace_back(findBetween(j,",","$"));
+        }
+        
+        
+        out << YAML::BeginMap;
+        out << YAML::Key << "parameter" << YAML::Value << parameter;
+        out << YAML::Key << "indexers" << YAML::Flow;
+        out << YAML::BeginSeq << idxi << YAML::EndSeq;
+        out << YAML::Key << "indices" << YAML::Flow;
+        out << YAML::BeginSeq << idxj << YAML::EndSeq;
+        out << YAML::Key << "values" << YAML::Value;
+        out << YAML::BeginSeq << YAML::Flow << i.second << YAML::EndSeq;
+        out << YAML::EndMap;
+        
+    }    
+    out << YAML::EndSeq << YAML::EndMap << YAML::EndDoc;
+    
+    std::ofstream(ofs)("pretty.yaml");
+    ofs << out.c_str() << std::endl;
+}

@@ -18,7 +18,9 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
-#include "boost/regex.hpp"
+#include <boost/regex.hpp>
+#include <boost/optional.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp" 
 #include <chrono>
 #include <ctime>
 #include "nlohmann/json.hpp"
@@ -38,6 +40,16 @@ auto zip(T&&... containers) -> boost::iterator_range<boost::zip_iterator<decltyp
     auto zip_end = boost::make_zip_iterator(boost::make_tuple(std::end(containers)...));
     return boost::make_iterator_range(zip_begin, zip_end);
 } //This doesn't do any checks and is bound to fail horribly
+
+//Formats of dates that boost::posix time can parse
+const std::locale formats[] = 
+{
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y-%m-%d %H:%M:%S")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y/%m/%d %H:%M:%S")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%d.%m.%Y %H:%M:%S")),
+    std::locale(std::locale::classic(),new boost::posix_time::time_input_facet("%Y-%m-%d"))
+};
+
 
 
 /*The way this class works is to read in inputs into a custom struct/map that can 
@@ -61,7 +73,7 @@ private:
     format fileFormat;
     
     //Dataset where the inputs will be placed
-    inca_data_set* Dataset;
+    inca_data_set* DataSet;
     
     //File from which the data will be read
     const std::string filename;
@@ -72,12 +84,21 @@ private:
     //Internal format for file conversion
     struct modelData
     {
-        std::string start_date;
-        size_t timesteps;
+        boost::optional<boost::posix_time::ptime> start_date;
+        boost::optional<size_t> timesteps;
         std::vector<std::string> additional_timeseries;
         std::map<std::string,std::vector<std::string>> index_set_dependencies;
         std::map< std::string , std::vector<double> > inputs;
         std::map< std::string, std::vector<std::pair<std::string,double> > > sparseInputs;
+        
+       bool isAny(){
+            return !(start_date  &&
+                    timesteps  &&
+                    additional_timeseries.empty() &&
+                    inputs.empty() &&
+                    sparseInputs.empty()
+                    );
+        }
                 
     } data ;
     
@@ -88,6 +109,8 @@ private:
     
     void saveJson();
     void saveYaml();
+    
+    void putInDataset();
     
 };
 

@@ -5,7 +5,7 @@ tar -xf boost*
 rm *.tar.bz2
 cd boost_1_69_0
 ./bootstrap.sh
-./b2 --with-regex
+./b2 --with-regex --with-date_time
 cd ..
 rm -rf include/boost/
 mkdir include/boost/

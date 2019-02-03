@@ -8,7 +8,7 @@
 index_sets:
 "Landscape units" : {"Semi-natural" "Improved grassland" "Arable"}
 "Soils" : {"Direct runoff" "Soil water" "Groundwater"}
-"Reaches" : {"Blackmill" {"Tarland" "Blackmill"} {"Below_STW" "Tarland"} {"Coull" "Below_STW"}}
+"Reaches" : {"Tarland"}
 "Sediment size class" : {"Clay" "Silt" "Fine sand" "Medium sand" "Coarse sand"}
 
 parameters:
@@ -164,66 +164,64 @@ false false false
 
 ###################### "Reaches" ######################
 "Terrestrial catchment area" :     #(km2) [0.1, 999999] The terrestrial area of a subcatchment, excluding open water
-371.5 279.9 959.8 217.1
+279.9
 
 "Reach length" :     #(m) [0.1, 999999] The length of the main stem of the stream / reach in a subcatchment
-60000 40000 60000 28000
+40000
 
 "Reach width" :     #(m) [0.1, 9999] The average width of the main stem of the stream / reach in a subcatchment
-2 2 2 2
+2
 
 "a" :     #(1/m2) [1e-005, 0.99] The flow velocity 'a' parameter V=aQ^b
-0.06 0.05 0.06 0.06
+0.06
 
 "b" :     #(dimensionless) [0.1, 0.99] The flow velocity 'b' parameter V=aQ^b
-0.7 0.9 0.9 0.9
+0.07
 
 "Snow threshold temperature" :     #(°C) [-4, 4] The temperature at or below which precipitation will fall as snow in a subcatchment
-0 0 0 0
+0
 
 "Reach snow multiplier" :     #(dimensionless) [0.5, 1.5] The subcatchment-specific snow multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment
-1 1 1 1
+1
 
 "Reach rain multiplier" :     #(dimensionless) [0.5, 1.5] The subcatchment specific rain multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment
-1 1 1 1
+1
 
 "Abstraction flow" :     #(m3/s) [0, 9999] The rate at which water is removed from a reach by human activities
-0 0 0 0
+0
 
 "Effluent flow" :     #(m3/s) [0, 9999] The rate of liquid inputs to a reach from e.g. sewage treatment works
-0.001 0.001 0.001 0.001
+0.001
 
 "Reach has abstraction" :
-false false false false
+false
 
 "Reach has effluent input" :
-true true true true
+true
 
 "Initial stream flow" :     #(m3/s) [0.0001, 9999] The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.
-2 2 2 2
+2
 
 "Bank erosion scaling factor" :     #(kg/m2/m3 s/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0 0
+0
 
 "Bank erosion non-linear coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1 1 1 1
+1
 
 "Shear velocity coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1e-7 1e-7 1e-7 1e-7
+1e-7
 
 "Mean channel slope" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1 1 1 1
+1
 
 "Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
 #1 1 1 1
-2e-7 2e-7 2e-7 2e-7
+2e-9
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
-22 33 3
-87 5 3
-64 18 5
-84 2 4
+33 33 33
+
 
 ###################### "Sediment size class" ######################
 "Percentage of sediment in grain size class" :     #(%) [-1.79769313486232e+308, 1.79769313486232e+308]
@@ -237,15 +235,23 @@ true true true true
 
 ###################### "Sediment size class" "Reaches" ######################
 "Effluent sediment concentration" :     #(mg/L) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0 0
-0 0 0 0
-0 0 0 0
-0 0 0 0
-0 0 0 0
+0
+0
+0
+0
+0
 
 "Initial suspended sediment mass" :
-100 100 100 100
-100 100 100 100
-100 100 100 100
-100 100 100 100
-100 100 100 100
+0
+0
+0
+0
+0
+
+"Initial mass of bed sediment per unit area" :
+0
+0
+0
+0
+0
+

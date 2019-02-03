@@ -2,7 +2,7 @@
 
 // NOTE NOTE NOTE This module is in development and is not finished!!!!
 
-//#include "../boost_solvers.h"
+#include "../boost_solvers.h"
 
 static void
 AddINCASedModel(inca_model *Model)
@@ -146,16 +146,9 @@ AddINCASedModel(inca_model *Model)
 	
 	///////////////// Suspended sediment ////////////////////////////////
 	
-	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.01, IncaDascru);
-	//auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.01, BoostRosenbrock4, 1e-3, 1e-3);
+	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.1, BoostRosenbrock4, 1e-3, 1e-3);
 	
 	auto SizeClass = RegisterIndexSet(Model, "Sediment size class");
-	
-	RequireIndex(Model, SizeClass, "Clay");
-	RequireIndex(Model, SizeClass, "Silt");
-	RequireIndex(Model, SizeClass, "Fine sand");
-	RequireIndex(Model, SizeClass, "Medium sand");
-	RequireIndex(Model, SizeClass, "Coarse sand");
 	
 	auto SedimentSizeClass = RegisterParameterGroup(Model, "Sediment size class", SizeClass);
 	
@@ -175,7 +168,7 @@ AddINCASedModel(inca_model *Model)
 	auto ShearVelocityCoefficient        = RegisterParameterDouble(Model, Reaches, "Shear velocity coefficient", Dimensionless, 1.0);
 	auto MeanChannelSlope                = RegisterParameterDouble(Model, Reaches, "Mean channel slope", Dimensionless, 2.0);
 	auto EntrainmentCoefficient          = RegisterParameterDouble(Model, Reaches, "Entrainment coefficient", S2PerKg, 1.0);
-	auto InitialMassOfBedSedimentPerUnitArea = RegisterParameterDouble(Model, Reaches, "Initial mass of bed sediment per unit area", KgPerM2, 10);
+	auto InitialMassOfBedSedimentPerUnitArea = RegisterParameterDouble(Model, SedimentReach, "Initial mass of bed sediment per unit area", KgPerM2, 10);
 	
 	auto InitialSuspendedSedimentMass    = RegisterParameterDouble(Model, SedimentReach, "Initial suspended sediment mass", Kg, 1e2);
 	
@@ -233,7 +226,6 @@ AddINCASedModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ClayReleaseFromChannelBanks,
-		//TODO: Should this be for the clay size class only??
 		return PARAMETER(BankErosionScalingFactor) * pow(RESULT(ReachFlow), PARAMETER(BankErosionNonlinearCoefficient));
 	)
 	
@@ -261,8 +253,6 @@ AddINCASedModel(inca_model *Model)
 		return waterdensity * earthsurfacegravity * PARAMETER(MeanChannelSlope) * RESULT(ReachVelocity) * RESULT(ReachDepth);
 	)
 	
-	//NOTE: Right now we get way too high entrainment for clay and silt, causing the suspended sediment mass to go negative, and then bounce off to heaven.
-	
 	EQUATION(Model, SedimentEntrainment,
 		double value = 86400.0 * PARAMETER(EntrainmentCoefficient) * RESULT(MassOfBedSedimentPerUnitArea) * RESULT(ProportionOfSedimentThatCanBeEntrained) * RESULT(StreamPower) * RESULT(ReachFrictionFactor);
 		return value;
@@ -286,19 +276,15 @@ AddINCASedModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, SuspendedSedimentMass,
-		static int bla = 0;
-		
-		//if(CURRENT_INDEX(SizeClass) == 0 && bla++ < 10)
-		//{
-		//	std::cout << "bed mass: " << RESULT(MassOfBedSedimentPerUnitArea) << " mass: " << RESULT(SuspendedSedimentMass) << " deposition: " << RESULT(SedimentDeposition) << " entrainment: " << RESULT(SedimentEntrainment) << std::endl;
-		//}
+		double clayrelease = RESULT(ClayReleaseFromChannelBanks);
+		if(CURRENT_INDEX(SizeClass) != 0) clayrelease = 0.0;
 		
 		return 
 			  RESULT(SedimentOfSizeClassDeliveredToReach) 
 			+ PARAMETER(EffluentSedimentConcentration) * PARAMETER(EffluentFlow)
 			+ RESULT(ReachUpstreamSuspendedSediment) 
 			- RESULT(ReachSuspendedSedimentOutput) 
-			+ PARAMETER(ReachLength) * PARAMETER(ReachWidth) * (RESULT(SedimentEntrainment) + RESULT(ClayReleaseFromChannelBanks) - RESULT(SedimentDeposition));
+			+ PARAMETER(ReachLength) * PARAMETER(ReachWidth) * (RESULT(SedimentEntrainment) + clayrelease - RESULT(SedimentDeposition));
 	)
 }
 

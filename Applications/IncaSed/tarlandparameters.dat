@@ -119,7 +119,7 @@ false false false
 
 "Retained water depth" :     #(mm) [0, 9999] The depth of water in a box which does not contribute to runoff generation but can still contribute to evapotranspiration
 0 0 0
-150 150 150
+290 290 290
 100 100 100
 
 "Drought runoff fraction" :     #(dimensionless) [0, 0.5] The fraction of water entering a box which contributes to runoff generation when the depth of water is below the retained water depth
@@ -128,9 +128,9 @@ false false false
 0 0 0
 
 "Time constant" :     #(days) [0.1, 9999] The inverse of the rate at which water flows out of a box
-3 3 3
-6 6 6
-50 50 50
+1 1 1
+1 10 1
+65 65 65
 
 "Evapotranspiration adjustment" :     #(dimensionless) [0, 10] A factor to slow the rate of evapotranspiration when the depth of water in a box is below the retained water depth. Special  values include 0 (no slowing of evapotranspiration, 1 (slowing is proportional to the depth of water remaining in the bucket) and values above 10 (all evapotranspiration effectively stops when the depth of water is below the retained water depth)
 1 1 1
@@ -144,7 +144,7 @@ false false false
 
 "Maximum capacity" :     #(mm) [0, 9999] The maximum depth of water which can be held in a bucket
 150 150 150
-300 300 300
+500 500 500
 500 500 500
 
 "Inundation threshold" :     #(mm) [0, 9999] The depth of water in a bucket below which inundation from the stream can occur
@@ -164,10 +164,10 @@ false false false
 
 ###################### "Reaches" ######################
 "Terrestrial catchment area" :     #(km2) [0.1, 999999] The terrestrial area of a subcatchment, excluding open water
-279.9
+51.7
 
 "Reach length" :     #(m) [0.1, 999999] The length of the main stem of the stream / reach in a subcatchment
-40000
+10000
 
 "Reach width" :     #(m) [0.1, 9999] The average width of the main stem of the stream / reach in a subcatchment
 2
@@ -176,7 +176,7 @@ false false false
 0.06
 
 "b" :     #(dimensionless) [0.1, 0.99] The flow velocity 'b' parameter V=aQ^b
-0.07
+0.7
 
 "Snow threshold temperature" :     #(°C) [-4, 4] The temperature at or below which precipitation will fall as snow in a subcatchment
 0
@@ -191,7 +191,7 @@ false false false
 0
 
 "Effluent flow" :     #(m3/s) [0, 9999] The rate of liquid inputs to a reach from e.g. sewage treatment works
-0.001
+0
 
 "Reach has abstraction" :
 false
@@ -212,7 +212,7 @@ true
 1e-7
 
 "Mean channel slope" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1
+0.8
 
 "Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
 #1 1 1 1
@@ -220,12 +220,12 @@ true
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
-33 33 33
+20 50 30
 
 
 ###################### "Sediment size class" ######################
 "Percentage of sediment in grain size class" :     #(%) [-1.79769313486232e+308, 1.79769313486232e+308]
-20 20 20 20 20
+5 5 20 35 35
 
 "Smallest diameter of sediment in size class" :     #(m) [0, 2000] These are specified by the model and should not be changed unless you know what you are doing
 0    2e-6 6e-5 2e-4 6e-4

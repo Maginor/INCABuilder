@@ -8,14 +8,14 @@ SCurve(double X, double Threshold1, double Threshold2)
 {
 	if(X < Threshold1) return 0.0;
 	if(X > Threshold2) return 1.0;
-	double Y = (X - Threshold1) / (Threshold2 - Threshold1)
+	double Y = (X - Threshold1) / (Threshold2 - Threshold1);
 	return (3.0 - 2.0*Y)*Y*Y;
 }
 
 static void
 AddINCACModel(inca_model *Model)
 {
-	//NOTE: Uses PERSiST, SoilTemperature, WaterTemperature
+	//NOTE: Uses PERSiST, SoilTemperature (, WaterTemperature??)
 	
 	auto Dimensionless  = RegisterUnit(Model);
 	auto Mm             = RegisterUnit(Model, "mm");
@@ -28,8 +28,12 @@ AddINCACModel(inca_model *Model)
 	auto KgPerM3        = RegisterUnit(Model, "kg/m^3");
 	auto MPerDay        = RegisterUnit(Model, "m/day");
 	auto KgPerDay       = RegisterUnit(Model, "kg/day");
+	auto PerDay         = RegisterUnit(Model, "/day");
+	auto Kg             = RegisterUnit(Model, "kg");
 	
-	auto Soils = GetIndexSetHandle(Model, "Soils");
+	auto Soils          = GetIndexSetHandle(Model, "Soils");
+	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
+	auto Reach          = GetIndexSetHandle(Model, "Reaches");
 	
 	auto DirectRunoff = RequireIndex(Model, Soils, "Direct runoff");
 	auto UpperSoil    = RequireIndex(Model, Soils, "Upper soil water");
@@ -37,26 +41,29 @@ AddINCACModel(inca_model *Model)
 	auto Groundwater  = RequireIndex(Model, Soils, "Groundwater");
 	
 	
+	auto Land = GetParameterGroupHandle(Model, "Landscape units");
+	
 	//TODO: As always, find better default values, min/max, description..
-	auto SoilMoistureThreshold         = RegisterParameterDouble(Model, .., "Soil moisture threshold", Mm, 50.0, 0.0, 10000.0, "The minimal water depth at which carbon processes in the soil occur");
+	auto SoilMoistureThreshold         = RegisterParameterDouble(Model, Land, "Soil moisture threshold", Mm, 50.0, 0.0, 10000.0, "The minimal water depth at which carbon processes in the soil occur");
 	
-	auto LitterFallRate                = RegisterParameterDouble(Model, .., "Litter fall rate", GPerM2PerDay, 1.0);
-	auto LitterFallStartDay            = RegisterParameterUInt(Model, ..,   "Litter fall start day", JulianDay, 300, 1, 364);
-	auto LitterFallDuration            = RegisterParameterUInt(Model, ..,   "Litter fall duration", Days, 30, 0, 365);
-	auto RootBreakdownRate             = RegisterParameterDouble(Model, .., "Root breakdown rate", GPerM2PerDay, 1.0);
+	auto LitterFallRate                = RegisterParameterDouble(Model, Land, "Litter fall rate", GPerM2PerDay, 1.0);
+	auto LitterFallStartDay            = RegisterParameterUInt(  Model, Land, "Litter fall start day", JulianDay, 300, 1, 364);
+	auto LitterFallDuration            = RegisterParameterUInt(  Model, Land, "Litter fall duration", Days, 30, 0, 365);
+	auto RootBreakdownRate             = RegisterParameterDouble(Model, Land, "Root breakdown rate", GPerM2PerDay, 1.0);
 	
-	auto SoilTemperatureRateMultiplier = RegisterParameterDouble(Model, .., "Soil temperature rate multiplier", Dimensionless);
-	auto SoilTemperatureRateOffset     = RegisterParameterDouble(Model, .., "Soil temperature rate offset", DegreesCelsius);
+	auto SoilTemperatureRateMultiplier = RegisterParameterDouble(Model, Land, "Soil temperature rate multiplier", Dimensionless, 1.0);
+	auto SoilTemperatureRateOffset     = RegisterParameterDouble(Model, Land, "Soil temperature rate offset", DegreesCelsius, 20.0);
 	
-	auto DICMassTransferVelocity       = RegisterParameterDouble(Model, .., "DIC mass transfer velocity", MPerDay, 1.0);
-	auto DICSaturationConstant         = RegisterParameterDouble(Model, .., "DIC saturation constant", KgPerM3, 1.0);
-	
-	
-	auto MaximumCapacity = GetParameterDoubleHandle(Model, "Maximum capacity");
-	auto WaterDepth      = GetEquationHandle(Model, "Water depth");
-	auto SoilTemperature = GetEquationHandle(Model, "Soil temperature");
-	
-	
+	auto DICMassTransferVelocity            = RegisterParameterDouble(Model, Land, "DIC mass transfer velocity", MPerDay, 1.0);
+	auto DICSaturationConstant              = RegisterParameterDouble(Model, Land, "DIC saturation constant", KgPerM3, 1.0);
+	auto SOCMineralisationBaseRateUpperSoil = RegisterParameterDouble(Model, Land, "SOC mineralisation base rate in upper soil layer", PerDay, 0.1);
+	auto SOCMineralisationBaseRateLowerSoil = RegisterParameterDouble(Model, Land, "SOC mineralisation base rate in lower soil layer", PerDay, 0.1);
+	auto SOCDesorptionBaseRateUpperSoil     = RegisterParameterDouble(Model, Land, "SOC desorption base rate in upper soil layer", PerDay, 0.1);
+	auto SOCDesorptionBaseRateLowerSoil     = RegisterParameterDouble(Model, Land, "SOC desorption base rate in lower soil layer", PerDay, 0.1);
+	auto DOCSorptionBaseRateUpperSoil       = RegisterParameterDouble(Model, Land, "DOC sorption base rate in upper soil layer", PerDay, 0.1);
+	auto DOCSorptionBaseRateLowerSoil       = RegisterParameterDouble(Model, Land, "DOC sorption base rate in lower soil layer", PerDay, 0.1);
+	auto DOCMineralisationBaseRateUpperSoil = RegisterParameterDouble(Model, Land, "DOC mineralisation base rate in upper soil layer", PerDay, 0.1);
+	auto DOCMineralisationBaseRateLowerSoil = RegisterParameterDouble(Model, Land, "DOC mineralisation base rate in lower soil layer", PerDay, 0.1);
 	
 	auto IncaSolver = RegisterSolver(Model, "INCA Solver", 0.1, IncaDascru);
 	
@@ -88,7 +95,7 @@ AddINCACModel(inca_model *Model)
 	auto DOCMineralisationInLowerSoil = RegisterEquation(Model, "DOC mineralisation in lower soil layer", KgPerDay);
 	SetSolver(Model, DOCMineralisationInLowerSoil, IncaSolver);
 	auto DICMassTransferToAtmosphere  = RegisterEquation(Model, "DIC mass transfer to atmosphere", KgPerDay);
-	SetSolver(Model, DICMassTransferToAtmosphere, IncaDascru);
+	SetSolver(Model, DICMassTransferToAtmosphere, IncaSolver);
 	
 	auto DOCMassInDirectRunoff   = RegisterEquationODE(Model, "DOC mass in direct runoff", KgPerKm2);
 	SetSolver(Model, DOCMassInDirectRunoff, IncaSolver);
@@ -115,7 +122,7 @@ AddINCACModel(inca_model *Model)
 	//SetInitialValue()
 	
 	auto DOCMassInLowerSoilLayer = RegisterEquationODE(Model, "DOC mass in lower soil layer", KgPerKm2);
-	SetSolver(Model, DOCMassInUpperSoilLayer, IncaSolver);
+	SetSolver(Model, DOCMassInLowerSoilLayer, IncaSolver);
 	//SetInitialValue()
 	
 	auto DICMassInLowerSoilLayer = RegisterEquationODE(Model, "DIC mass in lower soil layer", KgPerKm2);
@@ -138,7 +145,19 @@ AddINCACModel(inca_model *Model)
 	auto TotalDiffuseDICOutput = RegisterEquationCumulative(Model, "Total diffuse DIC output", DiffuseDICOutput, LandscapeUnits);
 	
 	
-	EQUATION(LitterFall,
+	auto MaximumCapacity          = GetParameterDoubleHandle(Model, "Maximum capacity");
+	auto Percent                  = GetParameterDoubleHandle(Model, "%");
+	auto TerrestrialCatchmentArea = GetParameterDoubleHandle(Model, "Terrestrial catchment area");
+	
+	auto SoilTemperature       = GetEquationHandle(Model, "Soil temperature");
+	auto WaterDepth            = GetEquationHandle(Model, "Water depth");
+	auto RunoffToReach         = GetEquationHandle(Model, "Runoff to reach");
+	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
+	auto PercolationInput      = GetEquationHandle(Model, "Percolation input");
+	
+	
+	
+	EQUATION(Model, LitterFall,
 		double litter = PARAMETER(LitterFallRate);
 		u64 start     = PARAMETER(LitterFallStartDay);
 		u64 duration  = PARAMETER(LitterFallDuration);
@@ -160,68 +179,76 @@ AddINCACModel(inca_model *Model)
 	//TODO: Check if we should not use some of the intermediate water levels instead?
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth, DirectRunoff));
 	)
 	
 	EQUATION(Model, DirectRunoffToUpperLayerFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, UpperSoil), RESULT(WaterDepth, DirectRunoff));
 	)
 	
 	EQUATION(Model, UpperLayerToDirectRunoffFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth, DirectRunoff));
 	)
 	
 	EQUATION(Model, UpperLayerToLowerLayerFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, LowerSoil), RESULT(WaterDepth, UpperSoil));
 	)
 	
 	EQUATION(Model, UpperLayerToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, UpperSoil), RESULT(WaterDepth, UpperSoil));
 	)
 	
 	EQUATION(Model, LowerLayerToGroundwaterFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth, LowerSoil));
 	)
 	
 	EQUATION(Model, LowerLayerToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, LowerSoil), RESULT(WaterDepth, LowerSoil));
 	)
 
 	EQUATION(Model, GroundwaterToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth, Groundwater));
 	)
 	
 	
 	EQUATION(Model, SOCMineralisationInUpperSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(SOCMineralisationBaseRateUpperSoil) * RESULT(SOCMassInUpperSoilLayer);
+		return RESULT(SoilProcessRateModifier, UpperSoil) * PARAMETER(SOCMineralisationBaseRateUpperSoil) * RESULT(SOCMassInUpperSoilLayer);
 	)
 	
 	EQUATION(Model, SOCDesorptionInUpperSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(SOCDesorptionBaseRateUpperSoil) * RESULT(SOCMassInUpperSoilLayer);
+		return RESULT(SoilProcessRateModifier, UpperSoil) * PARAMETER(SOCDesorptionBaseRateUpperSoil) * RESULT(SOCMassInUpperSoilLayer);
 	)
 	
 	EQUATION(Model, DOCSorptionInUpperSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(DOCSorptionBaseRateUpperSoil) * RESULT(DOCMassInUpperSoilLayer);
+		return RESULT(SoilProcessRateModifier, UpperSoil) * PARAMETER(DOCSorptionBaseRateUpperSoil) * RESULT(DOCMassInUpperSoilLayer);
 	)
 	
 	EQUATION(Model, DOCMineralisationInUpperSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(DOCMineralisationBaseRateUpperSoil) * RESULT(DOCMassInUpperSoilLayer);
+		return RESULT(SoilProcessRateModifier, UpperSoil) * PARAMETER(DOCMineralisationBaseRateUpperSoil) * RESULT(DOCMassInUpperSoilLayer);
 	)
 	
 	EQUATION(Model, SOCMineralisationInLowerSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(SOCMineralisationBaseRateLowerSoil) * RESULT(SOCMassInLowerSoilLayer);
+		return RESULT(SoilProcessRateModifier, LowerSoil) * PARAMETER(SOCMineralisationBaseRateLowerSoil) * RESULT(SOCMassInLowerSoilLayer);
 	)
 	
 	EQUATION(Model, SOCDesorptionInLowerSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(SOCDesorptionBaseRateLowerSoil) * RESULT(SOCMassInLowerSoilLayer);
+		return RESULT(SoilProcessRateModifier, LowerSoil) * PARAMETER(SOCDesorptionBaseRateLowerSoil) * RESULT(SOCMassInLowerSoilLayer);
 	)
 	
 	EQUATION(Model, DOCSorptionInLowerSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(DOCSorptionBaseRateLowerSoil) * RESULT(DOCMassInLowerSoilLayer);
+		return RESULT(SoilProcessRateModifier, LowerSoil) * PARAMETER(DOCSorptionBaseRateLowerSoil) * RESULT(DOCMassInLowerSoilLayer);
 	)
 	
 	EQUATION(Model, DOCMineralisationInLowerSoil,
-		return RESULT(SoilProcessRateModifier) * PARAMETER(DOCMineralisationBaseRateLowerSoil) * RESULT(DOCMassInLowerSoilLayer);
+		return RESULT(SoilProcessRateModifier, LowerSoil) * PARAMETER(DOCMineralisationBaseRateLowerSoil) * RESULT(DOCMassInLowerSoilLayer);
 	)
 	
 	EQUATION(Model, DICMassTransferToAtmosphere,
@@ -244,7 +271,7 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, SOCMassInUpperSoilLayer,
 		return 
-			  1000.0 * (RESULT(LitterFall) + PARAMETER(RootBreakdownRate)) 
+			  1000.0 * (RESULT(LitterFall) + PARAMETER(RootBreakdownRate))
 			+ RESULT(DOCSorptionInUpperSoil)
 			- RESULT(SOCMineralisationInUpperSoil)
 			- RESULT(SOCDesorptionInUpperSoil);
@@ -257,7 +284,7 @@ AddINCACModel(inca_model *Model)
 			- RESULT(DOCMineralisationInUpperSoil)
 			
 			- RESULT(DOCMassInUpperSoilLayer) * (RESULT(UpperLayerToDirectRunoffFraction) + RESULT(UpperLayerToReachFraction) + RESULT(UpperLayerToLowerLayerFraction))
-			+ RESULT(DOCMassInDirectRunoff) * RESULT(DirectRunoffToUpperLayerFraction)
+			+ RESULT(DOCMassInDirectRunoff) * RESULT(DirectRunoffToUpperLayerFraction);
 	)
 	
 	EQUATION(Model, DICMassInUpperSoilLayer,
@@ -267,7 +294,7 @@ AddINCACModel(inca_model *Model)
 			- RESULT(DICMassTransferToAtmosphere)
 			
 			- RESULT(DICMassInUpperSoilLayer) * (RESULT(UpperLayerToDirectRunoffFraction) + RESULT(UpperLayerToReachFraction) + RESULT(UpperLayerToLowerLayerFraction))
-			+ RESULT(DICMassInDirectRunoff) * RESULT(DirectRunoffToUpperLayerFraction)
+			+ RESULT(DICMassInDirectRunoff) * RESULT(DirectRunoffToUpperLayerFraction);
 	)
 	
 	EQUATION(Model, SOCMassInLowerSoilLayer,
@@ -328,12 +355,12 @@ AddINCACModel(inca_model *Model)
 	)
 	
 
+	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
 	
-	
-	auto DOCMineralisationSelfShadingMultiplier = RegisterParameterDouble(Model, .., "Aquatic DOC mineralisation self-shading multiplier", Dimensionless, 1.0);
-	auto DOCMineralisationOffset                = RegisterParameterDouble(Model, .., "Aquatic DOC mineralisation offset", Dimensionless, 1.0);
-	
-	
+	auto DOCMineralisationSelfShadingMultiplier = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation self-shading multiplier", Dimensionless, 1.0);
+	auto DOCMineralisationOffset                = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation offset", Dimensionless, 1.0);
+	auto ReachDICLossRate                       = RegisterParameterDouble(Model, Reaches, "Reach DIC loss rate", PerDay, 0.1);
+	auto MicrobialMineralisationBaseRate        = RegisterParameterDouble(Model, Reaches, "Microbial mineralisation base rate", PerDay, 0.1);
 	
 	auto SolarRadiation = RegisterInput(Model, "Solar radiation");
 	
@@ -346,16 +373,22 @@ AddINCACModel(inca_model *Model)
 	SetSolver(Model, ReachDOCOutput, ReachSolver);
 	auto ReachDICOutput = RegisterEquation(Model, "Reach DIC output", KgPerDay);
 	SetSolver(Model, ReachDICOutput, ReachSolver);
-	auto DOCMassInReach = RegisteEquationODE(Model, "DOC mass in reach", Kg);
+	auto DOCMassInReach = RegisterEquationODE(Model, "DOC mass in reach", Kg);
 	SetSolver(Model, DOCMassInReach, ReachSolver);
 	//SetInitialValue
-	auto DICMassInReach = RegisteEquationODE(Model, "DIC mass in reach", Kg);
+	auto DICMassInReach = RegisterEquationODE(Model, "DIC mass in reach", Kg);
 	SetSolver(Model, DICMassInReach, ReachSolver);
 	//SetInitialValue
 	auto PhotoMineralisationRate = RegisterEquation(Model, "Photomineralisation rate", KgPerDay);
 	SetSolver(Model, PhotoMineralisationRate, ReachSolver);
-	auto MicrobialMineralisationBaseRate = RegisterEquation(Model, "Microbial mineralisation rate", KgPerDay);
+	auto MicrobialMineralisationRate = RegisterEquation(Model, "Microbial mineralisation rate", KgPerDay);
 	SetSolver(Model, MicrobialMineralisationRate, ReachSolver);
+	
+	
+	
+	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
+	auto ReachFlow   = GetEquationHandle(Model, "Reach flow");
+	
 	
 	EQUATION(Model, ReachDOCInput,
 		double upstreamdoc = 0.0;

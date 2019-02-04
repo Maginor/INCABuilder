@@ -1,14 +1,6 @@
 
 #if !defined INCAN_MODEL_H
 
-inline double
-SafeDivide(double A, double B)
-{
-	if(B == 0.0) return 0.0;     //TODO: Do we need to check if |B| < epsilon instead?
-	return A / B;
-}
-
-
 static void
 AddIncaNModel(inca_model *Model)
 {

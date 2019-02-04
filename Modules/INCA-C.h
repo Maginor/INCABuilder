@@ -331,8 +331,8 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, DICMassInGroundwater,
 		return
-			  RESULT(DOCMassInLowerSoilLayer) * RESULT(LowerLayerToGroundwaterFraction)
-			- RESULT(DOCMassInGroundwater) * RESULT(GroundwaterToReachFraction);
+			  RESULT(DICMassInLowerSoilLayer) * RESULT(LowerLayerToGroundwaterFraction)
+			- RESULT(DICMassInGroundwater) * RESULT(GroundwaterToReachFraction);
 	)
 	
 	
@@ -440,6 +440,18 @@ AddINCACModel(inca_model *Model)
 			- RESULT(ReachDICOutput)
 			+ (RESULT(PhotoMineralisationRate) + RESULT(MicrobialMineralisationRate)) * RESULT(DOCMassInReach)
 			- PARAMETER(ReachDICLossRate) * RESULT(DICMassInReach);                          //TODO: Should the loss rate depend on anything??
+	)
+	
+	
+	auto ReachDOCConcentration = RegisterEquation(Model, "Reach DOC concentration", KgPerM3);
+	auto ReachDICConcentration = RegisterEquation(Model, "Reach DIC concentration", KgPerM3);
+	
+	EQUATION(Model, ReachDOCConcentration,
+		return RESULT(DOCMassInReach) / RESULT(ReachVolume);
+	)
+	
+	EQUATION(Model, ReachDICConcentration,
+		return RESULT(DICMassInReach) / RESULT(ReachVolume);
 	)
 	
 }

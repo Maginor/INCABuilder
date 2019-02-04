@@ -51,6 +51,31 @@ const std::locale formats[] =
 };
 
 
+struct ParameterAttributes
+{
+    std::string name;
+    std::vector<std::string> indexers;
+    std::vector<std::string> indices;
+
+    bool operator==(const ParameterAttributes &other) const
+    { return (name == other.name
+              && indexers == other.indexers
+              && indices == other.indices);
+    }
+
+};    
+
+struct KeyHasher
+{
+    std::size_t operator()(const ParameterAttributes& k) const
+    {
+        std::stringstream ss;
+        ss << k.name;
+        for(auto&i : k.indexers) ss << i;
+        return (std::hash<std::string>()(ss.str()));
+    }
+};
+
 
 /*The way this class works is to read in inputs into a custom struct/map that can 
  * then be broadcast to the different type formats
@@ -61,6 +86,8 @@ public:
     InputTranslator();
     InputTranslator(const InputTranslator& orig);
     virtual ~InputTranslator();
+    
+    void setDataset(inca_data_set*);
     
 private:
     //Allowable formats for Inputs
@@ -81,17 +108,22 @@ private:
     //Determining file type
     void getFormat();
     
-    //Internal format for file conversion
     struct modelData
     {
         boost::optional<boost::posix_time::ptime> start_date;
         boost::optional<size_t> timesteps;
         std::vector<std::string> additional_timeseries;
         std::map<std::string,std::vector<std::string>> index_set_dependencies;
-        std::map< std::string , std::vector<double> > inputs;
-        std::map< std::string, std::vector<std::pair<std::string,double> > > sparseInputs;
+//        std::map< std::string , std::vector<double> > inputs;
+//        std::map< std::string, std::vector<std::pair<std::string,double> > > sparseInputs;
+
+        std::unordered_map<ParameterAttributes, std::vector<double>, KeyHasher > inputs;
+        std::unordered_map<ParameterAttributes, std::vector<std::pair<std::string,double> >, KeyHasher > sparseInputs;
         
-       bool isAny(){
+
+        
+        
+        bool isAny(){
             return !(start_date  &&
                     timesteps  &&
                     additional_timeseries.empty() &&
@@ -106,9 +138,12 @@ private:
        
     void parse();
     void parseMagnus();
+    void parseJson();
+    void parseYaml();
     
     void saveJson();
     void saveYaml();
+    
     
     void putInDataset();
     

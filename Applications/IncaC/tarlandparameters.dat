@@ -1,22 +1,16 @@
-# Parameter file generated for INCA-Sed V0.0 at 2019-01-28 15:31:15
-
-
-
-#NOTE: These are not the correct parameter values for this river. This is just a test setup.
-
+# Parameter file generated for INCA-Sed V0.0 at 2019-02-04 16:12:23
 
 index_sets:
 "Landscape units" : {"Semi-natural" "Improved grassland" "Arable"}
-"Soils" : {"Direct runoff" "Soil water" "Groundwater"}
+"Soils" : {"Direct runoff" "Upper soil water" "Lower soil water" "Groundwater"}
 "Reaches" : {"Tarland"}
-"Sediment size class" : {"Clay" "Silt" "Fine sand" "Medium sand" "Coarse sand"}
 
 parameters:
 ###################### (no index sets) ######################
 "Timesteps" :     #(days) [0, 18446744073709551615]
 2922
 
-"Start date" :     # ["1000-1-1", "3000-12-31"]
+"Start date" :     # ["1000-1-1", "3000-14-365"]
 "1996-1-1"
 
 ###################### "Landscape units" ######################
@@ -44,70 +38,114 @@ parameters:
 "Canopy interception" :     #(mm/day) [0, 0.3] The depth of precipitation which does not make it to the soil surface but is instead intercepted by the vegetative canopy and returned to the atmosphere either through evaporation or sublimation
 0 0 0
 
-"Flow erosion scaling factor" :     #(s/m2) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Thermal conductivity of soil" :     #(W/m/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.7 0.7 0.7
+
+"Specific heat capacity due to freeze/thaw" :     #(MJ/m3/°C) [1, 200] Controls the energy released when water is frozen and energy consumed under melting
+6.6 6.6 6.6
+
+"Water equivalent factor" :     #(dimensionless) [0.01, 1] 1mm of snow would produce this amount of water when melted
+0.3 0.3 0.3
+
+"Snow depth / soil temperature factor" :     #(/cm) [-0.03, -0.001] Defines an empirical relationship between snow pack depth and its insulating effect on soils
+-0.02 -0.02 -0.02
+
+"Specific heat capacity of soil" :     #(MJ/m3/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+1.1 1.1 1.1
+
+"Soil depth" :     #(m) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.2 0.2 0.2
+
+"Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+20 20 20
+
+"Soil moisture threshold" :     #(mm) [0, 10000] The minimal water depth at which carbon processes in the soil occur
+50 50 50
+
+"Litter fall rate" :     #(g/m^2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 1 1 1
 
-"Flow erosion direct runoff threshold" :     #(m3/s/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0
+"Litter fall start day" :     #(Julian day) [1, 364]
+300 300 300
 
-"Flow erosion non-linear coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.15 0.15 0.15
+"Litter fall duration" :     #(day) [0, 365]
+30 30 30
 
-"Transport capacity scaling factor" :     #(kg/m2/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.01 0.01 0.01
-
-"Transport capacity direct runoff threshold" :     #(m3/s/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0
-
-"Transport capacity non-linear coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.15 0.15 0.15
-
-"Splash detachment scaling factor" :     #(s/m) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Root breakdown rate" :     #(g/m^2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 1 1 1
 
-"Flow erosion potential" :     #(kg/s/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.003 0.003 0.003
+"Soil temperature rate multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+1 1 1
 
-"Splash detachment soil erodibility" :     #(kg/m2/s) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0
+"Soil temperature rate offset" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+20 20 20
 
-"Vegetation index" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0
+"DIC mass transfer velocity" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+1 1 1
 
-"Initial surface sediment store" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-1e6 1e6 1e6
+"DIC saturation constant" :     #(kg/m^3) [-1.79769313486232e+308, 1.79769313486232e+308]
+1 1 1
+
+"SOC mineralisation base rate in upper soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"SOC mineralisation base rate in lower soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"SOC desorption base rate in upper soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"SOC desorption base rate in lower soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"DOC sorption base rate in upper soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"DOC sorption base rate in lower soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"DOC mineralisation base rate in upper soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
+
+"DOC mineralisation base rate in lower soil layer" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1 0.1 0.1
 
 ###################### "Landscape units" "Soils" "Soils" ######################
 "Percolation matrix" :     #(dimensionless) [0, 1]
-0.1 0.9 0
-1 0.5 0.5
-0 0 1
+0.1 0.9 0 0
+1 0.5 0.5 0
+0 0 0.5 0.5
+0 0 0 1
 
-0.1 0.9 0
-1 0.5 0.5
-0 0 1
+0.1 0.9 0 0
+1 0.5 0.5 0
+0 0 0.5 0.5
+0 0 0 1
 
-0.1 0.9 0
-1 0.5 0.5
-0 0 1
+0.1 0.9 0 0
+1 0.5 0.5 0
+0 0 0.5 0.5
+0 0 0 1
 
 ###################### "Soils" ######################
 "This is a quick box" :
-true false false
+true false false false
 
 "Allow inundation" :
-false false false
+false false false false
 
 "Allow infiltration" :
-false false false
+false false false false
 
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :     #(mm) [0, 9999] The initial depth of water in a box at the start of a simulation
 10 10 10
 150 150 150
+150 150 150
 100 100 100
 
 "Relative area index" :     #(dimensionless) [0, 1] The areal fraction of the simulation covered by a box, typical INCA-type simulations will use a value of 1.0
+1 1 1
 1 1 1
 1 1 1
 1 1 1
@@ -116,19 +154,23 @@ false false false
 100 100 100
 100 100 100
 100 100 100
+100 100 100
 
 "Retained water depth" :     #(mm) [0, 9999] The depth of water in a box which does not contribute to runoff generation but can still contribute to evapotranspiration
 0 0 0
+290 290 290
 290 290 290
 50 50 50
 
 "Drought runoff fraction" :     #(dimensionless) [0, 0.5] The fraction of water entering a box which contributes to runoff generation when the depth of water is below the retained water depth
 0 0 0
 0.1 0.1 0.1
+0.1 0.1 0.1
 0 0 0
 
 "Time constant" :     #(days) [0.1, 9999] The inverse of the rate at which water flows out of a box
 1 1 1
+1 1 10
 1 1 10
 65 65 65
 
@@ -136,9 +178,11 @@ false false false
 1 1 1
 0 0 0
 0 0 0
+0 0 0
 
 "Relative evapotranspiration index" :     #(dimensionless) [0, 1] The fraction of the total evapotranspiration in a landscape unit which is to be generated from the current bucket
 1 1 1
+0 0 0
 0 0 0
 0 0 0
 
@@ -146,18 +190,22 @@ false false false
 150 150 150
 500 500 500
 500 500 500
+500 500 500
 
 "Inundation threshold" :     #(mm) [0, 9999] The depth of water in a bucket below which inundation from the stream can occur
 10 10 10
+500 500 500
 500 500 500
 10 10 10
 
 "Porosity" :     #(dimensionless) [0.1, 0.9] The void fraction of a box which is able to hold water
 0.2 0.2 0.2
 0.3 0.3 0.3
+0.3 0.3 0.3
 0.2 0.2 0.2
 
 "Inundation offset" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0 0
 0 0 0
 0 0 0
 0 0 0
@@ -202,56 +250,19 @@ true
 "Initial stream flow" :     #(m3/s) [0.0001, 9999] The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.
 2
 
-"Bank erosion scaling factor" :     #(kg/m2/m3 s/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0
-
-"Bank erosion non-linear coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Aquatic DOC mineralisation self-shading multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1
 
-"Shear velocity coefficient" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1e-7
+"Aquatic DOC mineralisation offset" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+1
 
-"Mean channel slope" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.8
+"Reach DIC loss rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1
 
-"Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
-#1 1 1 1
-2e-9
+"Microbial mineralisation base rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
 20 50 30
-
-
-###################### "Sediment size class" ######################
-"Percentage of sediment in grain size class" :     #(%) [-1.79769313486232e+308, 1.79769313486232e+308]
-5 5 20 35 35
-
-"Smallest diameter of sediment in size class" :     #(m) [0, 2000] These are specified by the model and should not be changed unless you know what you are doing
-0    2e-6 6e-5 2e-4 6e-4
-
-"Largest diameter of sediment in size class" :     #(m) [-1.79769313486232e+308, 1.79769313486232e+308]
-2e-6 6e-5 2e-4 6e-4 2e-3
-
-###################### "Sediment size class" "Reaches" ######################
-"Effluent sediment concentration" :     #(mg/L) [-1.79769313486232e+308, 1.79769313486232e+308]
-0
-0
-0
-0
-0
-
-"Initial suspended sediment mass" :
-0
-0
-0
-0
-0
-
-"Initial mass of bed sediment per unit area" :
-0
-0
-0
-0
-0
 

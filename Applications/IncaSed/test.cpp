@@ -12,13 +12,13 @@
 
 int main()
 {
-	const char *InputFile = "tarlandinputs.dat";
+    const char *InputFile = "tarlandinputs.dat";
 	const char *ParameterFile = "tarlandparameters.dat";
 	
 	
 	inca_model *Model = BeginModelDefinition("INCA-Sed", "0.0");
 	
-	auto Days 	        = RegisterUnit(Model, "days");
+	auto Days   = RegisterUnit(Model, "days");
 	auto System = RegisterParameterGroup(Model, "System");
 	RegisterParameterUInt(Model, System, "Timesteps", Days, 10957);
 	RegisterParameterDate(Model, System, "Start date", "1981-1-1");
@@ -31,9 +31,9 @@ int main()
 	EndModelDefinition(Model);
 	
 	inca_data_set *DataSet = GenerateDataSet(Model);
-
+    
 	ReadParametersFromFile(DataSet, ParameterFile);
-
+    
 	ReadInputsFromFile(DataSet, InputFile);
 	
 	//WriteParametersToFile(DataSet, "newparams.dat");
@@ -45,10 +45,10 @@ int main()
 	
 	SetParameterValue(DataSet, "Timesteps", {}, (u64)100);
 	SetParameterValue(DataSet, "Start date", {}, "1996-5-1"); //No water input in january, so difficult to see any effect of erosion or splash detachment
-
+    
 	RunModel(DataSet);
 	
-
+    
 	PrintResultSeries(DataSet, "Runoff to reach", {"Tarland", "Arable", "Direct runoff"}, 10);
 	PrintResultSeries(DataSet, "Sediment mobilised via splash detachment", {"Tarland", "Arable"}, 10);
 	PrintResultSeries(DataSet, "Flow erosion K factor", {"Tarland", "Arable"}, 10);

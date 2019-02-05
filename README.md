@@ -1,7 +1,7 @@
 # INCABuilder
 *C++ Api for building INtegrated CAtchment models. Optimized for speed of execution.*
 
-INCABuilder is a general framework for running large sets of equations, both discrete-timestep equations and ordinary differential equations, that model bio-geo-chemical systems. Typically each equation can be evaluated over many indexes being they geographical locations, such as river segments and land use classes, or size classes and age classes, and over many timesteps.
+INCABuilder is a general framework for running large sets of equations, both discrete-timestep equations and ordinary differential equations, that model bio-geo-chemical systems. Typically each equation can be evaluated over many indexes being they geographical locations, such as river segments and land use classes, or size classes and age classes, and over many timesteps. INCABuilder is modular, allowing you to combine models of various subsystems into larger models.
 
 Primarily INCABuilder was developed to model catchments (routing of precipitation through soil and groundwater into rivers and streams and assorted transport and reactions of chemical compounds and sediments), but can also be used to build e.g. biological population models.
 
@@ -45,7 +45,7 @@ Make sure that the /bin/ folder of your installation of g++ is in your PATH vari
 
 To compile Tutorial 1, navigate to the Tutorial1 folder from the command line and run the compile.bat file. Then you can run tutorial1.exe to see the output. Try to make changes in the tutorials by changing or adding new equations and parameters, and see what happens. This is the best way to learn. A detailed documentation of the API will be added later.
 
-We will not go through how to learn C++ here, but you will not need that many advanced concepts. Any online tutorial of just the basics will hopefully do (and also just learn by example from the models that are in this repository already, e.g the tutorials or the files in Modules/ ).
+To edit the C++ files, you can use whatever text editor you want, such as notepad++, or you can find an IDE. We will not go through how to learn C++ here, but you will not need to know that many advanced concepts. Any online tutorial of just the basics will hopefully do (and also you can just learn by example from the models that are in this repository already, e.g the tutorials or the files in the Modules folder ).
 
 After understanding basic model building we also recommended you to learn the python wrapper interface to e.g. do your own post-processing and plotting with the model results. See more in the PythonWrapper readme.
 

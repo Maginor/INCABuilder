@@ -47,7 +47,7 @@ To compile Tutorial 1, navigate to the Tutorial1 folder from the command line an
 
 We will not go through how to learn C++ here, but you will not need that many advanced concepts. Any online tutorial of just the basics will hopefully do (and also just learn by example from the models that are in this repository already, e.g the tutorials or the files in Modules/ ).
 
-After understanding basic model building we also recommended you to learn the python wrapper interface to e.g. do your own post-processing and plotting with the model results. See documentation in the PythonWrapper folder (that I will add soon, promise!)
+After understanding basic model building we also recommended you to learn the python wrapper interface to e.g. do your own post-processing and plotting with the model results. See more in the PythonWrapper readme.
 
 
 

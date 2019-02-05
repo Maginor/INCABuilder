@@ -56,6 +56,10 @@ struct ParameterAttributes
     std::string name;
     std::vector<std::string> indexers;
     std::vector<std::string> indices;
+    
+    ParameterAttributes(const std::string& name_) : name(name_) {};
+    ParameterAttributes(){};
+    
 
     bool operator==(const ParameterAttributes &other) const
     { return (name == other.name
@@ -141,6 +145,31 @@ private:
     void parseJson();
     void parseYaml();
     
+    
+    template<typename T>
+    std::vector<T> getSequence(YAML::Node& node)
+    {
+        std::vector<T> vec;
+        assert(node.IsSequence());
+        for(auto i = 0; i < node.size(); ++i)
+        {
+            vec.push_back(node[i].as<T>());
+        }
+        return vec;
+    };
+   
+    
+    template<typename T>
+    void prettyInsert(YAML::Emitter& out,const std::vector<T>& vec) 
+    {
+        if (vec.size() > 10)  out << YAML::Flow;
+        out << YAML::BeginSeq;
+        for(auto const &i: vec) out << i;
+        out << YAML::EndSeq;        
+    };
+    
+    
+    
     void saveJson();
     void saveYaml();
     
@@ -148,6 +177,23 @@ private:
     void putInDataset();
     
 };
+
+template<>
+std::vector<std::pair<std::string,double>> InputTranslator::getSequence(YAML::Node& node)
+{
+    std::vector<std::pair<std::string,double>> vec;
+    assert(node.IsSequence());
+    for (auto i = 0; i< node.size(); ++ i)
+    {
+        vec.emplace_back(std::make_pair(
+                   node[i][0].as<std::string>(),
+                   node[i][1].as<double>()
+                                        )
+                        );
+    }
+    return vec;
+}
+
 
 #endif /* INPUTTRANSLATOR_H */
 

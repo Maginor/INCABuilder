@@ -16,8 +16,9 @@
 
 InputTranslator::InputTranslator(const std::string _filename) : filename(_filename) {
     getFormat();
-    //parse();
-    parseJson();
+//    parse();
+//    parseJson();
+    parseYaml();
  }
 
 InputTranslator::InputTranslator() {
@@ -291,20 +292,22 @@ void InputTranslator::saveYaml()
     out << YAML::Key << "creation_date" << YAML::Value << strtok(std::ctime(&tt), "\n");
     out << YAML::Key << "start_date" << YAML::Value << boost::posix_time::to_simple_string(data.start_date.get());
     out << YAML::Key << "timesteps" << YAML::Value << data.timesteps.get();
-    out << YAML::Key << "additional_timeseries" << YAML::Value << data.additional_timeseries;
-    out << YAML::Key << "index_set_dependencies" << YAML::Value << data.index_set_dependencies;
-    out << YAML::Key << "data" << YAML::BeginSeq;
+    out << YAML::Key << "additional_timeseries" << YAML::Value ;
+    prettyInsert(out,data.additional_timeseries);
+    out << YAML::Key << "index_set_dependencies" << YAML::Value <<
+            data.index_set_dependencies;
+    out << YAML::Key << "data" << YAML::Value << YAML::BeginSeq;
        
     for (auto&i : data.inputs)
     {
         out << YAML::BeginMap;
         out << YAML::Key << "parameter" << YAML::Value << i.first.name;
-        out << YAML::Key << "indexers" << YAML::Flow;
-        out << YAML::BeginSeq << i.first.indexers << YAML::EndSeq;
-        out << YAML::Key << "indices" << YAML::Flow;
-        out << YAML::BeginSeq << i.first.indices << YAML::EndSeq;
+        out << YAML::Key << "indexers" << YAML::Value;
+        prettyInsert(out,i.first.indexers);
+        out << YAML::Key << "indices" << YAML::Value;
+        prettyInsert(out,i.first.indices);
         out << YAML::Key << "values" << YAML::Value;
-        out << YAML::BeginSeq << YAML::Flow << i.second << YAML::EndSeq;
+        prettyInsert(out,i.second);
         out << YAML::EndMap;
         
     }
@@ -314,9 +317,9 @@ void InputTranslator::saveYaml()
         out << YAML::BeginMap;
         out << YAML::Key << "parameter" << YAML::Value << i.first.name;
         out << YAML::Key << "indexers" << YAML::Flow;
-        out << YAML::BeginSeq << i.first.indexers << YAML::EndSeq;
+        prettyInsert(out,i.first.indexers);
         out << YAML::Key << "indices" << YAML::Flow;
-        out << YAML::BeginSeq << i.first.indices << YAML::EndSeq;
+        prettyInsert(out,i.first.indices);
         out << YAML::Key << "values" << YAML::Flow;
         out << YAML::BeginSeq << YAML::Flow;
         for(auto&j: i.second)
@@ -331,6 +334,7 @@ void InputTranslator::saveYaml()
     
     std::ofstream(ofs)("pretty.yaml");
     ofs << out.c_str() << std::endl;
+    double a = 0.;
 }
 
 
@@ -401,14 +405,7 @@ void InputTranslator::parseJson()
     ifs >> jData;
     
     modelData data;
-    for (nlohmann::json::iterator it = jData.begin(); it != jData.end(); ++it) {
-        std::cout << it.key() << '\n';
-        
-        double a = 0.;
-    }
-    
-   //Looping through keys with transform iterator
-    
+ 
     if (jData.find("timesteps")!=jData.end())
     {
         data.timesteps = jData["timesteps"];
@@ -463,11 +460,95 @@ void InputTranslator::parseJson()
                 }
             
             }
+        }        
+    }
+}
+
+void InputTranslator::parseYaml()
+{
+    std::string filename = "/home/jose-luis/Documents/INCABuilder/netbeans_projects/HBV/pretty.yaml";
+    YAML::Node dataYaml = YAML::LoadFile(filename);
+    
+    std::vector<std::string> keys;
+    
+    for (auto it = dataYaml.begin(); it != dataYaml.end(); ++it)
+    {
+        keys.emplace_back(it->first.as<std::string>());
+    }    
+        modelData data;
+ 
+    if (std::find(keys.begin(), keys.end(), "timesteps") != keys.end())
+    {
+        data.timesteps = dataYaml["timesteps"].as<size_t>();
+    }
+    
+    if (std::find(keys.begin(), keys.end(), "start_date") != keys.end())
+    {
+        std::string str = dataYaml["start_date"].as<std::string>();
+        std::istringstream is(str);
+        boost::posix_time::ptime t;
+        try
+        {
+            is >> t;
         }
+        catch(...)
+        {
+            INCA_FATAL_ERROR("Unrecognized date format \"" << str << "\". Supported format: Y-m-d" << std::endl);
+        }
+            data.start_date = t;
+        }
+    
+    if (std::find(keys.begin(), keys.end(), "additional_timeseries") != keys.end())
+    {
+        YAML::Node vecNode = dataYaml["additional_timeseries"];
+        for (auto i = 0; i < vecNode.size(); ++i)
+        {
+            data.additional_timeseries.push_back(vecNode[i].as<std::string>());
+        }
+    }
+    
+    if (std::find(keys.begin(), keys.end(), "index_set_dependencies") != keys.end())
+    {
+        YAML::Node vecNode = dataYaml["index_set_dependencies"];
+        for (auto it = vecNode.begin(); it != vecNode.end(); ++it)
+        {
+            std::string parameter = it->first.as<std::string>();
+            std::vector<std::string> indexers;
+            for(auto i = 0; i < vecNode[parameter].size(); ++i)
+            {
+                indexers.push_back(vecNode[parameter][i].as<std::string>());
+            }
+        }         
+    }
         
+    if (std::find(keys.begin(), keys.end(), "data") != keys.end())
+    {
+        YAML::Node vecNode = dataYaml["data"];
+        std::cout << "isMap " << vecNode.IsMap() << " isSeq " << vecNode.IsSequence() << std::endl;
+        for(auto i= 0; i < vecNode.size(); ++i)
+        {
+//            std::cout << vecNode[i].as<double>() << std::endl;
+            ParameterAttributes attributes;
+            YAML::Node valGroup = vecNode[i];
+            attributes.name = valGroup["parameter"].as<std::string>();
+            std::vector<std::string> indexers,indices;
+            YAML::Node indexerNode = valGroup["indexers"];
+            YAML::Node indexNode = valGroup["indices"];
+            attributes.indexers = getSequence<std::string>(indexerNode);
+            attributes.indices = getSequence<std::string>(indexNode);
+            YAML::Node valNode = valGroup["values"];
+            
+            if(valNode[0].IsScalar()) data.inputs[attributes] = getSequence<double>(valNode);
+            else data.sparseInputs[attributes] = getSequence<std::pair<std::string,double>>(valNode);
+        }
+    }    
+ 
+}
+     
 
         
-    }
-double a = 0.;    
-     
-}
+    
+
+    
+    
+    

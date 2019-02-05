@@ -67,7 +67,7 @@ To set up your own .cpp files like these, try to follow the example from one of 
 
 See the INCAView repository for the interface itself.
 
-We may also find a way to distribute compiled exes of INCAView and some of the models to at least some users.
+We may also look into a way of distributing precompiled exes of INCAView and some of the models.
 
 
 

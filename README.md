@@ -12,8 +12,7 @@ There is also the option to compile the models to .dll's that can be called and 
 
 ![Alt text](PythonWrapper/simplyp_plots/optimizer_MAP.png?raw=true "Example of a plot made using the framework and the python wrapper.")
 
-INCABuilder is a reimplementation and extension of the functionality that was developed in https://github.com/biogeochemistry/INCA
-but with a higher emphasis on run-time performance. Since then we have also started to add a few new models, ODE solvers and calibration systems.
+INCABuilder is a reimplementation and extension of the functionality that was provided by https://github.com/biogeochemistry/INCA , but with a higher emphasis on run-time performance. Since then we have also started to add a few new models, ODE solvers and calibration systems.
 
 The implementations of PERSiST, INCA-N and INCA-N-Classic are translated from biogeochemistry/INCA/
 

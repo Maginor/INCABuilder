@@ -4,7 +4,7 @@ The python wrapper allows you to easily create optimization and calibration rout
 
 This has currently only been tested with the 64bit version of python 3.
 
-To learn the basics of how to build and compile models, see the quick start guide at the front page and the tutorials.
+To learn the basics of how to build and compile models, see the quick start guide at the front page, and the tutorials.
 
 The C++-end code of the C++-python interface is in python_wrapper.h, while the python-end of it is in inca.py.
 

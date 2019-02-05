@@ -27,7 +27,7 @@ for NIVA (Norwegian institute for water research)
 ## Quick start guide
 *This is a guide on how to get the tutorials running and to start building your own models.*
 
-First, download the entire INCABuilder repository. It is recommended that you keep this up to date, so it is probably the easiest to clone it using git. There are several tutorials online on how to do that.
+First, download the entire INCABuilder repository. It is recommended that you keep yout copy up to date, so it is probably a good idea to clone it using git and keep it updated that way. There are several tutorials online on how to do that.
 
 INCABuilder is written in C++, and so to produce a program that the computer can run you need a compiler to produce the executable. We aim to allow you to use any compiler, but for now it has mostly been tested with the g++ compiler.
 

@@ -31,7 +31,7 @@ First, download the entire INCABuilder repository. It is recommended that you ke
 
 INCABuilder is written in C++, and so to produce a program that the computer can run you need a compiler to produce the executable. We aim to allow you to use any compiler, but for now it has mostly been tested with the g++ compiler.
 
-To install g++ on Windows, you will need one of the MingW g++ distributions. We recommend using one of the MingW-w64 distributions, that can compile to 64-bit (this will be needed if you want to use the Python wrapper later).
+To install g++ on Windows, you will need one of the MingW g++ distributions. We recommend using one of the MingW-w64 distributions that can compile to 64-bit (this will be needed if you want to use the Python wrapper later).
 
 We would normally have recommended the TDM-gcc distribution of MingW since that allows you to use multithreading and openmp in C++ code, but unfortunately there is a bug with TDM-gcc (as of 2019-02-05) that makes Windows 10 (but not earlier Windows versions) unable to load .dll's that were compiled with it, so you can't use it if you later want to use the python wrapper on Windows 10.
 

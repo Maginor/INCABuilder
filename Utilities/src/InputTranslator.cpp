@@ -16,7 +16,9 @@
 
 InputTranslator::InputTranslator(const std::string _filename) : filename(_filename) {
     getFormat();
-    parse();
+//    parse();
+//    parseJson();
+    parseYaml();
  }
 
 InputTranslator::InputTranslator() {
@@ -150,6 +152,10 @@ void InputTranslator::parseMagnus()
         boost::algorithm::trim_if(str, boost::algorithm::is_any_of("\" "));
         boost::split(indices, str, boost::is_any_of(","));
         std::string idxidx = parameter;
+        ParameterAttributes mapKey;
+        mapKey.name = parameter;
+        mapKey.indexers = data.index_set_dependencies[parameter];
+        mapKey.indices = indices;
         //This is dangerous. Should check vectors exist and are the same length
         for (auto zi : zip( data.index_set_dependencies[parameter], indices)) 
         {
@@ -162,7 +168,7 @@ void InputTranslator::parseMagnus()
             { 
                 try
                 {
-                    data.inputs[idxidx].push_back(boost::lexical_cast<double>(j));
+                    data.inputs[mapKey].push_back(boost::lexical_cast<double>(j));
                 }
                 catch(...)
                 {
@@ -180,7 +186,7 @@ void InputTranslator::parseMagnus()
                 std::string value = findBetween(j,"[0-9]\"","$");
                 try
                 {
-                    data.sparseInputs[idxidx].push_back(
+                    data.sparseInputs[mapKey].push_back(
                             std::make_pair<std::string&,double>(date,
                                                                boost::lexical_cast<double>(value)
                                                                )
@@ -196,6 +202,7 @@ void InputTranslator::parseMagnus()
     }
     saveJson();
     saveYaml();
+    
 }
 
 std::string InputTranslator::findBetween(std::string str,std::string start, std::string finish)
@@ -213,7 +220,7 @@ std::string InputTranslator::findBetween(std::string str,std::string start, std:
         boost::algorithm::trim(res);
         return res;
     }
-    else return str;
+    else return "";
 }
 
 
@@ -229,6 +236,7 @@ void InputTranslator::saveJson()
                 {"creation_date",strtok(std::ctime(&tt), "\n")},
                 {"start_date", boost::posix_time::to_simple_string(data.start_date.get())},
                 {"timesteps", data.timesteps.get()},
+                {"index_set_dependencies", data.index_set_dependencies},
                 {"additional_timeseries", ats},
                 {"data", nullptr},
             };
@@ -236,22 +244,12 @@ void InputTranslator::saveJson()
     std::vector<json> jVec;
     for (auto&i : data.inputs)
     {
+        std::cout << i.first.name << " " << i.first.indices[0] << std::endl;
         //Separating list of indexers/indices
-        std::string parameter = findBetween(i.first,"^","\\[");
-        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
-        std::vector<std::string> idxvec; 
-        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
-        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
-        
-        json idxi,idxj;
-        for (auto& j: idxvec)
-        {
-            idxi.emplace_back(findBetween(j,"^",","));
-            idxj.emplace_back(findBetween(j,",","$"));
-        }
-        
-        json v(i.second);
-        
+        json idxi(i.first.indexers),
+             idxj(i.first.indices),
+             v(i.second);
+
         json jobj
         {
             {"indexers", idxi},
@@ -259,26 +257,14 @@ void InputTranslator::saveJson()
             {"values", v},
         };
         
-        j["data"][parameter].push_back(jobj);
+        j["data"][i.first.name].push_back(jobj);
     }
     
     for (auto&i : data.sparseInputs)
     {
-        //Separating list of indexers/indices
-        std::string parameter = findBetween(i.first,"^","\\[");
-        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
-        std::vector<std::string> idxvec; 
-        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
-        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
-        
-        json idxi,idxj;
-        for (auto& j: idxvec)
-        {
-            idxi.emplace_back(findBetween(j,"^",","));
-            idxj.emplace_back(findBetween(j,",","$"));
-        }
-        
-        json v(i.second);
+        json idxi(i.first.indexers),
+             idxj(i.first.indices),
+             v(i.second);        
         
         json jobj
         {
@@ -287,15 +273,11 @@ void InputTranslator::saveJson()
             {"values", v},
         };
         
-        j["data"][parameter].push_back(jobj);
+        j["data"][i.first.name].push_back(jobj);
     }
-    //
-    //auto tt = ctime(&t);
-    //Checking unique index_set_dependencies
-    
     
     std::ofstream out("pretty.json");
-    out << std::setw(1) << j << std::endl;
+    out << j.dump(1,'\t') << std::endl;
 }
 
 void InputTranslator::saveYaml()
@@ -310,60 +292,34 @@ void InputTranslator::saveYaml()
     out << YAML::Key << "creation_date" << YAML::Value << strtok(std::ctime(&tt), "\n");
     out << YAML::Key << "start_date" << YAML::Value << boost::posix_time::to_simple_string(data.start_date.get());
     out << YAML::Key << "timesteps" << YAML::Value << data.timesteps.get();
-    out << YAML::Key << "additional_timeseries" << YAML::Value << data.additional_timeseries;
-    out << YAML::Key << "index_set_dependencies" << YAML::Value << data.index_set_dependencies;
-    out << YAML::Key << "data" << YAML::BeginSeq;
+    out << YAML::Key << "additional_timeseries" << YAML::Value ;
+    prettyInsert(out,data.additional_timeseries);
+    out << YAML::Key << "index_set_dependencies" << YAML::Value <<
+            data.index_set_dependencies;
+    out << YAML::Key << "data" << YAML::Value << YAML::BeginSeq;
        
     for (auto&i : data.inputs)
     {
-        //Separating list of indexers/indices
-        std::string parameter = findBetween(i.first,"^","\\[");
-        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
-        std::vector<std::string> idxvec; 
-        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
-        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
-        
-        std::vector<std::string> idxi,idxj;
-        for (auto& j: idxvec)
-        {
-            idxi.emplace_back(findBetween(j,"^",","));
-            idxj.emplace_back(findBetween(j,",","$"));
-        }        
-        
         out << YAML::BeginMap;
-        out << YAML::Key << "parameter" << YAML::Value << parameter;
-        out << YAML::Key << "indexers" << YAML::Flow;
-        out << YAML::BeginSeq << idxi << YAML::EndSeq;
-        out << YAML::Key << "indices" << YAML::Flow;
-        out << YAML::BeginSeq << idxj << YAML::EndSeq;
+        out << YAML::Key << "parameter" << YAML::Value << i.first.name;
+        out << YAML::Key << "indexers" << YAML::Value;
+        prettyInsert(out,i.first.indexers);
+        out << YAML::Key << "indices" << YAML::Value;
+        prettyInsert(out,i.first.indices);
         out << YAML::Key << "values" << YAML::Value;
-        out << YAML::BeginSeq << YAML::Flow << i.second << YAML::EndSeq;
+        prettyInsert(out,i.second);
         out << YAML::EndMap;
         
     }
 
     for (auto&i : data.sparseInputs)
     {
-        //Separating list of indexers/indices
-        std::string parameter = findBetween(i.first,"^","\\[");
-        std::string dummy = findBetween(i.first,parameter.c_str(),"$");
-        std::vector<std::string> idxvec; 
-        boost::algorithm::trim_if(dummy, boost::algorithm::is_any_of("[]"));
-        boost::split(idxvec, dummy, boost::is_any_of("[]"), boost::token_compress_on);
-        
-        std::vector<std::string> idxi,idxj;
-        for (auto& j: idxvec)
-        {
-            idxi.emplace_back(findBetween(j,"^",","));
-            idxj.emplace_back(findBetween(j,",","$"));
-        }
-        
         out << YAML::BeginMap;
-        out << YAML::Key << "parameter" << YAML::Value << parameter;
+        out << YAML::Key << "parameter" << YAML::Value << i.first.name;
         out << YAML::Key << "indexers" << YAML::Flow;
-        out << YAML::BeginSeq << idxi << YAML::EndSeq;
+        prettyInsert(out,i.first.indexers);
         out << YAML::Key << "indices" << YAML::Flow;
-        out << YAML::BeginSeq << idxj << YAML::EndSeq;
+        prettyInsert(out,i.first.indices);
         out << YAML::Key << "values" << YAML::Flow;
         out << YAML::BeginSeq << YAML::Flow;
         for(auto&j: i.second)
@@ -372,13 +328,13 @@ void InputTranslator::saveYaml()
         }
         out << YAML::EndSeq;
         out << YAML::EndMap;
-        
     }
     
     out << YAML::EndSeq << YAML::EndMap << YAML::EndDoc;
     
     std::ofstream(ofs)("pretty.yaml");
     ofs << out.c_str() << std::endl;
+    double a = 0.;
 }
 
 
@@ -399,7 +355,7 @@ void InputTranslator::putInDataset()
         {
             INCA_FATAL_ERROR("ERROR: Timesteps in the input file " << filename << " is set to 0." << std::endl);
         }
-        AllocateInputStorage(DataSet, *data.timesteps);
+         AllocateInputStorage(DataSet, *data.timesteps);
         FoundTimesteps = true;
     }
     if (data.start_date)
@@ -414,16 +370,185 @@ void InputTranslator::putInDataset()
     
     for(auto&i: data.inputs)
     {
-        std::string inputName = findBetween(i.first,"\"","\"");
-        input_h Input = GetInputHandle(Model, inputName.c_str());
-        std::vector<std::string> indexNames;
-        std::string idx = findBetween(i.first,inputName,"$");
+        input_h Input = GetInputHandle(Model, i.first.name.c_str());
+        const std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
+        if (i.first.indexers.size() != i.first.indices.size())
+        {
+            INCA_FATAL_ERROR("Did not get the right amount of indexes for input " << i.first.name << std::endl);
+        }
+        index_t Indexes[256]; //This could cause a buffer overflow, but will not do so in practice.
+        for(size_t IdxIdx = 0; IdxIdx < i.first.indices.size(); ++IdxIdx)
+        {
+            Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], i.first.indices[IdxIdx].c_str());
+        }
+
+        size_t Offset;
+
         
     }
     
-    
-    
-    
-    
-    
 }
+
+void InputTranslator::setDataset(inca_data_set* pnt)
+{
+    DataSet = pnt;
+    putInDataset();
+}
+
+void InputTranslator::parseJson()
+{
+    std::string filename = "/home/jose-luis/Documents/INCABuilder/netbeans_projects/HBV/pretty.json";
+    
+    //Reading the entire file to a string an parsing that:
+    std::ifstream ifs(filename);
+    nlohmann::json jData;
+    ifs >> jData;
+    
+    modelData data;
+ 
+    if (jData.find("timesteps")!=jData.end())
+    {
+        data.timesteps = jData["timesteps"];
+    }
+    
+    if (jData.find("start_date")!=jData.end())
+    {
+        std::string str = jData["start_date"];
+        std::istringstream is(str);
+        //is.imbue(formats[3]);
+        boost::posix_time::ptime t;
+        try
+        {
+            is >> t;
+        }
+        catch(...)
+        {
+            INCA_FATAL_ERROR("Unrecognized date format \"" << str << "\". Supported format: Y-m-d" << std::endl);
+        }
+            data.start_date = t;
+        }
+    
+    if (jData.find("additional_timeseries")!=jData.end())
+    {
+        data.additional_timeseries = jData["additional_timeseries"].get<std::vector<std::string>>();
+    }
+    
+    if (jData.find("index_set_dependencies")!=jData.end())
+    {
+        data.index_set_dependencies = jData["index_set_dependencies"].get<std::map<std::string,std::vector<std::string>>>();
+    }
+    
+    //Populating data
+    if (jData.find("data")!=jData.end())
+    {
+        for (nlohmann::json::iterator it = jData["data"].begin(); it != jData["data"].end(); ++it)
+        {
+            ParameterAttributes attributes;
+            attributes.name = it.key();
+            for(auto itit = it->begin(); itit != it->end(); ++itit)
+            {
+                attributes.indexers = (*itit)["indexers"].get<std::vector<std::string>>();
+                attributes.indices = (*itit)["indices"].get<std::vector<std::string>>();
+                if ( (*itit)["values"][0].is_number_float() )
+                {
+                    data.inputs[attributes] = (*itit)["values"].get<std::vector<double>>();
+                }
+                else
+                {
+                    data.sparseInputs[attributes] 
+                            = (*itit)["values"].get<std::vector<std::pair<std::string,double>>>();
+                }
+            
+            }
+        }        
+    }
+}
+
+void InputTranslator::parseYaml()
+{
+    std::string filename = "/home/jose-luis/Documents/INCABuilder/netbeans_projects/HBV/pretty.yaml";
+    YAML::Node dataYaml = YAML::LoadFile(filename);
+    
+    std::vector<std::string> keys;
+    
+    for (auto it = dataYaml.begin(); it != dataYaml.end(); ++it)
+    {
+        keys.emplace_back(it->first.as<std::string>());
+    }    
+        modelData data;
+ 
+    if (std::find(keys.begin(), keys.end(), "timesteps") != keys.end())
+    {
+        data.timesteps = dataYaml["timesteps"].as<size_t>();
+    }
+    
+    if (std::find(keys.begin(), keys.end(), "start_date") != keys.end())
+    {
+        std::string str = dataYaml["start_date"].as<std::string>();
+        std::istringstream is(str);
+        boost::posix_time::ptime t;
+        try
+        {
+            is >> t;
+        }
+        catch(...)
+        {
+            INCA_FATAL_ERROR("Unrecognized date format \"" << str << "\". Supported format: Y-m-d" << std::endl);
+        }
+            data.start_date = t;
+        }
+    
+    if (std::find(keys.begin(), keys.end(), "additional_timeseries") != keys.end())
+    {
+        YAML::Node vecNode = dataYaml["additional_timeseries"];
+        for (auto i = 0; i < vecNode.size(); ++i)
+        {
+            data.additional_timeseries.push_back(vecNode[i].as<std::string>());
+        }
+    }
+    
+    if (std::find(keys.begin(), keys.end(), "index_set_dependencies") != keys.end())
+    {
+        YAML::Node vecNode = dataYaml["index_set_dependencies"];
+        for (auto it = vecNode.begin(); it != vecNode.end(); ++it)
+        {
+            std::string parameter = it->first.as<std::string>();
+            std::vector<std::string> indexers;
+            for(auto i = 0; i < vecNode[parameter].size(); ++i)
+            {
+                indexers.push_back(vecNode[parameter][i].as<std::string>());
+            }
+        }         
+    }
+        
+    if (std::find(keys.begin(), keys.end(), "data") != keys.end())
+    {
+        YAML::Node vecNode = dataYaml["data"];
+        std::cout << "isMap " << vecNode.IsMap() << " isSeq " << vecNode.IsSequence() << std::endl;
+        for(auto i= 0; i < vecNode.size(); ++i)
+        {
+//            std::cout << vecNode[i].as<double>() << std::endl;
+            ParameterAttributes attributes;
+            YAML::Node valGroup = vecNode[i];
+            attributes.name = valGroup["parameter"].as<std::string>();
+            std::vector<std::string> indexers,indices;
+            YAML::Node indexerNode = valGroup["indexers"];
+            YAML::Node indexNode = valGroup["indices"];
+            attributes.indexers = getSequence<std::string>(indexerNode);
+            attributes.indices = getSequence<std::string>(indexNode);
+            YAML::Node valNode = valGroup["values"];
+            
+            if(valNode[0].IsScalar()) data.inputs[attributes] = getSequence<double>(valNode);
+            else data.sparseInputs[attributes] = getSequence<std::pair<std::string,double>>(valNode);
+        }
+    }    
+ 
+}
+     
+
+        
+    
+
+    
+    
+    

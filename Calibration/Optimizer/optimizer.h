@@ -95,18 +95,7 @@ PrintOptimizationResult(optimization_setup *Setup, dlib::function_evaluation& Re
 static void
 WriteOptimalParametersToDataSet(inca_data_set *DataSet, optimization_setup *Setup, dlib::function_evaluation &Result)
 {
-	size_t Dimensions = Setup->Calibration.size();
-	
-	for(size_t CalIdx = 0; CalIdx < Dimensions; ++ CalIdx)
-	{
-		double Value = Result.x(CalIdx);
-		parameter_calibration &Cal = Setup->Calibration[CalIdx];
-		
-		for(size_t ParIdx = 0; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
-		{
-			SetParameterValue(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);
-		}
-	}
+	ApplyCalibrations(DataSet, Setup->Calibration, Result.x.begin());
 }
 
 static dlib::function_evaluation
@@ -114,7 +103,7 @@ RunOptimizer(inca_data_set *DataSet, optimization_setup *Setup)
 {
 	optimization_model Optim(DataSet, Setup);
 	
-	size_t Dimensions = Setup->Calibration.size();
+	size_t Dimensions = GetDimensions(Setup->Calibration);
 	column_vector MinBound(Dimensions);
 	column_vector MaxBound(Dimensions);
 	size_t CalIdx = 0;

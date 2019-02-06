@@ -259,7 +259,7 @@ true
 "Reach DIC loss rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.1
 
-"Microbial mineralisation base rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Aquatic DOC microbial mineralisation base rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.1
 
 ###################### "Reaches" "Landscape units" ######################

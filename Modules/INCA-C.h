@@ -44,7 +44,8 @@ AddINCACModel(inca_model *Model)
 	auto Land = GetParameterGroupHandle(Model, "Landscape units");
 	
 	//TODO: As always, find better default values, min/max, description..
-	auto SoilMoistureThreshold         = RegisterParameterDouble(Model, Land, "Soil moisture threshold", Mm, 50.0, 0.0, 10000.0, "The minimal water depth at which carbon processes in the soil occur");
+	auto ZeroRateDepth                 = RegisterParameterDouble(Model, Land, "Zero rate depth", Mm, 50.0, 0.0, 10000.0, "The minimal water depth at which carbon processes in the soil occur");
+	auto MaxRateDepth                  = RegisterParameterDouble(Model, LAnd, "Max rate depth", Mm, 400.0, 0.0, 10000.0, "The water depth at which carbon processes in the soil are at their highest rate");
 	
 	auto LitterFallRate                = RegisterParameterDouble(Model, Land, "Litter fall rate", GPerM2PerDay, 1.0);
 	auto LitterFallStartDay            = RegisterParameterUInt(  Model, Land, "Litter fall start day", JulianDay, 300, 1, 364);
@@ -69,14 +70,14 @@ AddINCACModel(inca_model *Model)
 	
 	auto SoilProcessRateModifier          = RegisterEquation(Model, "Soil process rate modifier", Dimensionless);
 	auto LitterFall                       = RegisterEquation(Model, "Litter fall", GPerM2PerDay);
-	auto DirectRunoffToReachFraction      = RegisterEquation(Model, "Direct runoff to reach fraction", Dimensionless);
-	auto DirectRunoffToUpperLayerFraction = RegisterEquation(Model, "Direct runoff to upper layer fraction", Dimensionless);
-	auto UpperLayerToDirectRunoffFraction = RegisterEquation(Model, "Upper layer to direct runoff fraction", Dimensionless);
-	auto UpperLayerToLowerLayerFraction   = RegisterEquation(Model, "Upper layer to lower layer fraction", Dimensionless);
-	auto UpperLayerToReachFraction        = RegisterEquation(Model, "Upper layer to reach fraction", Dimensionless);
-	auto LowerLayerToReachFraction        = RegisterEquation(Model, "Lower layer to reach fraction", Dimensionless);
-	auto LowerLayerToGroundwaterFraction  = RegisterEquation(Model, "Lower layer to groundwater fraction", Dimensionless);
-	auto GroundwaterToReachFraction       = RegisterEquation(Model, "Groundwater to reach fraction", Dimensionless);
+	auto DirectRunoffToReachFraction      = RegisterEquation(Model, "Direct runoff to reach fraction", PerDay);
+	auto DirectRunoffToUpperLayerFraction = RegisterEquation(Model, "Direct runoff to upper layer fraction", PerDay);
+	auto UpperLayerToDirectRunoffFraction = RegisterEquation(Model, "Upper layer to direct runoff fraction", PerDay);
+	auto UpperLayerToLowerLayerFraction   = RegisterEquation(Model, "Upper layer to lower layer fraction", PerDay);
+	auto UpperLayerToReachFraction        = RegisterEquation(Model, "Upper layer to reach fraction", PerDay);
+	auto LowerLayerToReachFraction        = RegisterEquation(Model, "Lower layer to reach fraction", PerDay);
+	auto LowerLayerToGroundwaterFraction  = RegisterEquation(Model, "Lower layer to groundwater fraction", PerDay);
+	auto GroundwaterToReachFraction       = RegisterEquation(Model, "Groundwater to reach fraction", PerDay);
 	
 	auto SOCMineralisationInUpperSoil = RegisterEquation(Model, "SOC mineralisation in upper soil layer", KgPerDay);
 	SetSolver(Model, SOCMineralisationInUpperSoil, IncaSolver);
@@ -172,11 +173,11 @@ AddINCACModel(inca_model *Model)
 	EQUATION(Model, SoilProcessRateModifier,
 		return 
 		pow(PARAMETER(SoilTemperatureRateMultiplier), RESULT(SoilTemperature) - PARAMETER(SoilTemperatureRateOffset)) *
-		SCurve(RESULT(WaterDepth), PARAMETER(SoilMoistureThreshold), PARAMETER(MaximumCapacity));
+		SCurve(RESULT(WaterDepth), PARAMETER(ZeroRateDepth), PARAMETER(MaxRateDepth));
 	)
 	
 	//NOTE: The following equations make a lot of assumptions about where you can and can not have percolation or infiltration excess!
-	//TODO: Check if we should not use some of the intermediate water levels instead?
+	//TODO: Check if we should not use some of the intermediate water levels instead (The WaterDepth is calculated after these are subtracted, we should use the value before they are?)
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
@@ -190,7 +191,7 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, UpperLayerToDirectRunoffFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth, DirectRunoff));
+		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth, UpperSoil));
 	)
 	
 	EQUATION(Model, UpperLayerToLowerLayerFraction,
@@ -253,7 +254,7 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, DICMassTransferToAtmosphere,
 		double upperlayervolume = RESULT(WaterDepth, UpperSoil) * 1000.0;  //TODO: Check if unit conversion is correct
-		return PARAMETER(DICMassTransferVelocity) * (SafeDivide(RESULT(DICMassInUpperSoilLayer), upperlayervolume) - PARAMETER(DICSaturationConstant));
+		return PARAMETER(DICMassTransferVelocity) * (SafeDivide(RESULT(DICMassInUpperSoilLayer), upperlayervolume) - PARAMETER(DICSaturationConstant)); //TODO: Check if we should allow this to be negative
 	)
 	
 	
@@ -357,10 +358,10 @@ AddINCACModel(inca_model *Model)
 
 	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
 	
-	auto DOCMineralisationSelfShadingMultiplier = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation self-shading multiplier", Dimensionless, 1.0);
-	auto DOCMineralisationOffset                = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation offset", Dimensionless, 1.0);
+	auto DOCMineralisationSelfShadingMultiplier = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation self-shading multiplier", Dimensionless, 1.0); //TODO: Not actually dimensionless
+	auto DOCMineralisationOffset                = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation offset", KgPerM3, 1.0);
 	auto ReachDICLossRate                       = RegisterParameterDouble(Model, Reaches, "Reach DIC loss rate", PerDay, 0.1);
-	auto MicrobialMineralisationBaseRate        = RegisterParameterDouble(Model, Reaches, "Microbial mineralisation base rate", PerDay, 0.1);
+	auto MicrobialMineralisationBaseRate        = RegisterParameterDouble(Model, Reaches, "Aquatic DOC microbial mineralisation base rate", PerDay, 0.1);
 	
 	auto SolarRadiation = RegisterInput(Model, "Solar radiation");
 	
@@ -447,11 +448,11 @@ AddINCACModel(inca_model *Model)
 	auto ReachDICConcentration = RegisterEquation(Model, "Reach DIC concentration", KgPerM3);
 	
 	EQUATION(Model, ReachDOCConcentration,
-		return RESULT(DOCMassInReach) / RESULT(ReachVolume);
+		return SafeDivide(RESULT(DOCMassInReach), RESULT(ReachVolume));
 	)
 	
 	EQUATION(Model, ReachDICConcentration,
-		return RESULT(DICMassInReach) / RESULT(ReachVolume);
+		return SafeDivide(RESULT(DICMassInReach), RESULT(ReachVolume));
 	)
 	
 }

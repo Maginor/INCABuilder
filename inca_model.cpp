@@ -539,7 +539,7 @@ EndModelDefinition(inca_model *Model)
 			//	std::cout << "earliest suitable " << EarliestSuitableBatchIdx << std::endl;
 			//}
 			
-			if(EarliestSuitableBatchIdx == BatchBuild.size())
+			if(EarliestSuitableBatchIdx == (s32)BatchBuild.size())
 			{
 				BatchBuild.push_back(Batch);
 			}
@@ -572,14 +572,14 @@ EndModelDefinition(inca_model *Model)
 			
 			bool PushNewBatch = false;
 			
-			if(EarliestSuitableBatchIdx == BatchBuild.size())
+			if(EarliestSuitableBatchIdx == (s32)BatchBuild.size())
 			{
 				PushNewBatch = true;
 			}
 			else if(EarliestSuitableIsSolver)
 			{
 				//This equation does not belong to a solver, so we can not add it to the solver batch. Try to add it immediately after, either by adding it to the next batch if it is suitable or by creating a new batch.
-				if(EarliestSuitableBatchIdx == BatchBuild.size())
+				if(EarliestSuitableBatchIdx == (s32)BatchBuild.size())
 				{
 					PushNewBatch = true;
 				}
@@ -842,7 +842,6 @@ EndModelDefinition(inca_model *Model)
 			
 			for(size_t IndexSetLevel = 0; IndexSetLevel < BatchGroup.IndexSets.size(); ++IndexSetLevel)
 			{
-				index_set_h IndexSetAtLevel = BatchGroup.IndexSets[IndexSetLevel];
 				//NOTE: Gather up all the parameters that need to be updated at this stage of the execution tree. By updated we mean that they need to be read into the CurParameters buffer during execution.
 				//TODO: We do a lot of redundant checks here. We could store temporary information to speed this up.
 				for(entity_handle ParameterHandle : AllParameterDependenciesForBatchGroup)
@@ -937,7 +936,7 @@ ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_
 			continue;
 		}
 		
-		u32 BottomLevel = BatchGroup.IndexSets.size() - 1;
+		s32 BottomLevel = BatchGroup.IndexSets.size() - 1;
 		s32 CurrentLevel = 0;
 		
 		while (true)
@@ -1242,8 +1241,6 @@ SetupInitialValue(inca_data_set *DataSet, value_set_accessor *ValueSet, equation
 	
 	const inca_model *Model = DataSet->Model;
 	const equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
-	
-	equation_h InitialValueEq = Model->EquationSpecs[Equation.Handle].InitialValueEquation;
 	
 	double Initial = 0.0;
 	if(IsValid(Spec.InitialValue))

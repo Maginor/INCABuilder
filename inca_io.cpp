@@ -389,7 +389,6 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 	token *Token;
 	
 	u64 Timesteps = 0;
-	bool FoundTimesteps = false;
 	
 	while(true)
 	{
@@ -407,12 +406,6 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		if(strcmp(Section, "timesteps") == 0)
 		{
 			Timesteps = Stream.ExpectUInt();
-			if(Timesteps == 0)
-			{
-				INCA_FATAL_ERROR("ERROR: Timesteps in the input file " << Filename << " is set to 0." << std::endl);
-			}
-			AllocateInputStorage(DataSet, Timesteps);
-			FoundTimesteps = true;
 		}
 		else if(strcmp(Section, "start_date") == 0)
 		{
@@ -439,6 +432,12 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			INCA_FATAL_ERROR("Unrecognized section name " << Section << "." << std::endl);
 		}
 	}
+	
+	if(Timesteps == 0)
+	{
+		INCA_FATAL_ERROR("ERROR: Timesteps in the input file " << Filename << " is set to 0." << std::endl);
+	}
+	AllocateInputStorage(DataSet, Timesteps);
 	
 	if(!DataSet->InputDataHasSeparateStartDate)
 	{
@@ -579,7 +578,6 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 	
 	token *Token;
 
-	int Mode = -1;
 	while(true)
 	{
 		Token = Stream.PeekToken();

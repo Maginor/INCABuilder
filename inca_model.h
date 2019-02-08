@@ -389,8 +389,8 @@ struct value_set_accessor
 	const inca_model *Model;
 	inca_data_set *DataSet;
 	
-	u64 DayOfYear;
-	u64 DaysThisYear;
+	s32 DayOfYear;
+	s32 DaysThisYear;
 	s64 Timestep; //NOTE: We make this a signed integer so that it can be set to -1 during the "initial value" step.
 
 

@@ -169,8 +169,6 @@ ReadTokenInternal_(token_stream *Stream)
 	
 	bool TokenHasStarted = false;
 	
-	char c;
-	
 	bool SkipLine = false;
 	
 	while(true)
@@ -429,7 +427,7 @@ token *
 token_stream::ReadToken()
 {
 	AtToken++;
-	if(AtToken >= Tokens.size())
+	if(AtToken >= (s64)Tokens.size())
 	{
 		ReadTokenInternal_(this);
 	}

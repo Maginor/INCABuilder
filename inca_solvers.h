@@ -66,7 +66,7 @@ INCA_SOLVER_FUNCTION(IncaDascruImpl_)
     {
         xs = x;
 
-        for (j=0; j<n; j++)
+        for (j=0; j<(int)n; j++)
         {
             ijk0 = n + j;
             wk[ijk0] = x0[j];
@@ -89,7 +89,7 @@ TT:     h3 = h / 3.0;
 
             EquationFunction( x0, wk );
 
-            for (i=0; i<n; i++)
+            for (i=0; i<(int)n; i++)
             {
                 q = h3 * wk[i];
                 ijk0 = n + i;
@@ -142,7 +142,7 @@ TT:     h3 = h / 3.0;
                         bx = 0;
                     }
 
-                    for (j=0; j<n; j++)
+                    for (j=0; j<(int)n; j++)
                     {
                         ijk0 = n + j;
                         x0[j] = wk[ijk0];

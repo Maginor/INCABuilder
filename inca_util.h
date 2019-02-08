@@ -122,11 +122,11 @@ ParseSecondsSinceEpoch(const char *DateString, s64 *SecondsSinceEpochOut)
 	return true;
 }
 
-inline u32
+inline s32
 DayOfYear(s64 SecondsSinceEpoch, s32* YearOut)
 {
 	s32 Year = 1970;
-	u32 DayOfYear = 0;
+	s32 DayOfYear = 0;
 	s64 SecondsLeft = SecondsSinceEpoch;
 	if(SecondsLeft > 0)
 	{
@@ -170,7 +170,7 @@ DayOfYear(s64 SecondsSinceEpoch, s32* YearOut)
 inline void
 YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 {
-	u32 Day = DayOfYear(SecondsSinceEpoch, YearOut);
+	s32 Day = DayOfYear(SecondsSinceEpoch, YearOut);
 	
 	for(s32 Month = 0; Month < 12; ++Month)
 	{

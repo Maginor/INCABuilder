@@ -1,4 +1,4 @@
-# Parameter file generated for SimplyC V0.0
+# Parameter file generated for Carbon model V0.0 at 2019-02-08 16:18:11
 
 index_sets:
 "Landscape units" : {"Forest" "Peatland"}
@@ -9,9 +9,8 @@ parameters:
 "Timesteps" :     #(days) [0, 18446744073709551615]
 10957
 
-"Start date" :     # ["1000-1-1", "3000-12-31"]
-"1986-1-1"
-
+"Start date" :     # ["1000-01-01", "3000-12-31"]
+"1986-01-01"
 
 ###################### "Landscape units" ######################
 "Degree day factor" :     #(mm/°C/day) [1.5, 4] Degree day factor, rate at which the snow will melt water in snow will freeze
@@ -29,9 +28,6 @@ parameters:
 "Initial snow depth" :     #(mm) [0, 9999] The depth of snow, expressed as water equivalents, at the start of the simulation
 0 0
 
-"Water equivalent factor" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.3 0.3
-
 "Growing degree threshold" :     #(°C) [-4, 4] The temperature at or above which plant growth and hence evapotranspiration are assumed to occur
 0 0
 
@@ -41,21 +37,56 @@ parameters:
 "Fraction of field capacity where evapotranspiration reaches its maximal" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.7 0.7
 
-
-###################### "Landscape units" ######################
-"Field capacity" :     #(mm) [100, 300] Maximum soil moisture storage
+"Field capacity in upper layer" :     #(mm) [10, 600] Maximum soil moisture storage in upper soil layer
 150 150
 
+"Field capacity in lower layer" :     #(mm) [10, 600] Maximum soil moisture storage in lower soil layer
+150 150
 
-"Beta recharge exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to runoff
-2 2
+"Beta recharge exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to groundwater recharge
+1 1
 
+"Initial soil moisture in upper soil layer" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+100 100
 
-"Initial soil moisture" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-10 10
+"Initial soil moisture in lower soil layer" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+100 100
 
+"Upper soil recharge fraction" :     #(mm) [0, 1] How large a proportion of the soil moisture recharge goes to the upper soil layer
+0.5 0.5
+
+"Upper soil percolation rate" :     #(/day) [0, 1] How large a proportion of the soil moisture percolates from the upper to the lower soil layer each day.
+0.1 0.1
+
+"Lower soil percolation rate" :     #(/day) [0, 1] How large a proportion of the soil moisture percolates from the lower soil layer to the groundwater each day.
+0.1 0.1
+
+"Upper soil time constant" :     #(day) [0.01, 500] How long on average it takes for a water drop to run from the upper soil layer to the reach
+7 7
+
+"Lower soil time constant" :     #(day) [0.01, 500] How long on average it takes for a water drop to run from the lower soil layer to the reach
+7 7
+
+###################### "Reaches" ######################
+"Recession coefficient for groundwater slow flow (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1
+
+"Recession coefficient for groundwater fast flow (K0)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1
+
+"Threshold for second runoff in groundwater storage (UZL)" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+10
+
+"Initial groundwater storage" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+100
+
+"Flow routing max base" :     #(day) [1, 10] Width of the convolution filter that smooths out the flow from the groundwater to the river over time
+5
+
+"Catchment area" :     #(km2) [-1.79769313486232e+308, 1.79769313486232e+308]
+1
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(dimensionless) [0, 100] How much of the catchment area that is made up by this type of land cover.
-50 50
+20 20
 

@@ -26,7 +26,6 @@ static void AddSnowRoutine(inca_model *Model)
 	auto StorageFraction          = RegisterParameterDouble(Model, Land, "Storage fraction", Dimensionless, 0.1, 0.01, 0.2, "Proportion of meltwater that can be stored in the snowpack");
 	auto SnowThresholdTemperature = RegisterParameterDouble(Model, Land, "Snow threshold temperature", DegreesCelsius, 0.0, -3.0, 5.0, "Threshold temperature above which precipitation falls as rain");
 	auto InitialSnowDepth         = RegisterParameterDouble(Model, Land, "Initial snow depth", Mm, 0.0, 0.0, 9999.0, "The depth of snow, expressed as water equivalents, at the start of the simulation");
-	auto WaterEquivalentFactor    = RegisterParameterDouble(Model, Land, "Water equivalent factor", Dimensionless, 0.3);
 	
 	auto AirTemperature = RegisterInput(Model, "Air temperature");
 	auto Precipitation  = RegisterInput(Model, "Precipitation");
@@ -160,16 +159,11 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	auto Dimensionless     = RegisterUnit(Model);
 	auto PerDay            = RegisterUnit(Model, "/day");
+	auto Days              = RegisterUnit(Model, "day");
 	
 	auto LandscapeUnits    = RegisterIndexSet(Model, "Landscape units");
-	//auto SoilBoxes         = RegisterIndexSet(Model, "Soil boxes");
 	
 	auto Land              = GetParameterGroupHandle(Model, "Landscape units");
-	//auto SoilsLand         = RegisterParameterGroup(Model, "Soils land", SoilBoxes);
-	
-	//SetParentGroup(Model, Land);	
-
-	//auto Soils                              = RegisterParameterGroup(Model, "Soils", SoilBoxes);
 	
 	auto Reaches                            = RegisterIndexSetBranched(Model, "Reaches");
 	auto ReachParameters                    = RegisterParameterGroup(Model, "Reach parameters", Reaches);
@@ -182,11 +176,16 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Land, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
 	auto UpperSoilFieldCapacity             = RegisterParameterDouble(Model, Land, "Field capacity in upper layer", Mm, 150.0, 10., 600., "Maximum soil moisture storage in upper soil layer");
 	auto LowerSoilFieldCapacity             = RegisterParameterDouble(Model, Land, "Field capacity in lower layer", Mm, 150.0, 10., 600., "Maximum soil moisture storage in lower soil layer");
-	auto Beta                               = RegisterParameterDouble(Model, Land, "Beta recharge exponent", Dimensionless, 1., 1.0, 10., "Power parameter that determines the relative contribution to recharge");
+	auto Beta                               = RegisterParameterDouble(Model, Land, "Beta recharge exponent", Dimensionless, 1., 1.0, 10., "Power parameter that determines the relative contribution to groundwater recharge");
 	auto InitialUpperSoilMoisture           = RegisterParameterDouble(Model, Land, "Initial soil moisture in upper soil layer", Mm, 100.0);
 	auto InitialLowerSoilMoisture           = RegisterParameterDouble(Model, Land, "Initial soil moisture in lower soil layer", Mm, 100.0);
 	auto UpperSoilRechargeFraction          = RegisterParameterDouble(Model, Land, "Upper soil recharge fraction", Mm, 0.5, 0.0, 1.0, "How large a proportion of the soil moisture recharge goes to the upper soil layer");
-	 
+	auto UpperSoilPercolationRate           = RegisterParameterDouble(Model, Land, "Upper soil percolation rate", PerDay, 0.1, 0.0, 1.0, "How large a proportion of the soil moisture percolates from the upper to the lower soil layer each day.");
+	auto LowerSoilPercolationRate           = RegisterParameterDouble(Model, Land, "Lower soil percolation rate", PerDay, 0.1, 0.0, 1.0, "How large a proportion of the soil moisture percolates from the lower soil layer to the groundwater each day.");
+	auto UpperSoilTimeConstant              = RegisterParameterDouble(Model, Land, "Upper soil time constant", Days, 7.0, 0.01, 500.0, "How long on average it takes for a water drop to run from the upper soil layer to the reach");
+	auto LowerSoilTimeConstant              = RegisterParameterDouble(Model, Land, "Lower soil time constant", Days, 7.0, 0.01, 500.0, "How long on average it takes for a water drop to run from the lower soil layer to the reach");
+	
+	
     auto AirTemperature = RegisterInput(Model, "Air temperature");
 
 
@@ -194,32 +193,30 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto WaterToSoil                 = GetEquationHandle(Model, "Water to soil"); //NOTE: from the snow model.
 	auto PotentialEvapotranspiration = GetEquationHandle(Model, "Potential evapotranspiration"); //NOTE: from the potentialevapotranspiration module.
 
-	auto GroundwaterRecharge         = RegisterEquation(Model, "Groundwater recharge", MmPerDay);
-	auto SoilMoistureRecharge        = RegisterEquation(Model, "Soil moisture recharge", MmPerDay);
-	auto RechargeFraction            = RegisterEquation(Model, "Fraction of precipitation to groundwater", MmPerDay);
 	
-	auto SoilSolver = RegisterSolver(Model, "HBV soil solver", 0.1, IncaDascru);
 	
+	auto SoilSolver = RegisterSolver(Model, "Soil solver", 0.1, IncaDascru);
+	
+	auto UpperSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Upper soil groundwater recharge fraction", MmPerDay);
+	SetSolver(Model, UpperSoilGroundwaterRechargeFraction, SoilSolver);
 	auto UpperSoilEvapotranspiration = RegisterEquation(Model, "Upper soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, UpperSoilEvapotranspiration, SoilSolver);
 	auto UpperSoilPercolationOut     = RegisterEquation(Model, "Percolation from upper to lower soil layer", MmPerDay);
 	SetSolver(Model, UpperSoilPercolationOut, SoilSolver);
 	auto UpperSoilRunoffToReach      = RegisterEquation(Model, "Runoff to reach from upper soil layer", MmPerDay);
 	SetSolver(Model, UpperSoilRunoffToReach, SoilSolver);
-	auto UpperSoilQuickRunoffToReach = RegisterEquation(Model, "Excess runoff from upper soil layer", MmPerDay);
-	SetSolver(Model, UpperSoilQuickRunoffToReach, SoilSolver);
 	auto UpperSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in upper soil layer", Mm);
 	SetSolver(Model, UpperSoilMoisture, SoilSolver);
 	SetInitialValue(Model, UpperSoilMoisture, InitialUpperSoilMoisture);
 	
+	auto LowerSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Lower soil groundwater recharge fraction", MmPerDay);
+	SetSolver(Model, LowerSoilGroundwaterRechargeFraction, SoilSolver);
 	auto LowerSoilEvapotranspiration = RegisterEquation(Model, "Lower soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, LowerSoilEvapotranspiration, SoilSolver);
 	auto LowerSoilPercolationOut     = RegisterEquation(Model, "Percolation from lower to lower soil layer", MmPerDay);
 	SetSolver(Model, LowerSoilPercolationOut, SoilSolver);
 	auto LowerSoilRunoffToReach      = RegisterEquation(Model, "Runoff to reach from lower soil layer", MmPerDay);
 	SetSolver(Model, LowerSoilRunoffToReach, SoilSolver);
-	auto LowerSoilQuickRunoffToReach = RegisterEquation(Model, "Excess runoff from lower soil layer", MmPerDay);
-	SetSolver(Model, LowerSoilQuickRunoffToReach, SoilSolver);
 	auto LowerSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in lower soil layer", Mm);
 	SetSolver(Model, LowerSoilMoisture, SoilSolver);
 	SetInitialValue(Model, LowerSoilMoisture, InitialLowerSoilMoisture);
@@ -227,27 +224,16 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto FromLandscapeUnitToGroundwater = RegisterEquation(Model, "Groundwater input from landscape unit", MmPerDay);
 	auto TotalInputToGroundwater  = RegisterEquationCumulative(Model, "Total input to groundwater", FromLandscapeUnitToGroundwater, LandscapeUnits, Percent);           
 	
-	EQUATION(Model, RechargeFraction,
-		double fraction = LAST_RESULT(SoilMoisture) / PARAMETER(FieldCapacity);
-		fraction = std::pow(fraction, PARAMETER(Beta));  
+	EQUATION(Model, UpperSoilGroundwaterRechargeFraction,
+		double fraction = std::pow(RESULT(UpperSoilMoisture) / PARAMETER(UpperSoilFieldCapacity), PARAMETER(Beta));  
 		if (fraction > 1.0) fraction = 1.0;
-		if (fraction < 0.) fraction = 0.;
 		return fraction; 
 	)      
-					
-	EQUATION(Model, GroundwaterRecharge,
-		return RESULT(RechargeFraction) * RESULT(WaterToSoil);	
-	)
-	
-	EQUATION(Model, SoilMoistureRecharge,
-		return RESULT(WaterToSoil) - RESULT(GroundwaterRecharge);
-	)
-	
 	
 	EQUATION(Model, UpperSoilEvapotranspiration,
 		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(UpperSoilFieldCapacity);
-		double potentialetpfraction = Min(RESULT(UpperSoilMoisture), smmax) / smmax;
-		return RESULT(UpperSoilMoisture) * RESULT(PotentialEvapotranspiration) * potentialetpfraction;
+		double potentialetpfraction = Min(RESULT(UpperSoilMoisture) / smmax, 1.0);
+		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
 	EQUATION(Model, UpperSoilPercolationOut,
@@ -258,25 +244,24 @@ AddSoilMoistureRoutine(inca_model *Model)
 		return RESULT(UpperSoilMoisture) / PARAMETER(UpperSoilTimeConstant);
 	)
 	
-	EQUATION(Model, UpperSoilQuickRunoffToReach,
-		double quickrunoff = RESULT(UpperSoilMoisture);
-		if(RESULT(UpperSoilMoisture) < PARAMETER(UpperSoilFieldCapacity)) return 0.0;
-		return quickrunoff;
-	)
-	
 	EQUATION(Model, UpperSoilMoisture,
 		return
-			  PARAMETER(UpperSoilRechargeFraction) * RESULT(SoilMoistureRecharge)
+			  PARAMETER(UpperSoilRechargeFraction) * (1.0 - RESULT(UpperSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil)
 			- RESULT(UpperSoilEvapotranspiration)
 			- RESULT(UpperSoilPercolationOut)
-			- RESULT(UpperSoilRunoffToReach)
-			- RESULT(UpperSoilQuickRunoffToReach);
+			- RESULT(UpperSoilRunoffToReach);
+	)
+	
+	EQUATION(Model, LowerSoilGroundwaterRechargeFraction,
+		double fraction = std::pow(RESULT(LowerSoilMoisture) / PARAMETER(LowerSoilFieldCapacity), PARAMETER(Beta));  
+		if (fraction > 1.0) fraction = 1.0;
+		return fraction; 
 	)
 	
 	EQUATION(Model, LowerSoilEvapotranspiration,
-		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(UpperSoilFieldCapacity);
-		double potentialetpfraction = Min(RESULT(LowerSoilMoisture), smmax) / smmax;
-		return RESULT(LowerSoilMoisture) * RESULT(PotentialEvapotranspiration) * potentialetpfraction;
+		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(LowerSoilFieldCapacity);
+		double potentialetpfraction = Min(RESULT(LowerSoilMoisture) / smmax, 1.0);
+		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
 	EQUATION(Model, LowerSoilPercolationOut,
@@ -284,27 +269,30 @@ AddSoilMoistureRoutine(inca_model *Model)
 	)
 	
 	EQUATION(Model, LowerSoilRunoffToReach,
-		return RESULT(UpperSoilMoisture) / PARAMETER(UpperSoilTimeConstant);
-	)
-	
-	EQUATION(Model, LowerSoilQuickRunoffToReach,
-		double quickrunoff = RESULT(LowerSoilMoisture);
-		if(RESULT(LowerSoilMoisture) < PARAMETER(LowerSoilFieldCapacity)) return 0.0;
-		return quickrunoff;
+		return RESULT(LowerSoilMoisture) / PARAMETER(LowerSoilTimeConstant);
 	)
 	
 	EQUATION(Model, LowerSoilMoisture,
 		return
-			  (1.0 - PARAMETER(UpperBoxRechargeFraction)) * RESULT(SoilMoistureRecharge)
+			  (1.0 - PARAMETER(UpperSoilRechargeFraction)) * (1.0 - RESULT(LowerSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil)
 			+ RESULT(UpperSoilPercolationOut)
 			- RESULT(LowerSoilEvapotranspiration)
 			- RESULT(LowerSoilPercolationOut)
-			- RESULT(LowerSoilRunoffToReach)
-			- RESULT(LowerSoilQuickRunoffToReach);
+			- RESULT(LowerSoilRunoffToReach);
 	)
 	
 	EQUATION(Model, FromLandscapeUnitToGroundwater,
-		return RESULT(GroundwaterRecharge) + RESULT(LowerSoilPercolationOut);
+		return 
+			  RESULT(WaterToSoil) * 
+			  (PARAMETER(UpperSoilRechargeFraction) * RESULT(UpperSoilGroundwaterRechargeFraction) + (1.0 - PARAMETER(UpperSoilRechargeFraction)) * RESULT(LowerSoilGroundwaterRechargeFraction))
+			+ RESULT(LowerSoilPercolationOut);
+	)
+	
+	auto RunoffFromLandscapeUnit = RegisterEquation(Model, "Runoff from landscape unit", MmPerDay);
+	auto TotalRunoffFromSoil     = RegisterEquationCumulative(Model, "Total runoff from soil", RunoffFromLandscapeUnit, LandscapeUnits);
+	
+	EQUATION(Model, RunoffFromLandscapeUnit,
+		return RESULT(UpperSoilRunoffToReach) + RESULT(LowerSoilRunoffToReach);
 	)
 	
 }
@@ -323,8 +311,8 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	auto System = GetParameterGroupHandle(Model, "System");
 	
 	//TODO: Find good values for parameters.
-	auto FirstRecessionCoefficient  = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for groundwater storage (K1)", PerDay, 0.1);
-	auto SecondRecessionCoefficient = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for groundwater storage (K0)", PerDay, 0.1);
+	auto FirstRecessionCoefficient  = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for groundwater slow flow (K1)", PerDay, 0.1);
+	auto SecondRecessionCoefficient = RegisterParameterDouble(Model, Groundwater, "Recession coefficient for groundwater fast flow (K0)", PerDay, 0.1);
 	auto SecondRunoffThreshold      = RegisterParameterDouble(Model, Groundwater, "Threshold for second runoff in groundwater storage (UZL)", Mm, 10.0);
 	auto InitialGroundwaterStorage  = RegisterParameterDouble(Model, Groundwater, "Initial groundwater storage", Mm, 100.0);
 	
@@ -340,7 +328,7 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	SetSolver(Model, SlowFlow, GroundwaterSolver);
 	SetSolver(Model, GroundwaterStorage, GroundwaterSolver);       
 	
-	EQUATION(Model, UpperStorage,
+	EQUATION(Model, GroundwaterStorage,
 		double sf = RESULT(SlowFlow);
 		double ff = RESULT(FastFlow);
 		double recharge = RESULT(Recharge);
@@ -348,16 +336,16 @@ AddGroundwaterResponseRoutine(inca_model *Model)
 	)
 
 	EQUATION(Model, FastFlow,
-		double K0 = PARAMETER(FirstUpperRecessionCoefficient);
-		double UZL = PARAMETER(UpperSecondRunoffThreshold);
-		double storage = RESULT(UpperStorage);
+		double K0 = PARAMETER(FirstRecessionCoefficient);
+		double UZL = PARAMETER(SecondRunoffThreshold);
+		double storage = RESULT(GroundwaterStorage);
 		double fastflow = storage > UZL ? (storage-UZL)*K0 : 0.;
 		return fastflow;
 	)         
 	
 	EQUATION(Model, SlowFlow,
-		double K1 = PARAMETER(SecondUpperRecessionCoefficient);
-		double storage = RESULT(UpperStorage);
+		double K1 = PARAMETER(SecondRecessionCoefficient);
+		double storage = RESULT(GroundwaterStorage);
 		double slowflow = storage * K1;
 		return slowflow;
 	)                                              
@@ -409,20 +397,15 @@ AddWaterRoutingRoutine(inca_model *Model)
 	
 	auto FastFlow = GetEquationHandle(Model, "Fast groundwater flow");
 	auto SlowFlow = GetEquationHandle(Model, "Slow groundwater flow");
-	auto UpperSoilRunoffToReach = GetEquationHandle(Model, "Runoff to reach from upper soil layer");
-	auto LowerSoilRunoffToReach = GetEquationHandle(Model, "Runoff to reach from lower soil layer");
-	auto UpperSoilQuickRunoffToReach = GetEquationHandle(Model, "Excess runoff from upper soil layer");
-	auto LowerSoilQuickRunoffToReach = GetEquationHandle(Model, "Excess runoff from lower soil layer");
-        
+	auto TotalRunoffFromSoil = GetEquationHandle(Model, "Total runoff from soil");
+    
+	
         
 	EQUATION(Model, FlowToRouting,
 		double runoffdepth = 
 			  RESULT(FastFlow)
 			+ RESULT(SlowFlow)
-			+ RESULT(UpperSoilRunoffToReach)
-			+ RESULT(LowerSoilRunoffToReach)
-			+ RESULT(UpperSoilQuickRunoffToReach)
-			+ RESULT(LowerSoilQuickRunoffToReach);
+			+ RESULT(TotalRunoffFromSoil);
 		//NOTE: Convert mm/day to m3/day
 		return
 			  (runoffdepth / 1000.0)                // mm/day -> m/day

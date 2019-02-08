@@ -40,7 +40,7 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/Inc
 #print(dataset.get_parameter_list())
 
 #NOTE: Unit and description of a specific parameter:
-#parname = 'Maximum capacity'
+parname = 'Maximum capacity'
 #print('Unit of %s is %s (%s)' % (parname, dataset.get_parameter_unit(parname), dataset.get_parameter_description(parname)))
 
 #NOTE: Print out the indexes of all the index sets in the model:

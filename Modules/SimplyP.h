@@ -238,7 +238,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	EQUATION(Model, TotalSoilWaterFlow,
 		double f_A = PARAMETER(LandUseProportions, Arable) + PARAMETER(LandUseProportions, ImprovedGrassland);
-		double f_S  = PARAMETER(LandUseProportions, Seminatural);
+		double f_S = PARAMETER(LandUseProportions, Seminatural);
 		return f_A * RESULT(AgriculturalSoilWaterFlow) + f_S * RESULT(SeminaturalSoilWaterFlow);
 	)
 	
@@ -963,7 +963,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 			  * (RESULT(AgriculturalSoilTDPMass)  / RESULT(AgriculturalSoilWaterVolume))
 			  * ((1.0-PARAMETER(BaseflowIndex)) * RESULT(AgriculturalSoilWaterFlow) + RESULT(InfiltrationExcess));
 		
-		double fromNewlyConvertedSoil = 0.0;
+		double fromNewlyConvertedSoil =
 				(f_A * f_NC_A + f_S * f_NC_S)      //NOTE: at least one of f_NC_A or f_NC_S will always be 0.
 			  * (RESULT(NewlyConvertedSoilTDPMass) / RESULT(NewlyConvertedSoilWaterVolume))
 			  * ((1.0-PARAMETER(BaseflowIndex)) * RESULT(NewlyConvertedSoilWaterFlow) + RESULT(InfiltrationExcess));

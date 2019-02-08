@@ -213,7 +213,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetSolver(Model, LowerSoilGroundwaterRechargeFraction, SoilSolver);
 	auto LowerSoilEvapotranspiration = RegisterEquation(Model, "Lower soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, LowerSoilEvapotranspiration, SoilSolver);
-	auto LowerSoilPercolationOut     = RegisterEquation(Model, "Percolation from lower to lower soil layer", MmPerDay);
+	auto LowerSoilPercolationOut     = RegisterEquation(Model, "Percolation from lower soil layer to groundwater", MmPerDay);
 	SetSolver(Model, LowerSoilPercolationOut, SoilSolver);
 	auto LowerSoilRunoffToReach      = RegisterEquation(Model, "Runoff to reach from lower soil layer", MmPerDay);
 	SetSolver(Model, LowerSoilRunoffToReach, SoilSolver);

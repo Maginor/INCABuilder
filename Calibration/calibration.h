@@ -21,9 +21,17 @@ enum parameter_distribution_type
 	//TODO: Support a few more!!!!
 };
 
+
+enum parameter_link_type
+{
+	LinkType_Link,
+	LinkType_Partition,
+};
+
 //NOTE: Specification of calibration of one (or several linked) parameter(s).
 struct parameter_calibration
 {
+	parameter_link_type LinkType;
 	std::vector<const char *> ParameterNames;
 	std::vector<std::vector<const char *>> ParameterIndexes;
 	parameter_distribution_type Distribution;
@@ -112,6 +120,15 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 					WeAreInLink = true;
 					Stream.ReadToken(); //NOTE: Consumes the token we peeked.
 					Stream.ExpectToken(TokenType_OpenBrace);
+					Calib.LinkType = LinkType_Link;
+				}
+				else if(strcmp(Token->StringValue, "partition") == 0)
+				{
+					INCA_FATAL_ERROR("Keyword 'partition' not yet fully supported :(");
+					WeAreInLink = true;
+					Stream.ReadToken(); //NOTE: Consumes the token we peeked.
+					Stream.ExpectToken(TokenType_OpenBrace);
+					Calib.LinkType = LinkType_Partition;
 				}
 				else
 				{
@@ -175,7 +192,11 @@ inline void
 PrintParameterCalibration(parameter_calibration &Cal)
 {
 	size_t Count = Cal.ParameterNames.size();
-	if(Count > 1) std::cout << "link {" << std::endl;
+	if(Count > 1)
+	{
+		if(Cal.LinkType == LinkType_Link) std::cout << "link {" << std::endl;
+		else if(Cal.LinkType == LinkType_Partition) std::cout << "partition {" << std::endl;
+	}
 	for(size_t Idx = 0; Idx < Count; ++Idx)
 	{
 		if(Count > 1) std::cout << "\t";
@@ -238,6 +259,80 @@ ReadCalibrationObjectives(token_stream &Stream, std::vector<calibration_objectiv
 	}
 }
 
+static size_t
+GetDimensions(std::vector<parameter_calibration> &Calibrations)
+{
+	return Calibrations.size();
+	/*
+	size_t Dimensions = 0;
+	for(parameter_calibration &Cal : Calibrations)
+	{
+		if(Cal.ParameterNames.size() == 1)
+		{
+			++Dimensions;
+		}
+		else if(Cal.LinkType == LinkType_Link)
+		{
+			++Dimensions;
+		}
+		else if(Cal.LinkType == LinkType_Partition)
+		{
+			Dimensions += Cal.ParameterNames.size();
+		}
+		else assert(0);
+	}
+	
+	return Dimensions;
+	*/
+}
+
+static void
+ApplyCalibrations(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, const double *ParameterValues)
+{
+	size_t AtParValue = 0;
+	
+	for(parameter_calibration &Cal : Calibrations)
+	{
+		if(Cal.ParameterNames.size() == 1)
+		{
+			double Value = ParameterValues[AtParValue];
+			SetParameterValue(DataSet, Cal.ParameterNames[0], Cal.ParameterIndexes[0], Value);
+			++AtParValue;
+		}
+		else if(Cal.LinkType == LinkType_Link)
+		{
+			double Value = ParameterValues[AtParValue];
+			++AtParValue;
+			
+			for(size_t ParIdx = 0; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
+			{
+				SetParameterValue(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);	
+			}
+		}
+		else if(Cal.LinkType == LinkType_Partition)
+		{
+			size_t Dim = Cal.ParameterNames.size() - 1;
+			std::vector<double> Values(Dim + 1);
+			for(size_t Idx = 0; Idx < Dim; ++Idx) Values[Dim] = ParameterValues[AtParValue++];
+			std::sort(Values.begin(), Values.end());
+			Values[Dim] = Cal.Max;
+			
+			SetParameterValue(DataSet, Cal.ParameterNames[0], Cal.ParameterIndexes[0], Values[0]);
+			for(size_t ParIdx = 1; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
+			{
+				double Value = Values[ParIdx] - Values[ParIdx - 1];
+				SetParameterValue(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);
+			}
+		}
+		else assert(0);
+		
+#if CALIBRATION_PRINT_DEBUG_INFO
+		std::cout << "Setting " << Calibration.ParameterNames[0] << " to " << ParameterValues[AtParValue-1] << std::endl; //TODO: This does not print enough info when we are setting a linked set of parameters
+#endif
+	}
+}
+
+
 static double
 EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, calibration_objective &Objective, const double *ParameterValues, size_t DiscardTimesteps = 0)
 {
@@ -247,22 +342,7 @@ EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 	std::cout << "Starting an objective evaluation" << std::endl;
 #endif
 	
-	size_t Dimensions = Calibrations.size();
-	
-	for(size_t CalibIdx = 0; CalibIdx < Dimensions; ++ CalibIdx)
-	{
-		double Value = ParameterValues[CalibIdx];
-		parameter_calibration &Calibration = Calibrations[CalibIdx];
-		
-		for(size_t ParIdx = 0; ParIdx < Calibration.ParameterNames.size(); ++ParIdx)
-		{
-			SetParameterValue(DataSet, Calibration.ParameterNames[ParIdx], Calibration.ParameterIndexes[ParIdx], Value);
-		}
-		
-#if CALIBRATION_PRINT_DEBUG_INFO
-		std::cout << "Setting " << Calibration.ParameterNames[0] << " to " << Value << std::endl; //TODO: This does not print enough info when we are setting a linked set of parameters
-#endif
-	}
+	ApplyCalibrations(DataSet, Calibrations, ParameterValues);
 
 #if CALIBRATION_PRINT_DEBUG_INFO
 	timer Timer = BeginTimer();
@@ -339,6 +419,7 @@ EvaluateObjective(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 	}
 	else if(Objective.PerformanceMeasure == PerformanceMeasure_LogLikelyhood_ProportionalNormal)
 	{
+		size_t Dimensions = GetDimensions(Calibrations);
 		//NOTE: M is an extra parameter that is not a model parameter, so it is placed at the end of the ParameterValues vector. It is important that the caller of the function sets this up correctly..
 		double M = ParameterValues[Dimensions];
 #if CALIBRATION_PRINT_DEBUG_INFO
@@ -376,7 +457,7 @@ EvaluateObjectiveAndGradientSingleForwardDifference(inca_data_set *DataSet, std:
 {	
 	
 	//NOTE: This is a very cheap and probably not that good estimation of the gradient. It should only be used if you need the estimation to be very fast (such as if you are going to use it for each step of an MCMC run).
-	size_t Dimensions = Calibrations.size() + 1;    //IMPORTANT!! This is just for the particular LL function we have now. Should find a way to generalize this.
+	size_t Dimensions = GetDimensions(Calibrations);    //IMPORTANT!! This is just for the particular LL function we have now. Should find a way to generalize this.
 	
 	double F0 = EvaluateObjective(DataSet, Calibrations, Objective, ParameterValues, DiscardTimesteps);
 	

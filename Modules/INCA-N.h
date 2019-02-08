@@ -1,14 +1,6 @@
 
 #if !defined INCAN_MODEL_H
 
-inline double
-SafeDivide(double A, double B)
-{
-	if(B == 0.0) return 0.0;     //TODO: Do we need to check if |B| < epsilon instead?
-	return A / B;
-}
-
-
 static void
 AddIncaNModel(inca_model *Model)
 {
@@ -96,30 +88,20 @@ AddIncaNModel(inca_model *Model)
 	auto PercolationOut        = GetEquationHandle(Model, "Percolation out");
 	
 	
-	auto DirectRunoffVolume = RegisterEquation(Model, "Direct runoff volume", M3PerKm2);
-	auto SoilwaterVolume    = RegisterEquation(Model, "Soil water volume", M3PerKm2);
-	auto GroundwaterVolume  = RegisterEquation(Model, "Groundwater volume", M3PerKm2);
-	auto DirectRunoffFlow   = RegisterEquation(Model, "Direct runoff flow", CumecsPerKm2);
-	auto SoilwaterFlow      = RegisterEquation(Model, "Soil water flow", CumecsPerKm2);
-	auto GroundwaterFlow    = RegisterEquation(Model, "Groundwater flow", CumecsPerKm2);
+	auto SoilwaterVolume             = RegisterEquation(Model, "Soil water volume", M3PerKm2);
+	auto GroundwaterVolume           = RegisterEquation(Model, "Groundwater volume", M3PerKm2);
+	auto DirectRunoffToReachFraction = RegisterEquation(Model, "Direct runoff to reach fraction", PerDay);
+	auto DirectRunoffToSoilFraction  = RegisterEquation(Model, "Direct runoff to soil fraction", PerDay);
+	auto SoilToDirectRunoffFraction  = RegisterEquation(Model, "Soil to direct runoff fraction", PerDay);
+	auto SoilToGroundwaterFraction   = RegisterEquation(Model, "Soil to groundwater fraction", PerDay);
+	auto SoilToReachFraction         = RegisterEquation(Model, "Soil to reach fraction", PerDay);
+	auto GroundwaterToReachFraction  = RegisterEquation(Model, "Groundwater to reach fraction", PerDay);
 	
-	auto SoilwaterToDirectRunoffNitrate  = RegisterEquation(Model, "Soil water to direct runoff nitrate", KgPerKm2PerDay);
-	auto SoilwaterToDirectRunoffAmmonium = RegisterEquation(Model, "Soil water to direct runoff ammonium", KgPerKm2PerDay);
-	auto SoilwaterToGroundwaterNitrate   = RegisterEquation(Model, "Soil water to groundwater nitrate", KgPerKm2PerDay);
-	auto SoilwaterToGroundwaterAmmonium  = RegisterEquation(Model, "Soil water to groundwater ammmonium", KgPerKm2PerDay);
-	SetSolver(Model, SoilwaterToDirectRunoffNitrate, IncaSolver);
-	SetSolver(Model, SoilwaterToDirectRunoffAmmonium, IncaSolver);
-	SetSolver(Model, SoilwaterToGroundwaterNitrate, IncaSolver);
-	SetSolver(Model, SoilwaterToGroundwaterAmmonium, IncaSolver);
 	
-	auto DirectRunoffNitrateOutput  = RegisterEquation(Model, "Direct runoff nitrate output", KgPerKm2PerDay);
-	SetSolver(Model, DirectRunoffNitrateOutput, IncaSolver);
 	auto DirectRunoffInitialNitrate = RegisterEquationInitialValue(Model, "Direct runoff initial nitrate", KgPerKm2);
 	auto DirectRunoffNitrate        = RegisterEquationODE(Model, "Direct runoff nitrate", KgPerKm2);
 	SetSolver(Model, DirectRunoffNitrate, IncaSolver);
 	SetInitialValue(Model, DirectRunoffNitrate, DirectRunoffInitialNitrate);
-	auto DirectRunoffAmmoniumOutput = RegisterEquation(Model, "Direct runoff ammonium output", KgPerKm2PerDay);
-	SetSolver(Model, DirectRunoffAmmoniumOutput, IncaSolver);
 	auto DirectRunoffInitialAmmonium = RegisterEquationInitialValue(Model, "Direct runoff initial ammonium", KgPerKm2);
 	auto DirectRunoffAmmonium       = RegisterEquationODE(Model, "Direct runoff ammonium", KgPerKm2);
 	SetSolver(Model, DirectRunoffAmmonium, IncaSolver);
@@ -137,8 +119,6 @@ AddIncaNModel(inca_model *Model)
 	SetSolver(Model, Nitrification, IncaSolver);
 	auto Fixation = RegisterEquation(Model, "Fixation", KgPerKm2PerDay);
 	SetSolver(Model, Fixation, IncaSolver);
-	auto SoilwaterNitrateOutput = RegisterEquation(Model, "Soil water nitrate output", KgPerKm2PerDay);
-	SetSolver(Model, SoilwaterNitrateOutput, IncaSolver);
 	auto SoilwaterNitrateInput = RegisterEquation(Model, "Soil water nitrate input", KgPerKm2PerDay);
 	auto SoilwaterInitialNitrate = RegisterEquationInitialValue(Model, "Soil water initial nitrate", KgPerKm2);
 	auto SoilwaterNitrate = RegisterEquationODE(Model, "Soil water nitrate", KgPerKm2);
@@ -150,8 +130,6 @@ AddIncaNModel(inca_model *Model)
 	SetSolver(Model, Immobilisation, IncaSolver);
 	auto Mineralisation = RegisterEquation(Model, "Mineralisation", KgPerKm2PerDay);
 	SetSolver(Model, Mineralisation, IncaSolver);
-	auto SoilwaterAmmoniumOutput = RegisterEquation(Model, "Soil water ammonium output", KgPerKm2PerDay);
-	SetSolver(Model, SoilwaterAmmoniumOutput, IncaSolver);
 	auto SoilwaterAmmoniumInput  = RegisterEquation(Model, "Soil water ammonium input", KgPerKm2PerDay);
 	auto SoilwaterInitialAmmonium = RegisterEquationInitialValue(Model, "Soil water initial ammmonium", KgPerKm2);
 	auto SoilwaterAmmonium = RegisterEquationODE(Model, "Soil water ammonium", KgPerKm2);
@@ -159,14 +137,10 @@ AddIncaNModel(inca_model *Model)
 	SetInitialValue(Model, SoilwaterAmmonium, SoilwaterInitialAmmonium);
 	auto GroundwaterDenitrification = RegisterEquation(Model, "Groundwater denitrification", KgPerKm2PerDay);
 	SetSolver(Model, GroundwaterDenitrification, IncaSolver);
-	auto GroundwaterNitrateOutput = RegisterEquation(Model, "Groundwater nitrate output", KgPerKm2PerDay);
-	SetSolver(Model, GroundwaterNitrateOutput, IncaSolver);
 	auto GroundwaterInitialNitrate = RegisterEquationInitialValue(Model, "GroundwaterInitialNitrate", KgPerKm2);
 	auto GroundwaterNitrate = RegisterEquationODE(Model, "Groundwater nitrate", KgPerKm2);
 	SetSolver(Model, GroundwaterNitrate, IncaSolver);
 	SetInitialValue(Model, GroundwaterNitrate, GroundwaterInitialNitrate);
-	auto GroundwaterAmmoniumOuput = RegisterEquation(Model, "Groundwater ammonium output", KgPerKm2PerDay);
-	SetSolver(Model, GroundwaterAmmoniumOuput, IncaSolver);
 	auto GroundwaterInitialAmmonium = RegisterEquationInitialValue(Model, "Groundwater initial ammmonium", KgPerKm2);
 	auto GroundwaterAmmonium = RegisterEquationODE(Model, "Groundwater ammonium", KgPerKm2);
 	SetSolver(Model, GroundwaterAmmonium, IncaSolver);
@@ -174,98 +148,73 @@ AddIncaNModel(inca_model *Model)
 	
 	
 	EQUATION(Model, DirectRunoffInitialNitrate,
-		return PARAMETER(DirectRunoffInitialNitrateConcentration) * RESULT(DirectRunoffVolume) / 1000.0;
+		return PARAMETER(DirectRunoffInitialNitrateConcentration) * RESULT(WaterDepth, DirectRunoff);
 	)
 	
 	EQUATION(Model, DirectRunoffInitialAmmonium,
-		return PARAMETER(DirectRunoffInitialAmmoniumConcentration)* RESULT(DirectRunoffVolume) / 1000.0;
+		return PARAMETER(DirectRunoffInitialAmmoniumConcentration)* RESULT(WaterDepth, DirectRunoff);
 	)
 	
 	EQUATION(Model, SoilwaterInitialNitrate,
-		return PARAMETER(SoilwaterInitialNitrateConcentration)* RESULT(SoilwaterVolume) / 1000.0;
+		return PARAMETER(SoilwaterInitialNitrateConcentration)* RESULT(WaterDepth, Soilwater);
 	)
 	
 	EQUATION(Model, SoilwaterInitialAmmonium,
-		return PARAMETER(SoilwaterInitialAmmoniumConcentration) * RESULT(SoilwaterVolume) / 1000.0;
+		return PARAMETER(SoilwaterInitialAmmoniumConcentration) * RESULT(WaterDepth, Soilwater);
 	)
 	
 	EQUATION(Model, GroundwaterInitialNitrate,
-		return PARAMETER(GroundwaterInitialNitrateConcentration) * RESULT(GroundwaterVolume) / 1000.0;
+		return PARAMETER(GroundwaterInitialNitrateConcentration) * RESULT(WaterDepth, Groundwater);
 	)
 	
 	EQUATION(Model, GroundwaterInitialAmmonium,
-		return PARAMETER(GroundwaterInitialAmmoniumConcentration) * RESULT(GroundwaterVolume) / 1000.0;
+		return PARAMETER(GroundwaterInitialAmmoniumConcentration) * RESULT(WaterDepth, Groundwater);
 	)
 	
 	
-	EQUATION(Model, DirectRunoffVolume,
-		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
-		return RESULT(WaterDepth, DirectRunoff) * 1000.0;
-	)
 	
 	EQUATION(Model, SoilwaterVolume,
-		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Soilwater) * 1000.0;
 	)
 	
 	EQUATION(Model, GroundwaterVolume,
-		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Groundwater) * 1000.0;
 	)
 	
-	EQUATION(Model, DirectRunoffFlow,
-		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
-		return RESULT(RunoffToReach, DirectRunoff) * 1000.0 / 86400.0;
+	
+	EQUATION(Model, DirectRunoffToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
+		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth, DirectRunoff));
 	)
 	
-	EQUATION(Model, SoilwaterFlow,
-		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
-		return RESULT(RunoffToReach, Soilwater) * 1000.0 / 86400.0;
+	EQUATION(Model, DirectRunoffToSoilFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
+		return SafeDivide(RESULT(PercolationInput, Soilwater), RESULT(WaterDepth, DirectRunoff));
 	)
 	
-	EQUATION(Model, GroundwaterFlow,
-		CURRENT_INDEX(LandscapeUnits); CURRENT_INDEX(Reach); //TODO TODO TODO: Improve dependency system to get rid of this
-		return RESULT(RunoffToReach, Groundwater) * 1000.0 / 86400.0;
+	EQUATION(Model, SoilToDirectRunoffFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
+		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth, Soilwater));
 	)
 	
-
-	EQUATION(Model, SoilwaterToDirectRunoffNitrate,
-		return 
-			  RESULT(SaturationExcessInput, DirectRunoff) * SafeDivide(RESULT(SoilwaterNitrate), RESULT(WaterDepth, Soilwater)); //NOTE: We assume that groundwater will not contribute to saturation excess, so it can only come from soil water.
-			- RESULT(PercolationInput, Soilwater) * SafeDivide(RESULT(DirectRunoffNitrate), RESULT(WaterDepth, DirectRunoff));  //NOTE: Perc in to soilwater can only come from direct runoff
+	EQUATION(Model, SoilToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
+		return SafeDivide(RESULT(RunoffToReach, Soilwater), RESULT(WaterDepth, Soilwater));
 	)
 	
-	EQUATION(Model, SoilwaterToDirectRunoffAmmonium,
-		return
-		  RESULT(SaturationExcessInput, DirectRunoff) * SafeDivide(RESULT(SoilwaterAmmonium), RESULT(WaterDepth, Soilwater));
-		- RESULT(PercolationInput, Soilwater) * SafeDivide(RESULT(DirectRunoffAmmonium), RESULT(WaterDepth, DirectRunoff));   //NOTE: Perc in to soilwater can only come from direct runoff
-	)
-	
-	EQUATION(Model, SoilwaterToGroundwaterNitrate,
-		return RESULT(PercolationOut, Soilwater) * SafeDivide(RESULT(SoilwaterNitrate), RESULT(WaterDepth, Soilwater)); //NOTE: The percolation output of the soil water can only go to the groundwater.
-	)
-	
-	EQUATION(Model, SoilwaterToGroundwaterAmmonium,
-		return RESULT(PercolationOut, Soilwater) * SafeDivide(RESULT(SoilwaterAmmonium), RESULT(WaterDepth, Soilwater)); //NOTE: The percolation output of the soil water can only go to the groundwater.
-	)
-	
-	//NOTE: We also Assume that percolation from direct runoff to groundwater is zero (i.e. top right of perc. matrix).
-
-	EQUATION(Model, DirectRunoffNitrateOutput,
-		return RESULT(DirectRunoffNitrate) * SafeDivide(RESULT(DirectRunoffFlow) * 86400.0, RESULT(DirectRunoffVolume));
+	EQUATION(Model, SoilToGroundwaterFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
+		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth, Soilwater));
 	)
 
-	EQUATION(Model, DirectRunoffNitrate,
-		return RESULT(SoilwaterToDirectRunoffNitrate) - RESULT(DirectRunoffNitrateOutput);
+	EQUATION(Model, GroundwaterToReachFraction,
+		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
+		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth, Groundwater));
 	)
 	
-	EQUATION(Model, DirectRunoffAmmoniumOutput,
-		return RESULT(DirectRunoffAmmonium) * SafeDivide(RESULT(DirectRunoffFlow) * 86400.0, RESULT(DirectRunoffVolume));
-	)
-
-	EQUATION(Model, DirectRunoffAmmonium,
-		return RESULT(SoilwaterToDirectRunoffAmmonium) - RESULT(DirectRunoffAmmoniumOutput);
-	)
+	
 	
 	EQUATION(Model, DrynessFactor,
 		CURRENT_INDEX(Reach); //NOTE: Has to be here until we make some more fixes to the dependency system
@@ -288,8 +237,21 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, TemperatureFactor,
-		double soiltemperature = RESULT(SoilTemperature);
-		return pow(1.047, (soiltemperature - 20.0) );
+		return pow(1.047, (RESULT(SoilTemperature) - 20.0));
+	)
+	
+	
+
+	EQUATION(Model, DirectRunoffNitrate,
+		return 
+			  RESULT(SoilwaterNitrate) * RESULT(SoilToDirectRunoffFraction)
+			- RESULT(DirectRunoffNitrate) * (RESULT(DirectRunoffToSoilFraction) + RESULT(DirectRunoffToReachFraction));
+	)
+	
+	EQUATION(Model, DirectRunoffAmmonium,
+		return
+			  RESULT(SoilwaterAmmonium) * RESULT(SoilToDirectRunoffFraction)
+			- RESULT(DirectRunoffAmmonium) * (RESULT(DirectRunoffToSoilFraction) + RESULT(DirectRunoffToReachFraction));
 	)
 	
 	EQUATION(Model, MaximumNitrogenUptake,
@@ -338,10 +300,6 @@ AddIncaNModel(inca_model *Model)
 		return PARAMETER(NitrogenFixationRate) * RESULT(TemperatureFactor) * 100.0;
 	)
 
-	EQUATION(Model, SoilwaterNitrateOutput,
-		return RESULT(SoilwaterNitrate) * SafeDivide(RESULT(SoilwaterFlow) * 86400.0, RESULT(SoilwaterVolume));
-	)
-
 	EQUATION(Model, SoilwaterNitrateInput,
 		double nitrateInput = 0.0;
 		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
@@ -362,13 +320,13 @@ AddIncaNModel(inca_model *Model)
 	EQUATION(Model, SoilwaterNitrate,
 		return
 			  RESULT(SoilwaterNitrateInput)
-			- RESULT(SoilwaterNitrateOutput)
-			- RESULT(SoilwaterToDirectRunoffNitrate)
-			- RESULT(SoilwaterToGroundwaterNitrate)
 			- RESULT(NitrateUptake)
 			- RESULT(Denitrification)
 			+ RESULT(Nitrification)
-			+ RESULT(Fixation);
+			+ RESULT(Fixation)
+			
+			- RESULT(SoilwaterNitrate) * (RESULT(SoilToDirectRunoffFraction) + RESULT(SoilToGroundwaterFraction) + RESULT(SoilToReachFraction))
+			- RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffToSoilFraction);
 	)
 	
 	EQUATION(Model, AmmoniumUptake,
@@ -398,10 +356,6 @@ AddIncaNModel(inca_model *Model)
 		return PARAMETER(AmmoniumMineralisationRate) * RESULT(TemperatureFactor) * RESULT(DrynessFactor) * 100.0;
 	)
 
-	EQUATION(Model, SoilwaterAmmoniumOutput,
-		return RESULT(SoilwaterAmmonium) * SafeDivide(RESULT(SoilwaterFlow) * 86400.0, RESULT(SoilwaterVolume));
-	)
-
 	EQUATION(Model, SoilwaterAmmoniumInput,
 		double nitrateInput = 0.0;
 		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
@@ -420,38 +374,32 @@ AddIncaNModel(inca_model *Model)
 	EQUATION(Model, SoilwaterAmmonium,
 		return
 			  RESULT(SoilwaterAmmoniumInput)
-			- RESULT(SoilwaterAmmoniumOutput)
-			- RESULT(SoilwaterToDirectRunoffAmmonium)
-			- RESULT(SoilwaterToGroundwaterAmmonium)
 			- RESULT(AmmoniumUptake)
 			- RESULT(Nitrification)
 			- RESULT(Immobilisation)
-			+ RESULT(Mineralisation);
+			+ RESULT(Mineralisation)
+			
+			- RESULT(SoilwaterAmmonium) * (RESULT(SoilToDirectRunoffFraction) + RESULT(SoilToGroundwaterFraction) + RESULT(SoilToReachFraction))
+			- RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffToSoilFraction);
 	)
 	
 	EQUATION(Model, GroundwaterDenitrification,
 		return SafeDivide(RESULT(GroundwaterNitrate) * PARAMETER(GroundwaterDenitrificationRate) * RESULT(TemperatureFactor), RESULT(GroundwaterVolume)) * 1000000.0;
 	)
 
-	EQUATION(Model, GroundwaterNitrateOutput,
-		return RESULT(GroundwaterNitrate) * SafeDivide(RESULT(GroundwaterFlow) * 86400.0, RESULT(GroundwaterVolume));
-	)
 	
 	EQUATION(Model, GroundwaterNitrate,
 		return
-			  RESULT(SoilwaterToGroundwaterNitrate)
-			- RESULT(GroundwaterNitrateOutput)
+			  RESULT(SoilwaterNitrate) * RESULT(SoilToGroundwaterFraction)
+			- RESULT(GroundwaterNitrate) * RESULT(GroundwaterToReachFraction)
 			- RESULT(GroundwaterDenitrification);
 	)
 	
-	EQUATION(Model, GroundwaterAmmoniumOuput,
-		return RESULT(GroundwaterAmmonium) * SafeDivide(RESULT(GroundwaterFlow) * 86400.0, RESULT(GroundwaterVolume));
-	)
 	
 	EQUATION(Model, GroundwaterAmmonium,
 		return
-			  RESULT(SoilwaterToGroundwaterAmmonium)
-			- RESULT(GroundwaterAmmoniumOuput);
+			  RESULT(SoilwaterAmmonium) * RESULT(SoilToGroundwaterFraction)
+			- RESULT(GroundwaterAmmonium) * RESULT(GroundwaterToReachFraction);
 	)
 	
 	
@@ -468,7 +416,10 @@ AddIncaNModel(inca_model *Model)
 	auto Percent                  = GetParameterDoubleHandle(Model, "%");                          //NOTE: From persist
 	
 	EQUATION(Model, TotalNitrateToStream,
-		return RESULT(SoilwaterNitrateOutput) + RESULT(GroundwaterNitrateOutput) + RESULT(DirectRunoffNitrateOutput);
+		return
+			RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffToReachFraction)
+		  + RESULT(SoilwaterNitrate) * RESULT(SoilToReachFraction)
+		  + RESULT(GroundwaterNitrate) * RESULT(GroundwaterToReachFraction); 
 	)
 	
 	EQUATION(Model, DiffuseNitrate,
@@ -476,7 +427,10 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, TotalAmmoniumToStream,
-		return RESULT(SoilwaterAmmoniumOutput) + RESULT(GroundwaterAmmoniumOuput) + RESULT(DirectRunoffAmmoniumOutput);
+		return 
+		  RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffToReachFraction)
+		+ RESULT(SoilwaterAmmonium) * RESULT(SoilToReachFraction)
+		+ RESULT(GroundwaterAmmonium) * RESULT(GroundwaterToReachFraction);
 	)
 	
 	EQUATION(Model, DiffuseAmmonium,

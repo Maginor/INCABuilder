@@ -5,30 +5,19 @@
 
 
 /*
-Important TODOs:
-	- PrintPartialDependencyTrace gives incorrect information sometimes when a solver is involved (twice).
-
+TODOs:
+	- PrintPartialDependencyTrace gives incorrect information sometimes when a solver is involved twice.
 	- Better encapsulation of the ValueSet subsystem. Unify lookup systems for parameters, inputs, results, last_results
 	- Have to figure out if the initial value equation system we have currently is good.
 	- Implement stream index set specific functionality. (or not??)
-	- Better logging / error handling system
-	- In the equation placement optimization, try to move entire batches to reduce the number of batch groups if possible.
 	- Give warning if not all input series received values?
 	- Clean up the input tokenizer. Maybe just use fscanf for reading numbers, but it is actually a little complicated since we have to figure out the type in any case.
 	- Register units with inputs too? They are after all expected to be in a certain unit.
-	- Refactor the dependency system to be able to understand explicitly indexed lookups better.
+	- Allow the dependency system to be able to understand explicitly indexed lookups of results better.
 	- Standardize the input format. Includes finding a better format for dates.
 	- Add in pre-processing options: Tests on parameter values. Pre-compute parameter values.
+	- Allow certain values to either be a parameter, input series or result, depending on model settings?
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
-	
-Bugs:
-	- Check the dependency system with maximumnitrogenuptake in incan-classic again.. I may have misread it, but there is a potential bug there.
-	
-Less important:
-	- Make a Contains macro? (things like (std::find(blabla.begin(), blabla.end(), it) != it) are hard to read).
-	
-Other TODOs (low priority):
-	For better memory locality:
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
 */
 

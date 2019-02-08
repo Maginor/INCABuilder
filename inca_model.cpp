@@ -413,6 +413,11 @@ EndModelDefinition(inca_model *Model)
 				{
 					if(IndexSet != Spec.CumulatesOverIndexSet) Spec.IndexSetDependencies.insert(IndexSet); 
 				}
+				parameter_spec &WeightSpec = Model->ParameterSpecs[Spec.CumulationWeight.Handle];
+				for(index_set_h IndexSet : WeightSpec.IndexSetDependencies)
+				{
+					if(IndexSet != Spec.CumulatesOverIndexSet) Spec.IndexSetDependencies.insert(IndexSet); 
+				}
 			}
 			else
 			{

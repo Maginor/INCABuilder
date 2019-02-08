@@ -32,6 +32,10 @@ link {
 	"Time constant" {"Soil water" "Arable"}
 } 3 15
 
+#partition {
+#	"Percolation matrix" {"Forest productive" "Soilwater" "Soilwater"}
+#	"Percolation matrix" {"Forest productive" "Soilwater" "Groundwater"}
+#} 0 1
 
 objectives:
 

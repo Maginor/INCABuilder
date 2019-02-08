@@ -9,7 +9,7 @@ parameters:
 "Timesteps" :     #(days) [0, 18446744073709551615]
 485
 
-"Start date" :     # ["1000-1-1", "3000-14-365"]
+"Start date" :     # ["1000-1-1", "3000-12-31"]
 "2004-1-1"
 
 "Dynamic erodibility" :

@@ -95,6 +95,9 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 		Results->RunData[Run].PerformanceMeasures.resize(1);
 	}
 	
+	
+	//TODO: We have to make this compatible with partitions!
+	
 	//NOTE: It is important that the loops are in this order so that we don't get any weird dependence between the parameter values (I think).
 	//TODO: We should probably have a better generation scheme for parameter values (such as Latin Cube?).
 	for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)

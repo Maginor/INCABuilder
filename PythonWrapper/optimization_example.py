@@ -75,6 +75,7 @@ skiptimesteps = 365   # Skip these many of the first timesteps in the objective 
 #NOTE: The 'objective' structure contains information about how to evaluate the objective.
 objective = (sum_squares_error, 'Reach flow', ['Tveitvatn'], 'Discharge', ['Tveitvatn'], skiptimesteps)
 
+
 #NOTE: We test the optimizer by running the model with "fake real parameters" and set that as the observation series to see if the optimizer can recover the "real" parameters.
 fake_real_parameters = [0.41, 0.6]
 set_values(dataset, fake_real_parameters, calibration)

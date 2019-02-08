@@ -216,7 +216,7 @@ true
 
 "Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
 #1 1 1 1
-2e-9
+2e-7
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type

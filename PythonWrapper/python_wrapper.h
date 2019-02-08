@@ -59,6 +59,8 @@ DllCopyDataSet(void *DataSetPtr)
 	return (void *)CopyDataSet((inca_data_set *)DataSetPtr);
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -79,6 +81,8 @@ DllGetTimesteps(void *DataSetPtr)
 	return GetTimesteps((inca_data_set *)DataSetPtr);
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT u64
@@ -90,6 +94,8 @@ DllGetInputTimesteps(void *DataSetPtr)
 	return DataSet->InputDataTimesteps;
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -188,6 +194,8 @@ DllGetParameterDouble(void *DataSetPtr, char *Name, char **IndexNames, u64 Index
 	return GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_Double).ValDouble;
 	
 	CHECK_ERROR_END
+	
+	return 0.0;
 }
 
 DLLEXPORT u64
@@ -198,6 +206,8 @@ DllGetParameterUInt(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCo
 	return GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_UInt).ValUInt;
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT bool
@@ -208,6 +218,8 @@ DllGetParameterBool(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCo
 	return GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_Bool).ValBool;
 	
 	CHECK_ERROR_END
+	
+	return false;
 }
 
 DLLEXPORT void
@@ -272,6 +284,8 @@ DllGetParameterDescription(void *DataSetPtr, char *Name)
 	return Spec.Description;
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT const char *
@@ -285,6 +299,8 @@ DllGetParameterUnit(void *DataSetPtr, char *Name)
 	return GetName(DataSet->Model, Spec.Unit);
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT const char *
@@ -298,6 +314,8 @@ DllGetResultUnit(void *DataSetPtr, char *Name)
 	return GetName(DataSet->Model, Spec.Unit);
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -377,6 +395,8 @@ DllGetIndexCount(void *DataSetPtr, char *IndexSetName)
 	return DataSet->IndexCounts[IndexSet.Handle];
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -405,6 +425,8 @@ DllGetParameterIndexSetsCount(void *DataSetPtr, char *ParameterName)
 	return DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets.size();
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -436,6 +458,8 @@ DllGetResultIndexSetsCount(void *DataSetPtr, char *ResultName)
 	return DataSet->ResultStorageStructure.Units[UnitIndex].IndexSets.size();
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -467,6 +491,8 @@ DllGetInputIndexSetsCount(void *DataSetPtr, char *InputName)
 	return DataSet->InputStorageStructure.Units[UnitIndex].IndexSets.size();
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void
@@ -496,6 +522,8 @@ DllGetAllParametersCount(void *DataSetPtr)
 	return (u64)(DataSet->Model->FirstUnusedParameterHandle - 1);
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }
 
 DLLEXPORT void

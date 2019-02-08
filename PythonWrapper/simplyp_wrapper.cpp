@@ -38,4 +38,6 @@ DllSetupModel(char *ParameterFilename, char *InputFilename)
 	return (void *)DataSet;
 	
 	CHECK_ERROR_END
+	
+	return 0;
 }

@@ -78,7 +78,7 @@ IsLeapYear(int Year)
 inline int
 MonthOffset(int Year, int Month)
 {
-	int Offset[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}; //, 365};
+	int Offset[13] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 	int Days = Offset[Month];
 	if(Month >= 2 && IsLeapYear(Year)) Days += 1;
 	return Days;
@@ -171,7 +171,7 @@ inline void
 YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 {
 	u32 Day = DayOfYear(SecondsSinceEpoch, YearOut);
-
+	
 	for(s32 Month = 0; Month < 12; ++Month)
 	{
 		if(Day <= MonthOffset(*YearOut, Month+1))

@@ -54,9 +54,9 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 		break;
 		
 		case ParameterType_Time:
-		s32 Year, Month, Day;
-		YearMonthDay(Value.ValTime, &Year, &Month, &Day);
-		fprintf(File, "\"%d-%d-%d\"", Year, Month, Day);
+		//s32 Year, Month, Day;
+		//YearMonthDay(Value.ValTime, &Year, &Month, &Day);
+		fprintf(File, "\"%s\"", TimeString(Value.ValTime));
 		break;
 	}
 }

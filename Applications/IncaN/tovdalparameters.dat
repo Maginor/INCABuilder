@@ -95,7 +95,7 @@ parameters:
 "Nitrogen fixation rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0 0 0 0 0 0
 
-"Maximum nitrogen uptake rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Maximum nitrogen uptake" :     #(kg/Ha) [-1.79769313486232e+308, 1.79769313486232e+308]
 150 80 45 80 200 70
 
 "Fertilizer addition start day" :     #(Julian day) [1, 365] Day of year when fertiliser application begins.

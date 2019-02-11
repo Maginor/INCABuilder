@@ -385,7 +385,7 @@ AddINCANClassicModel(inca_model *Model)
 	
 	EQUATION(Model, MaximumNitrogenUptake,
 		double dummy = LAST_RESULT(NitrateUptake) + LAST_RESULT(AmmoniumUptake); //To mark a dependency.
-		return 0.0;
+		return dummy;
 		//return RESULT(NitrateUptake) + RESULT(AmmoniumUptake); //NOTE: This creates a circular dependency...
 	)
 	

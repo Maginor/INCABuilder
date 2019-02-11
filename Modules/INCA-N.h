@@ -13,6 +13,7 @@ AddIncaNModel(inca_model *Model)
 	auto JulianDay          = RegisterUnit(Model, "Julian day");
 	auto MetresPerDay       = RegisterUnit(Model, "m/day");
 	auto KgPerHectarePerDay = RegisterUnit(Model, "kg/Ha/day");
+	auto KgPerHectare       = RegisterUnit(Model, "kg/Ha");
 	auto Metres             = RegisterUnit(Model, "m");
 	auto MilliMetres        = RegisterUnit(Model, "mm");
 	auto Hectares           = RegisterUnit(Model, "Ha");
@@ -41,7 +42,7 @@ AddIncaNModel(inca_model *Model)
 	auto SoilwaterDenitrificationRate   = RegisterParameterDouble(Model, Land, "Soil water denitrification rate", MetresPerDay, 20.0);
 	auto AmmoniumNitrificationRate      = RegisterParameterDouble(Model, Land, "Ammonium nitrification rate", MetresPerDay, 20.0);
 	auto NitrogenFixationRate           = RegisterParameterDouble(Model, Land, "Nitrogen fixation rate", KgPerHectarePerDay, 20.0);
-	auto MaximumNitrogenUptakeRate      = RegisterParameterDouble(Model, Land, "Maximum nitrogen uptake rate", KgPerHectarePerDay, 20.0);
+	auto MaximumNitrogenUptake          = RegisterParameterDouble(Model, Land, "Maximum nitrogen uptake", KgPerHectare, 20.0);
 	auto FertilizerAdditionStartDay     = RegisterParameterUInt(Model, Land, "Fertilizer addition start day", JulianDay, 20, 1, 365, "Day of year when fertiliser application begins.");
 	auto FertilizerAdditionPeriod       = RegisterParameterUInt(Model, Land, "Fertilizer addition period", JulianDay, 20, 0, 365, "Length of fertiliser addition period in days.");
 	auto FertilizerNitrateAdditionRate  = RegisterParameterDouble(Model, Land, "Fertilizer nitrate addition rate", KgPerHectarePerDay, 20.0, 0.0, 100.0, "Amount of nitrate added as fertiliser on each day of fertiliser addition period.");
@@ -109,7 +110,7 @@ AddIncaNModel(inca_model *Model)
 	auto DrynessFactor = RegisterEquation(Model, "Dryness factor", Dimensionless);
 	auto SeasonalGrowthFactor = RegisterEquation(Model, "Seasonal growth factor", Dimensionless);
 	auto TemperatureFactor    = RegisterEquation(Model, "Temperature factor", Dimensionless);
-	auto MaximumNitrogenUptake = RegisterEquation(Model, "Maximum nitrogen uptake", KgPerKm2PerDay);
+	auto YearlyAccumulatedNitrogenUptake = RegisterEquation(Model, "Yearly accumulated nitrogen uptake", KgPerHectare);
 	//SetSolver(Model, MaximumNitrogenUptake, IncaSolver);
 	auto NitrateUptake = RegisterEquation(Model, "Nitrate uptake", KgPerKm2PerDay);
 	SetSolver(Model, NitrateUptake, IncaSolver);
@@ -254,8 +255,10 @@ AddIncaNModel(inca_model *Model)
 			- RESULT(DirectRunoffAmmonium) * (RESULT(DirectRunoffToSoilFraction) + RESULT(DirectRunoffToReachFraction));
 	)
 	
-	EQUATION(Model, MaximumNitrogenUptake,
-		return LAST_RESULT(NitrateUptake) + LAST_RESULT(AmmoniumUptake); //NOTE: Is RESULT in original, but that creates a circular reference. We should see if this gives correct behaviour.
+	EQUATION(Model, YearlyAccumulatedNitrogenUptake,
+		double accumulated = LAST_RESULT(YearlyAccumulatedNitrogenUptake) + (LAST_RESULT(NitrateUptake) + LAST_RESULT(AmmoniumUptake)) / 100.0; //NOTE convert 1/km2 to 1/Ha
+		if(CURRENT_DAY_OF_YEAR() == 1) accumulated = 0.0;
+		return accumulated;
 	)
 	
 	EQUATION(Model, NitrateUptake,
@@ -270,7 +273,7 @@ AddIncaNModel(inca_model *Model)
 		double plantGrowthStartDay = (double)PARAMETER(PlantGrowthStartDay);
 		double plantGrowthEndDay   = plantGrowthStartDay + (double)PARAMETER(PlantGrowthPeriod);
 		
-		if(RESULT(MaximumNitrogenUptake) > PARAMETER(MaximumNitrogenUptakeRate)) return 0.0;
+		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) return 0.0;
 		if((double)CURRENT_DAY_OF_YEAR() < plantGrowthStartDay || (double)CURRENT_DAY_OF_YEAR() > plantGrowthEndDay) return 0.0;
 		
 		return nitrateuptake;
@@ -338,7 +341,7 @@ AddIncaNModel(inca_model *Model)
 			* RESULT(SeasonalGrowthFactor)
 			/ RESULT(SoilwaterVolume)
 			* 1000000.0;
-		if(RESULT(MaximumNitrogenUptake) > PARAMETER(MaximumNitrogenUptakeRate)) uptake = 0.0;
+		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) uptake = 0.0;
 		return uptake;
 	)
 	

@@ -88,10 +88,11 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 		INCA_FATAL_ERROR("ERROR: (GLUE) Requires at least 1 quantile" << std::endl);
 	}
 	
+	size_t Dim = GetDimensions(Setup->Calibration);
 	Results->RunData.resize(Setup->NumRuns);
 	for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
 	{
-		Results->RunData[Run].RandomParameters.resize(Setup->Calibration.size());
+		Results->RunData[Run].RandomParameters.resize(Dim);
 		Results->RunData[Run].PerformanceMeasures.resize(1);
 	}
 	
@@ -99,14 +100,17 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 	//TODO: We have to make this compatible with partitions!
 	
 	//NOTE: It is important that the loops are in this order so that we don't get any weird dependence between the parameter values (I think).
-	//TODO: We should probably have a better generation scheme for parameter values (such as Latin Cube?).
-	for(size_t ParIdx = 0; ParIdx < Setup->Calibration.size(); ++ParIdx)
+	//TODO: We should probably have a better generation scheme for parameter values (such as Latin Cubes?).
+	size_t ParIdx = 0;
+	for(parameter_calibration &Cal : Setup->Calibration)
 	{
-		parameter_calibration &ParSetting = Setup->Calibration[ParIdx];
-
-		for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
-		{	
-			Results->RunData[Run].RandomParameters[ParIdx] = DrawRandomParameter(ParSetting, Generator);
+		for(size_t Idx = 0; Idx < GetDimensions(Cal); ++Idx)
+		{
+			for(size_t Run = 0; Run < Setup->NumRuns; ++Run)
+			{	
+				Results->RunData[Run].RandomParameters[ParIdx] = DrawRandomParameter(Cal, Generator);
+			}
+			++ParIdx;
 		}
 	}
 	
@@ -160,7 +164,7 @@ RunGLUE(inca_data_set *DataSet, glue_setup *Setup, glue_results *Results)
 		Results->RunData[RunID].PerformanceMeasures[0] = Perf;
 
 #if CALIBRATION_PRINT_DEBUG_INFO		
-		std::cout << "Performance and weighted performance for " << Objective.ModeledName << " vs " << Objective.ObservedName << " was " << std::endl << Perf.first << ", " << Perf.second << std::endl;
+		std::cout << "Performance and weighted performance for " << Objective.ModeledName << " vs " << Objective.ObservedName << " was " << std::endl << Perf.first << ", " << Perf.second << std::endl << std::endl;
 #endif
 	}
 #endif

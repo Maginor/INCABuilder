@@ -168,13 +168,15 @@ WriteGLUEResultsToDatabase(const char *Dbname, glue_setup *Setup, glue_results *
 		rc = sqlite3_step(InsertRunInfoStmt);
 		rc = sqlite3_reset(InsertRunInfoStmt);
 		
+		ApplyCalibrations(DataSet, Setup->Calibration, Results->RunData[Run].RandomParameters.data()); //NOTE: We just apply the calibration so that we can read the values from the dataset again without having to copy the code that assigns values to individual parameters here.
+		
 		int ParID = 0;
 		for(size_t CalIdx = 0; CalIdx < Setup->Calibration.size(); ++CalIdx)
 		{
 			parameter_calibration &Cal = Setup->Calibration[CalIdx];
 			for(size_t Par = 0; Par < Cal.ParameterNames.size(); ++Par)
 			{
-				double Value = Results->RunData[Run].RandomParameters[CalIdx];
+				double Value = GetParameterDouble(DataSet, Cal.ParameterNames[Par], Cal.ParameterIndexes[Par]);
 				
 				rc = sqlite3_bind_int(InsertParameterSetInfoStmt, 1, ParID);
 				rc = sqlite3_bind_int(InsertParameterSetInfoStmt, 2, RunID);

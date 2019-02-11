@@ -124,7 +124,6 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 				}
 				else if(strcmp(Token->StringValue, "partition") == 0)
 				{
-					INCA_FATAL_ERROR("Keyword 'partition' not yet fully supported :(");
 					WeAreInLink = true;
 					Stream.ReadToken(); //NOTE: Consumes the token we peeked.
 					Stream.ExpectToken(TokenType_OpenBrace);
@@ -260,31 +259,48 @@ ReadCalibrationObjectives(token_stream &Stream, std::vector<calibration_objectiv
 }
 
 static size_t
+GetDimensions(parameter_calibration &Cal)
+{
+	if(Cal.ParameterNames.size() == 1)
+	{
+		return 1;
+	}
+	else if(Cal.LinkType == LinkType_Link)
+	{
+		return 1;
+	}
+	else if(Cal.LinkType == LinkType_Partition)
+	{
+		return Cal.ParameterNames.size() - 1;
+	}
+	
+	assert(0);
+	return 0;
+}
+
+static size_t
 GetDimensions(std::vector<parameter_calibration> &Calibrations)
 {
-	return Calibrations.size();
-	/*
 	size_t Dimensions = 0;
 	for(parameter_calibration &Cal : Calibrations)
 	{
-		if(Cal.ParameterNames.size() == 1)
-		{
-			++Dimensions;
-		}
-		else if(Cal.LinkType == LinkType_Link)
-		{
-			++Dimensions;
-		}
-		else if(Cal.LinkType == LinkType_Partition)
-		{
-			Dimensions += Cal.ParameterNames.size();
-		}
-		else assert(0);
+		Dimensions += GetDimensions(Cal);
 	}
-	
 	return Dimensions;
-	*/
 }
+
+
+static void
+ApplyCalibrations(inca_data_set *DataSet, const char *Name, std::vector<const char *> &Indexes, double Value)
+{
+	SetParameterValue(DataSet, Name, Indexes, Value);
+#if CALIBRATION_PRINT_DEBUG_INFO
+	std::cout << "Setting \"" << Name << "\" {";
+	for(const char *Index : Indexes) std::cout << " \"" << Index << "\"";
+	std::cout << " } to " << Value << std::endl;
+#endif
+}
+
 
 static void
 ApplyCalibrations(inca_data_set *DataSet, std::vector<parameter_calibration> &Calibrations, const double *ParameterValues)
@@ -296,8 +312,9 @@ ApplyCalibrations(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 		if(Cal.ParameterNames.size() == 1)
 		{
 			double Value = ParameterValues[AtParValue];
-			SetParameterValue(DataSet, Cal.ParameterNames[0], Cal.ParameterIndexes[0], Value);
+			ApplyCalibrations(DataSet, Cal.ParameterNames[0], Cal.ParameterIndexes[0], Value);
 			++AtParValue;
+
 		}
 		else if(Cal.LinkType == LinkType_Link)
 		{
@@ -306,29 +323,33 @@ ApplyCalibrations(inca_data_set *DataSet, std::vector<parameter_calibration> &Ca
 			
 			for(size_t ParIdx = 0; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
 			{
-				SetParameterValue(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);	
+				ApplyCalibrations(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);				
 			}
 		}
 		else if(Cal.LinkType == LinkType_Partition)
 		{
-			size_t Dim = Cal.ParameterNames.size() - 1;
-			std::vector<double> Values(Dim + 1);
-			for(size_t Idx = 0; Idx < Dim; ++Idx) Values[Dim] = ParameterValues[AtParValue++];
-			std::sort(Values.begin(), Values.end());
-			Values[Dim] = Cal.Max;
+			size_t Dim = GetDimensions(Cal);
+
+			std::vector<double> Values(Dim);
+			for(size_t Idx = 0; Idx < Dim; ++Idx)
+			{
+				double Value = ParameterValues[AtParValue];
+				Values[Idx] = Value;
+				++AtParValue;
+			}
 			
-			SetParameterValue(DataSet, Cal.ParameterNames[0], Cal.ParameterIndexes[0], Values[0]);
+			std::sort(Values.begin(), Values.end());
+			Values.push_back(Cal.Max);
+			
+			ApplyCalibrations(DataSet, Cal.ParameterNames[0], Cal.ParameterIndexes[0], Values[0]);
+
 			for(size_t ParIdx = 1; ParIdx < Cal.ParameterNames.size(); ++ParIdx)
 			{
 				double Value = Values[ParIdx] - Values[ParIdx - 1];
-				SetParameterValue(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);
+				ApplyCalibrations(DataSet, Cal.ParameterNames[ParIdx], Cal.ParameterIndexes[ParIdx], Value);	
 			}
 		}
 		else assert(0);
-		
-#if CALIBRATION_PRINT_DEBUG_INFO
-		std::cout << "Setting " << Calibration.ParameterNames[0] << " to " << ParameterValues[AtParValue-1] << std::endl; //TODO: This does not print enough info when we are setting a linked set of parameters
-#endif
 	}
 }
 

@@ -36,10 +36,12 @@ uniform 0.3 0.8
 link {
 	"Time constant" {"Soil water" "Forest Productive"}
 	"Time constant" {"Soil water" "Forest Unproductive"}
-	"Time constant" {"Soil water" "Peat"}
-	"Time constant" {"Soil water" "Open mountainous landscape"}
-	"Time constant" {"Soil water" "Arable"}
 } uniform 3 15
+
+partition {
+	"Percolation matrix" {"Forest Productive" "Soil water" "Soil water"}
+	"Percolation matrix" {"Forest Productive" "Soil water" "Groundwater"}
+} uniform 0 1
 
 
 objectives :

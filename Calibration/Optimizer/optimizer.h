@@ -85,10 +85,14 @@ static void
 PrintOptimizationResult(optimization_setup *Setup, dlib::function_evaluation& Result)
 {
 	std::cout << "Optimal values: " << std::endl << std::endl;
-	for(size_t CalIdx = 0; CalIdx < Setup->Calibration.size(); ++CalIdx)
+	size_t ValIdx = 0;
+	for(parameter_calibration &Cal : Setup->Calibration)
 	{
-		PrintParameterCalibration(Setup->Calibration[CalIdx]);
-		std::cout << " " << Result.x(CalIdx) << std::endl << std::endl;
+		PrintParameterCalibration(Cal);
+		for(size_t Dim = 0; Dim < GetDimensions(Cal); ++Dim)
+		{
+			std::cout << " " << Result.x(ValIdx++) << std::endl << std::endl;
+		}
 	}
 }
 
@@ -106,13 +110,15 @@ RunOptimizer(inca_data_set *DataSet, optimization_setup *Setup)
 	size_t Dimensions = GetDimensions(Setup->Calibration);
 	column_vector MinBound(Dimensions);
 	column_vector MaxBound(Dimensions);
-	size_t CalIdx = 0;
-	for(size_t CalIdx = 0; CalIdx < Dimensions; ++CalIdx)
+	size_t ValIdx = 0;
+	for(parameter_calibration &Cal : Setup->Calibration)
 	{
-		parameter_calibration &Cal = Setup->Calibration[CalIdx];
-		
-		MinBound(CalIdx) = Cal.Min;
-		MaxBound(CalIdx) = Cal.Max;
+		for(size_t Dim = 0; Dim < GetDimensions(Cal); ++Dim)
+		{
+			MinBound(ValIdx) = Cal.Min;
+			MaxBound(ValIdx) = Cal.Max;
+			++ValIdx;
+		}
 	}
 	
 	std::cout << "Running optimization problem with " << Dimensions << " free variables. Max function calls: " << Setup->MaxFunctionCalls << "." << std::endl;

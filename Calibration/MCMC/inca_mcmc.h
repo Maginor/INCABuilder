@@ -218,7 +218,7 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	
 	RunData.Calibration = Setup->Calibration;
 	
-	size_t Dimensions = RunData.Calibration.size();
+	size_t Dimensions = GetDimensions(RunData.Calibration);
 	
 	if(Dimensions == 0)
 	{
@@ -229,12 +229,17 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	arma::vec LowerBounds(Dimensions + 1);
 	arma::vec UpperBounds(Dimensions + 1);
 	
-	for(size_t CalIdx = 0; CalIdx < Dimensions; ++CalIdx)
+	size_t ValIdx;
+	for(parameter_calibration &Cal : RunData.Calibration)
 	{
 		parameter_calibration &Cal = RunData.Calibration[CalIdx];
-		InitialGuess[CalIdx] = Cal.InitialGuess;
-		LowerBounds [CalIdx] = Cal.Min;
-		UpperBounds [CalIdx] = Cal.Max;
+		for(size_t Dim = 0; Dim < GetDimensions(Cal); ++Dim)
+		{
+			InitialGuess[ValIdx] = Cal.InitialGuess;   //TODO: This gets WRONG for partition setups.
+			LowerBounds [ValIdx] = Cal.Min;
+			UpperBounds [ValIdx] = Cal.Max;
+			++ValIdx;
+		}
 	}
 	
 	//NOTE: The final parameter is the parameter for random perturbation.

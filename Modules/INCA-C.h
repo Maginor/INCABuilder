@@ -15,7 +15,7 @@ SCurve(double X, double Threshold1, double Threshold2)
 static void
 AddINCACModel(inca_model *Model)
 {
-	//NOTE: Uses PERSiST, SoilTemperature (, WaterTemperature??)
+	//NOTE: Uses PERSiST, SoilTemperature
 	
 	auto Dimensionless  = RegisterUnit(Model);
 	auto Mm             = RegisterUnit(Model, "mm");
@@ -75,11 +75,11 @@ AddINCACModel(inca_model *Model)
 	auto LitterFall                         = RegisterEquation(Model, "Litter fall", GPerM2PerDay);
 	auto DirectRunoffToReachFraction        = RegisterEquation(Model, "Direct runoff to reach fraction", PerDay);
 	auto DirectRunoffToOrganicLayerFraction = RegisterEquation(Model, "Direct runoff to organic layer fraction", PerDay);
-	auto OrganicLayerToDirectRunoffFraction = RegisterEquation(Model, "organic layer to direct runoff fraction", PerDay);
-	auto OrganicLayerToMineralLayerFraction = RegisterEquation(Model, "organic layer to mineral layer fraction", PerDay);
-	auto OrganicLayerToReachFraction        = RegisterEquation(Model, "organic layer to reach fraction", PerDay);
-	auto MineralLayerToReachFraction        = RegisterEquation(Model, "mineral layer to reach fraction", PerDay);
-	auto MineralLayerToGroundwaterFraction  = RegisterEquation(Model, "mineral layer to groundwater fraction", PerDay);
+	auto OrganicLayerToDirectRunoffFraction = RegisterEquation(Model, "Organic layer to direct runoff fraction", PerDay);
+	auto OrganicLayerToMineralLayerFraction = RegisterEquation(Model, "Organic layer to mineral layer fraction", PerDay);
+	auto OrganicLayerToReachFraction        = RegisterEquation(Model, "Organic layer to reach fraction", PerDay);
+	auto MineralLayerToReachFraction        = RegisterEquation(Model, "Mineral layer to reach fraction", PerDay);
+	auto MineralLayerToGroundwaterFraction  = RegisterEquation(Model, "Mineral layer to groundwater fraction", PerDay);
 	auto GroundwaterToReachFraction         = RegisterEquation(Model, "Groundwater to reach fraction", PerDay);
 	
 	auto SOCMineralisationInOrganicLayer = RegisterEquation(Model, "SOC mineralisation in organic soil layer", KgPerDay);

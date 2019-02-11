@@ -1,7 +1,7 @@
 #define INCA_TIMESTEP_VERBOSITY 0
 //NOTE: the g++ compiler flag ffast-math will make it so that isnan does not work correctly, so don't use that flag.
-#define INCA_TEST_FOR_NAN 1
-#define INCA_EQUATION_PROFILING 0
+#define INCA_TEST_FOR_NAN 0
+#define INCA_EQUATION_PROFILING 1
 #define INCA_PRINT_TIMING_INFO 1
 
 #include "../../inca.h"

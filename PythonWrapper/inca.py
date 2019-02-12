@@ -124,23 +124,45 @@ class DataSet :
 		return cls(datasetptr)
 		
 	def run_model(self) :
+		'''
+		Runs the model with the parameters and input series that are currently stored in the dataset. All result series will also be stored in the dataset.
+		'''
 		incadll.DllRunModel(self.datasetptr)
 		check_error()
 	
 	def copy(self) :
+		'''
+		Create a copy of the dataset that contains all the same parameter values and input series. Result series will not be copied.
+		'''
 		cp = DataSet(incadll.DllCopyDataSet(self.datasetptr))
 		check_error()
 		return cp
 		
 	def delete(self) :
+		'''
+		Delete all data that was allocated by the C++ code for this dataset. Interaction with the dataset after it was deleted is not recommended. Note that this will not delete the model itself, only the parameter, input and result data. This is because typically you can have multiple datasets sharing the same model (such as if you created dataset copies using dataste.copy()). There is currently no way to delete the model.
+		'''
 		incadll.DllDeleteDataSet(self.datasetptr)
 		check_error()
 		
 	def write_parameters_to_file(self, filename) :
+		'''
+		Write the parameters in the dataset to a standard INCABuilder parameter file.
+		'''
 		incadll.DllWriteParametersToFile(self.datasetptr, _CStr(filename))
 		check_error()
 		
 	def get_result_series(self, name, indexes) :
+		'''
+		Extract one of the result series that was produced by the model. Can only be called after dataset.run_model() has been called at least once.
+		
+		Keyword arguments:
+			name             -- string. The name of the result series. Example : "Soil moisture"
+			indexes          -- list of strings. A list of index names to identify the particular input series. Example : ["Langtjern"] or ["Langtjern", "Forest"]
+		
+		Returns:
+			A numpy.array containing the specified timeseries.
+		'''
 		timesteps = incadll.DllGetTimesteps(self.datasetptr)
 		check_error()
 	
@@ -153,8 +175,15 @@ class DataSet :
 		
 	def get_input_series(self, name, indexes, alignwithresults=False) :
 		'''
-		alignwithresults=False : Extract the entire input series that was provided in the input file
-		alignwithresults=True  : Extract the series from the parameter 'Start date', with 'Timesteps' number of values (i.e. aligned with any result series).
+		Extract one of the input series that were provided with the dataset.
+		
+		Keyword arguments:
+			name             -- string. The name of the input series. Example : "Air temperature"
+			indexes          -- list of strings. A list of index names to identify the particular input series. Example : ["Langtjern"] or ["Langtjern", "Forest"]
+			alignwithresults -- boolean. If False: Extract the entire input series that was provided in the input file. If True: Extract the series from the parameter 'Start date', with 'Timesteps' number of values (i.e. aligned with any result series of the dataset).
+		
+		Returns:
+			A numpy.array containing the specified timeseries.
 		'''
 		if alignwithresults :
 			timesteps = incadll.DllGetTimesteps(self.datasetptr)
@@ -170,6 +199,7 @@ class DataSet :
 		return np.array(inputseries, copy=False)
 		
 	def set_input_series(self, name, indexes, inputseries) :
+		#TODO: Should we not provide alignment here?????
 		array = (ctypes.c_double * len(inputseries))(*inputseries)
 		
 		incadll.DllSetInputSeries(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), array, len(inputseries))

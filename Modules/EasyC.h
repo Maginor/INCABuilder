@@ -164,7 +164,7 @@ AddCarbonInSoilModule(inca_model *Model)
 	EQUATION(Model, DICInLowerSoilBox,
 		return
 			  RESULT(MineralisationRateInLowerSoilBox) * RESULT(DOCInLowerSoilBox)
-			+ + RESULT(DICInUpperSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox), RESULT(SoilMoisture2, UpperBox)); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
+			+ RESULT(DICInUpperSoilBox) * DivideIfNotZero(RESULT(PercolationFromBox, UpperBox) - RESULT(RunoffFromBox, LowerBox), RESULT(SoilMoisture2, UpperBox)); //NOTE: The runoff from the lower box is just water that comes from the upper box and can not enter the lower box because it is too full.
 			- RESULT(DICFromLandscapeUnitToGroundwater);
 	)
 	

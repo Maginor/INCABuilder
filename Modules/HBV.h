@@ -492,7 +492,7 @@ AddHBVModel(inca_model *Model)
 	AddSoilMoistureRoutine(Model);
 	AddGroundwaterResponseRoutine(Model);
 	AddWaterRoutingRoutine(Model);
-//	AddReachFlowRoutine(Model);
+	AddReachFlowRoutine(Model);
 }
 
 #define HBV_H

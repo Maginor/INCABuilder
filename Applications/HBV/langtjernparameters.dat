@@ -55,21 +55,9 @@ parameters:
 "Upper soil recharge fraction" :     #(mm) [0, 1] How large a proportion of the soil moisture recharge goes to the upper soil layer
 0.5 0.5
 
-"Upper soil percolation rate" :     #(/day) [0, 1] How large a proportion of the soil moisture percolates from the upper to the lower soil layer each day.
-0.1 0.1
-
-"Lower soil percolation rate" :     #(/day) [0, 1] How large a proportion of the soil moisture percolates from the lower soil layer to the groundwater each day.
-0.1 0.1
-
-"Upper soil time constant" :     #(day) [0.01, 500] How long on average it takes for a water drop to run from the upper soil layer to the reach
-7 7
-
-"Lower soil time constant" :     #(day) [0.01, 500] How long on average it takes for a water drop to run from the lower soil layer to the reach
-7 7
-
 ###################### "Reaches" ######################
 "Recession coefficient for groundwater slow flow (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
+0.01
 
 "Recession coefficient for groundwater fast flow (K0)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.1
@@ -88,5 +76,5 @@ parameters:
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(dimensionless) [0, 100] How much of the catchment area that is made up by this type of land cover.
-20 20
+50 50
 

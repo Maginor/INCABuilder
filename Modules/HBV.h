@@ -180,14 +180,9 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto InitialUpperSoilMoisture           = RegisterParameterDouble(Model, Land, "Initial soil moisture in upper soil layer", Mm, 100.0);
 	auto InitialLowerSoilMoisture           = RegisterParameterDouble(Model, Land, "Initial soil moisture in lower soil layer", Mm, 100.0);
 	auto UpperSoilRechargeFraction          = RegisterParameterDouble(Model, Land, "Upper soil recharge fraction", Mm, 0.5, 0.0, 1.0, "How large a proportion of the soil moisture recharge goes to the upper soil layer");
-	auto UpperSoilPercolationRate           = RegisterParameterDouble(Model, Land, "Upper soil percolation rate", PerDay, 0.1, 0.0, 1.0, "How large a proportion of the soil moisture percolates from the upper to the lower soil layer each day.");
-	auto LowerSoilPercolationRate           = RegisterParameterDouble(Model, Land, "Lower soil percolation rate", PerDay, 0.1, 0.0, 1.0, "How large a proportion of the soil moisture percolates from the lower soil layer to the groundwater each day.");
-	auto UpperSoilTimeConstant              = RegisterParameterDouble(Model, Land, "Upper soil time constant", Days, 7.0, 0.01, 500.0, "How long on average it takes for a water drop to run from the upper soil layer to the reach");
-	auto LowerSoilTimeConstant              = RegisterParameterDouble(Model, Land, "Lower soil time constant", Days, 7.0, 0.01, 500.0, "How long on average it takes for a water drop to run from the lower soil layer to the reach");
 	
 	
     auto AirTemperature = RegisterInput(Model, "Air temperature");
-
 
 	
 	auto WaterToSoil                 = GetEquationHandle(Model, "Water to soil"); //NOTE: from the snow model.
@@ -201,10 +196,6 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetSolver(Model, UpperSoilGroundwaterRechargeFraction, SoilSolver);
 	auto UpperSoilEvapotranspiration = RegisterEquation(Model, "Upper soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, UpperSoilEvapotranspiration, SoilSolver);
-	auto UpperSoilPercolationOut     = RegisterEquation(Model, "Percolation from upper to lower soil layer", MmPerDay);
-	SetSolver(Model, UpperSoilPercolationOut, SoilSolver);
-	auto UpperSoilRunoffToReach      = RegisterEquation(Model, "Runoff to reach from upper soil layer", MmPerDay);
-	SetSolver(Model, UpperSoilRunoffToReach, SoilSolver);
 	auto UpperSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in upper soil layer", Mm);
 	SetSolver(Model, UpperSoilMoisture, SoilSolver);
 	SetInitialValue(Model, UpperSoilMoisture, InitialUpperSoilMoisture);
@@ -213,10 +204,6 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetSolver(Model, LowerSoilGroundwaterRechargeFraction, SoilSolver);
 	auto LowerSoilEvapotranspiration = RegisterEquation(Model, "Lower soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, LowerSoilEvapotranspiration, SoilSolver);
-	auto LowerSoilPercolationOut     = RegisterEquation(Model, "Percolation from lower soil layer to groundwater", MmPerDay);
-	SetSolver(Model, LowerSoilPercolationOut, SoilSolver);
-	auto LowerSoilRunoffToReach      = RegisterEquation(Model, "Runoff to reach from lower soil layer", MmPerDay);
-	SetSolver(Model, LowerSoilRunoffToReach, SoilSolver);
 	auto LowerSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in lower soil layer", Mm);
 	SetSolver(Model, LowerSoilMoisture, SoilSolver);
 	SetInitialValue(Model, LowerSoilMoisture, InitialLowerSoilMoisture);
@@ -236,20 +223,10 @@ AddSoilMoistureRoutine(inca_model *Model)
 		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
-	EQUATION(Model, UpperSoilPercolationOut,
-		return RESULT(UpperSoilMoisture) * PARAMETER(UpperSoilPercolationRate);
-	)
-	
-	EQUATION(Model, UpperSoilRunoffToReach,
-		return RESULT(UpperSoilMoisture) / PARAMETER(UpperSoilTimeConstant);
-	)
-	
 	EQUATION(Model, UpperSoilMoisture,
 		return
 			  PARAMETER(UpperSoilRechargeFraction) * (1.0 - RESULT(UpperSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil)
-			- RESULT(UpperSoilEvapotranspiration)
-			- RESULT(UpperSoilPercolationOut)
-			- RESULT(UpperSoilRunoffToReach);
+			- RESULT(UpperSoilEvapotranspiration);
 	)
 	
 	EQUATION(Model, LowerSoilGroundwaterRechargeFraction,
@@ -264,37 +241,17 @@ AddSoilMoistureRoutine(inca_model *Model)
 		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
-	EQUATION(Model, LowerSoilPercolationOut,
-		return RESULT(LowerSoilMoisture) * PARAMETER(LowerSoilPercolationRate);
-	)
-	
-	EQUATION(Model, LowerSoilRunoffToReach,
-		return RESULT(LowerSoilMoisture) / PARAMETER(LowerSoilTimeConstant);
-	)
-	
 	EQUATION(Model, LowerSoilMoisture,
 		return
 			  (1.0 - PARAMETER(UpperSoilRechargeFraction)) * (1.0 - RESULT(LowerSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil)
-			+ RESULT(UpperSoilPercolationOut)
-			- RESULT(LowerSoilEvapotranspiration)
-			- RESULT(LowerSoilPercolationOut)
-			- RESULT(LowerSoilRunoffToReach);
+			- RESULT(LowerSoilEvapotranspiration);
 	)
 	
 	EQUATION(Model, FromLandscapeUnitToGroundwater,
 		return 
 			  RESULT(WaterToSoil) * 
-			  (PARAMETER(UpperSoilRechargeFraction) * RESULT(UpperSoilGroundwaterRechargeFraction) + (1.0 - PARAMETER(UpperSoilRechargeFraction)) * RESULT(LowerSoilGroundwaterRechargeFraction))
-			+ RESULT(LowerSoilPercolationOut);
+			  (PARAMETER(UpperSoilRechargeFraction) * RESULT(UpperSoilGroundwaterRechargeFraction) + (1.0 - PARAMETER(UpperSoilRechargeFraction)) * RESULT(LowerSoilGroundwaterRechargeFraction));
 	)
-	
-	auto RunoffFromLandscapeUnit = RegisterEquation(Model, "Runoff from landscape unit", MmPerDay);
-	auto TotalRunoffFromSoil     = RegisterEquationCumulative(Model, "Total runoff from soil", RunoffFromLandscapeUnit, LandscapeUnits);
-	
-	EQUATION(Model, RunoffFromLandscapeUnit,
-		return RESULT(UpperSoilRunoffToReach) + RESULT(LowerSoilRunoffToReach);
-	)
-	
 }
 
 
@@ -397,15 +354,12 @@ AddWaterRoutingRoutine(inca_model *Model)
 	
 	auto FastFlow = GetEquationHandle(Model, "Fast groundwater flow");
 	auto SlowFlow = GetEquationHandle(Model, "Slow groundwater flow");
-	auto TotalRunoffFromSoil = GetEquationHandle(Model, "Total runoff from soil");
-    
 	
         
 	EQUATION(Model, FlowToRouting,
 		double runoffdepth = 
 			  RESULT(FastFlow)
-			+ RESULT(SlowFlow)
-			+ RESULT(TotalRunoffFromSoil);
+			+ RESULT(SlowFlow);
 		//NOTE: Convert mm/day to m3/day
 		return
 			  (runoffdepth / 1000.0)                // mm/day -> m/day

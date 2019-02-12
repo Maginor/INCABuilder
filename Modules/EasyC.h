@@ -2,7 +2,7 @@
 #if !defined(CARBON_MODEL_H)
 
 
-//NOTE: This is far from finished
+//NOTE: This is in development and is far from finished
 
 static void
 AddCarbonInSoilModule(inca_model *Model)
@@ -19,16 +19,14 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto M3PerDay = RegisterUnit(Model, "m3/day");
 	auto KgPerDay = RegisterUnit(Model, "kg/day");
 	
-	auto SoilBoxes = GetIndexSetHandle(Model, "Soil boxes");
-	auto UpperBox  = RequireIndex(Model, SoilBoxes, "Upper box");
-	auto LowerBox  = RequireIndex(Model, SoilBoxes, "Lower box");
 	
 	auto Land   = GetParameterGroupHandle(Model, "Landscape units");
 	auto SoilsLand  = GetParameterGroupHandle(Model, "Soils land");
 	auto InitialSOCInSoilPerArea = RegisterParameterDouble(Model, SoilsLand, "Initial SOC in soil box", KgPerM2, 2.0);
 	auto LitterFall = RegisterParameterDouble(Model, Land, "Litter fall", KgPerM2PerDay, 0.02, 0.0, 10.0, "Litter fall from the canopy to the upper soil layer");
 	
-	auto Soils        = GetParameterGroupHandle(Model, "Soils");
+	
+	
 	auto SorptionRate = RegisterParameterDouble(Model, Soils, "Sorption rate", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
 	auto DesorptionRate = RegisterParameterDouble(Model, Soils, "Desorption rate", PerDay, 1e-4, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
 	auto BaseMineralisationRate = RegisterParameterDouble(Model, Soils, "Base mineralisation rate in soil", PerDay, 0.1);
@@ -431,7 +429,7 @@ AddCarbonInReachModule(inca_model *Model)
 }
 
 static void
-AddSimplyCModel(inca_model *Model)
+AddEasyCModel(inca_model *Model)
 {
 	AddCarbonInSoilModule(Model);
 	AddCarbonInGroundwaterModule(Model);

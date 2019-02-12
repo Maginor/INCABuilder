@@ -8,9 +8,9 @@
 #include "../../inca.h"
 
 #include "../../Modules/HBV.h"
-//#include "../../Modules/SoilTemperatureModel.h"
-//#include "../../Modules/WaterTemperatureModel.h"
-//#include "CarbonModel.h"
+#include "../../Modules/SoilTemperature.h"
+#include "../../Modules/WaterTemperature.h"
+#include "../../Modules/EasyC.h"
 
 #include "../../sqlite3/sqlite3.h"
 #include "../../inca_database_io.cpp"
@@ -30,9 +30,9 @@ int main(int argc, char **argv)
 	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
 	AddHBVModel(Model);
-//	AddSoilTemperatureModel(Model);
-//	AddWaterTemperatureModel(Model);
-//	AddSimplyCModel(Model);
+	AddSoilTemperatureModel(Model);
+	AddWaterTemperatureModel(Model);
+	AddEasyCModel(Model);
 	
 	EnsureModelComplianceWithIncaviewCommandline(Model, &Args);
 	

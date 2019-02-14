@@ -66,8 +66,10 @@ AddINCACModel(inca_model *Model)
 	auto DOCSorptionBaseRateMineralLayer       = RegisterParameterDouble(Model, Land, "DOC sorption base rate in mineral soil layer", PerDay, 0.1);
 	auto DOCMineralisationBaseRateOrganicLayer = RegisterParameterDouble(Model, Land, "DOC mineralisation base rate in organic soil layer", PerDay, 0.1);
 	auto DOCMineralisationBaseRateMineralLayer = RegisterParameterDouble(Model, Land, "DOC mineralisation base rate in mineral soil layer", PerDay, 0.1);
-	auto LinearEffectOfSO4OnSolubility         = RegisterParameterDouble(Model, Land, "Linear effect of SO4 on organic matter solubility", PerDay, 0.1); //TODO: This is actually a different unit, but it depends on the unit of the SO4 timeseries, which could be user specified..
-	auto ExponentialEffectOfSO4OnSolubility    = RegisterParameterDouble(Model, Land, "Exponential effect of SO4 on organic matter solubility", Dimensionless, 0.1);
+	auto LinearEffectOfSO4OnSolubilityOrganicLayer = RegisterParameterDouble(Model, Land, "Linear effect of SO4 on organic matter solubility in organic soil layer", PerDay, 0.1); //TODO: This is actually a different unit, but it depends on the unit of the SO4 timeseries, which could be user specified..
+	auto LinearEffectOfSO4OnSolubilityMineralLayer = RegisterParameterDouble(Model, Land, "Linear effect of SO4 on organic matter solubility in mineral soil layer", PerDay, 0.1); //TODO: This is actually a different unit, but it depends on the unit of the SO4 timeseries, which could be user specified..
+	auto ExponentialEffectOfSO4OnSolubilityOrganicLayer = RegisterParameterDouble(Model, Land, "Exponential effect of SO4 on organic matter solubility in organic soil layer", Dimensionless, 1);
+	auto ExponentialEffectOfSO4OnSolubilityMineralLayer = RegisterParameterDouble(Model, Land, "Exponential effect of SO4 on organic matter solubility in mineral soil layer", Dimensionless, 1);
 	
 	auto IncaSolver = RegisterSolver(Model, "INCA Solver", 0.1, IncaDascru);
 	
@@ -230,7 +232,7 @@ AddINCACModel(inca_model *Model)
 	EQUATION(Model, SOCDesorptionInOrganicLayer,
 		return
 			  RESULT(SoilProcessRateModifier, OrganicLayer)
-			* (PARAMETER(SOCDesorptionBaseRateOrganicLayer) + PARAMETER(LinearEffectOfSO4OnSolubility)*pow(INPUT(SO4SoilSolution), PARAMETER(ExponentialEffectOfSO4OnSolubility)))
+			* (PARAMETER(SOCDesorptionBaseRateOrganicLayer) + PARAMETER(LinearEffectOfSO4OnSolubilityOrganicLayer)*pow(INPUT(SO4SoilSolution), PARAMETER(ExponentialEffectOfSO4OnSolubilityOrganicLayer)))
 			* RESULT(SOCMassInOrganicLayer);
 	)
 	
@@ -249,7 +251,7 @@ AddINCACModel(inca_model *Model)
 	EQUATION(Model, SOCDesorptionInMineralLayer,
 		return
 			  RESULT(SoilProcessRateModifier, MineralLayer)
-			* (PARAMETER(SOCDesorptionBaseRateMineralLayer) + PARAMETER(LinearEffectOfSO4OnSolubility)*pow(INPUT(SO4SoilSolution), PARAMETER(ExponentialEffectOfSO4OnSolubility)))
+			* (PARAMETER(SOCDesorptionBaseRateMineralLayer) + PARAMETER(LinearEffectOfSO4OnSolubilityMineralLayer)*pow(INPUT(SO4SoilSolution), PARAMETER(ExponentialEffectOfSO4OnSolubilityMineralLayer)))
 			* RESULT(SOCMassInMineralLayer);
 	)
 	
@@ -262,7 +264,7 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DICMassTransferToAtmosphere,
-		double organiclayervolume = RESULT(WaterDepth, OrganicLayer) * 1000.0;  //TODO: Check if unit conversion is correct
+		double organiclayervolume = RESULT(WaterDepth, OrganicLayer) / 1000.0 * PARAMETER(TerrestrialCatchmentArea) * 1e6 * PARAMETER(Percent) * 1e-2;  //TODO: Check if unit conversion is correct
 		return PARAMETER(DICMassTransferVelocity) * (SafeDivide(RESULT(DICMassInOrganicLayer), organiclayervolume) - PARAMETER(DICSaturationConstant)); //TODO: Check if we should allow this to be negative
 	)
 	

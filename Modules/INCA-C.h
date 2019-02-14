@@ -417,8 +417,10 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, PhotoMineralisationRate,
 		return
-			PARAMETER(DOCMineralisationSelfShadingMultiplier) * INPUT(SolarRadiation) / 
-			(PARAMETER(DOCMineralisationOffset) + SafeDivide(RESULT(DOCMassInReach), RESULT(ReachVolume)));
+			SafeDivide(
+			PARAMETER(DOCMineralisationSelfShadingMultiplier) * INPUT(SolarRadiation), 
+			(PARAMETER(DOCMineralisationOffset) + SafeDivide(RESULT(DOCMassInReach), RESULT(ReachVolume)))
+			);
 	)
 	
 	EQUATION(Model, MicrobialMineralisationRate,

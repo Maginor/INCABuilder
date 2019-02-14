@@ -192,18 +192,26 @@ AddSoilMoistureRoutine(inca_model *Model)
 	
 	auto SoilSolver = RegisterSolver(Model, "Soil solver", 0.1, IncaDascru);
 	
-	auto UpperSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Upper soil groundwater recharge fraction", MmPerDay);
+	auto UpperSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Upper soil groundwater recharge fraction", Dimensionless);
 	SetSolver(Model, UpperSoilGroundwaterRechargeFraction, SoilSolver);
 	auto UpperSoilEvapotranspiration = RegisterEquation(Model, "Upper soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, UpperSoilEvapotranspiration, SoilSolver);
+	auto UpperSoilGroundwaterRecharge = RegisterEquation(Model, "Upper soil layer groundwater recharge", MmPerDay)
+	SetSolver(Model, UpperSoilGroundwaterRecharge, SoilSolver);
+	auto UpperSoilMoistureRecharge   = RegisterEquation(Model, "Upper soil layer moisture recharge", MmPerDay);
+	SetSolver(Model, UpperSoilMoistureRecharge, SoilSolver);
 	auto UpperSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in upper soil layer", Mm);
 	SetSolver(Model, UpperSoilMoisture, SoilSolver);
 	SetInitialValue(Model, UpperSoilMoisture, InitialUpperSoilMoisture);
 	
-	auto LowerSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Lower soil groundwater recharge fraction", MmPerDay);
+	auto LowerSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Lower soil groundwater recharge fraction", Dimensionless);
 	SetSolver(Model, LowerSoilGroundwaterRechargeFraction, SoilSolver);
 	auto LowerSoilEvapotranspiration = RegisterEquation(Model, "Lower soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, LowerSoilEvapotranspiration, SoilSolver);
+	auto LowerSoilGroundwaterRecharge = RegisterEquation(Model, "Lower soil layer groundwater recharge", MmPerDay)
+	SetSolver(Model, LowerSoilGroundwaterRecharge, SoilSolver);
+	auto LowerSoilMoistureRecharge   = RegisterEquation(Model, "Lower soil layer moisture recharge", MmPerDay);
+	SetSolver(Model, LowerSoilMoistureRecharge, SoilSolver);
 	auto LowerSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in lower soil layer", Mm);
 	SetSolver(Model, LowerSoilMoisture, SoilSolver);
 	SetInitialValue(Model, LowerSoilMoisture, InitialLowerSoilMoisture);
@@ -223,9 +231,17 @@ AddSoilMoistureRoutine(inca_model *Model)
 		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
+	EQUATION(Model, UpperSoilGroundwaterRecharge,
+		return PARAMETER(UpperSoilRechargeFraction) * RESULT(UpperSoilGroundwaterRechargeFraction) * RESULT(WaterToSoil);
+	)
+	
+	EQUATION(Model, UpperSoilMoistureRecharge,
+		return PARAMETER(UpperSoilRechargeFraction) * (1.0 - RESULT(UpperSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil);
+	)
+	
 	EQUATION(Model, UpperSoilMoisture,
 		return
-			  PARAMETER(UpperSoilRechargeFraction) * (1.0 - RESULT(UpperSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil)
+			  RESULT(UpperSoilMoistureRecharge)
 			- RESULT(UpperSoilEvapotranspiration);
 	)
 	
@@ -241,16 +257,22 @@ AddSoilMoistureRoutine(inca_model *Model)
 		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
+	EQUATION(Model, LowerSoilGroundwaterRecharge,
+		return (1.0 - PARAMETER(UpperSoilRechargeFraction)) * RESULT(LowerSoilGroundwaterRechargeFraction) * RESULT(WaterToSoil);
+	)
+	
+	EQUATION(Model, LowerSoilMoistureRecharge,
+		return (1.0 - PARAMETER(UpperSoilRechargeFraction)) * (1.0 - RESULT(LowerSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil);
+	)
+	
 	EQUATION(Model, LowerSoilMoisture,
 		return
-			  (1.0 - PARAMETER(UpperSoilRechargeFraction)) * (1.0 - RESULT(LowerSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil)
+			  RESULT(LowerSoilMoistureRecharge)
 			- RESULT(LowerSoilEvapotranspiration);
 	)
 	
 	EQUATION(Model, FromLandscapeUnitToGroundwater,
-		return 
-			  RESULT(WaterToSoil) * 
-			  (PARAMETER(UpperSoilRechargeFraction) * RESULT(UpperSoilGroundwaterRechargeFraction) + (1.0 - PARAMETER(UpperSoilRechargeFraction)) * RESULT(LowerSoilGroundwaterRechargeFraction));
+		return RESULT(UpperSoilGroundwaterRecharge) + RESULT(LowerSoilGroundwaterRecharge);
 	)
 }
 

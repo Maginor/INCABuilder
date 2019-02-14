@@ -196,7 +196,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetSolver(Model, UpperSoilGroundwaterRechargeFraction, SoilSolver);
 	auto UpperSoilEvapotranspiration = RegisterEquation(Model, "Upper soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, UpperSoilEvapotranspiration, SoilSolver);
-	auto UpperSoilGroundwaterRecharge = RegisterEquation(Model, "Upper soil layer groundwater recharge", MmPerDay)
+	auto UpperSoilGroundwaterRecharge = RegisterEquation(Model, "Upper soil layer groundwater recharge", MmPerDay);
 	SetSolver(Model, UpperSoilGroundwaterRecharge, SoilSolver);
 	auto UpperSoilMoistureRecharge   = RegisterEquation(Model, "Upper soil layer moisture recharge", MmPerDay);
 	SetSolver(Model, UpperSoilMoistureRecharge, SoilSolver);
@@ -208,7 +208,7 @@ AddSoilMoistureRoutine(inca_model *Model)
 	SetSolver(Model, LowerSoilGroundwaterRechargeFraction, SoilSolver);
 	auto LowerSoilEvapotranspiration = RegisterEquation(Model, "Lower soil layer evapotranspiration", MmPerDay);
 	SetSolver(Model, LowerSoilEvapotranspiration, SoilSolver);
-	auto LowerSoilGroundwaterRecharge = RegisterEquation(Model, "Lower soil layer groundwater recharge", MmPerDay)
+	auto LowerSoilGroundwaterRecharge = RegisterEquation(Model, "Lower soil layer groundwater recharge", MmPerDay);
 	SetSolver(Model, LowerSoilGroundwaterRecharge, SoilSolver);
 	auto LowerSoilMoistureRecharge   = RegisterEquation(Model, "Lower soil layer moisture recharge", MmPerDay);
 	SetSolver(Model, LowerSoilMoistureRecharge, SoilSolver);

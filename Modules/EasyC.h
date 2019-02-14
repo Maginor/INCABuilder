@@ -4,6 +4,19 @@
 
 //NOTE: This is in development and is far from finished
 
+
+
+inline double
+SCurve(double X, double Threshold1, double Threshold2)
+{
+	if(X < Threshold1) return 0.0;
+	if(X > Threshold2) return 1.0;
+	double Y = (X - Threshold1) / (Threshold2 - Threshold1);
+	return (3.0 - 2.0*Y)*Y*Y;
+}
+
+
+
 static void
 AddCarbonInSoilModule(inca_model *Model)
 {
@@ -18,19 +31,21 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto Dimensionless = RegisterUnit(Model);
 	auto M3PerDay = RegisterUnit(Model, "m3/day");
 	auto KgPerDay = RegisterUnit(Model, "kg/day");
+	auto Mm      = RegisterUnit(Model, "mm");
 	
 	
 	auto Land   = GetParameterGroupHandle(Model, "Landscape units");
 
-	auto InitialSOCInSoilPerArea = RegisterParameterDouble(Model, Land, "Initial SOC in soil box", KgPerM2, 2.0);
+	auto InitialSOCInUpperSoilPerArea = RegisterParameterDouble(Model, Land, "Initial SOC in upper soil layer", KgPerM2, 2.0);
+	auto InitialSOCInLowerSoilPerArea = RegisterParameterDouble(Model, Land, "Initial SOC in lower soil layer", KgPerM2, 2.0);
 	auto LitterFall = RegisterParameterDouble(Model, Land, "Litter fall", KgPerM2PerDay, 0.02, 0.0, 10.0, "Litter fall from the canopy to the upper soil layer");
 	
 	
-	auto SorptionRateInUpperBox   = RegisterParameterDouble(Model, Land, "Sorption rate in upper soil", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
-	auto SorptionRateInLowerBox   = RegisterParameterDouble(Model, Land, "Sorption rate in lower soil", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
+	auto SorptionRateUpperBox   = RegisterParameterDouble(Model, Land, "Sorption rate in upper soil", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
+	auto SorptionRateLowerBox   = RegisterParameterDouble(Model, Land, "Sorption rate in lower soil", PerDay, 0.1, 0.0, 1.0, "Rate coefficient for DOC sorption (DOC to SOC)");
 	
-	auto DesorptionRateInUpperBox = RegisterParameterDouble(Model, Land, "Desorption rate in upper soil", PerDay, 1e-4, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
-	auto DesorptionRateInLowerBox = RegisterParameterDouble(Model, Land, "Desorption rate in lower soil", PerDay, 1e-4, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
+	auto DesorptionRateUpperBox = RegisterParameterDouble(Model, Land, "Desorption rate in upper soil", PerDay, 1e-4, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
+	auto DesorptionRateLowerBox = RegisterParameterDouble(Model, Land, "Desorption rate in lower soil", PerDay, 1e-4, 0.0, 1.0, "Rate coefficient for SOC desorption (SOC to DOC)");
 	
 	auto BaseMineralisationRateUpperBox = RegisterParameterDouble(Model, Land, "Base mineralisation rate in upper soil", PerDay, 0.1);
 	auto BaseMineralisationRateLowerBox = RegisterParameterDouble(Model, Land, "Base mineralisation rate in lower soil", PerDay, 0.1);
@@ -62,15 +77,22 @@ AddCarbonInSoilModule(inca_model *Model)
 	auto LowerSoilMoisture                    = GetEquationHandle(Model, "Soil moisture in lower soil layer");
 	
 	
-	auto MineralisationRateInUpperSoilBox = RegisterEquation(Model, "Mineralisation rate in upper soil box", PerDay);
-	auto MineralisationRateInLowerSoilBox = RegisterEquation(Model, "Mineralisation rate in lower soil box", PerDay);
-	
 	auto InitialSOCInUpperSoil = RegisterEquationInitialValue(Model, "Initial SOC in upper soil box", Kg);
 	auto InitialSOCInLowerSoil = RegisterEquationInitialValue(Model, "Initial SOC in lower soil box", Kg);
 	
+	auto SoilMoistureFactor = RegisterEquation(Model, "Soil moisture factor", Dimensionless);
+	SetSolver(Model, SoilMoistureFactor, SoilSolver);
+	
+	auto SoilTemperatureFactor = RegisterEquation(Model, "Soil temperature factor", Dimensionless);
+	
+	auto MineralisationRateInUpperSoilBox = RegisterEquation(Model, "Mineralisation rate in upper soil box", PerDay);
+	SetSolver(Model, MineralisationRateInUpperSoilBox, SoilSolver);
+	auto MineralisationRateInLowerSoilBox = RegisterEquation(Model, "Mineralisation rate in lower soil box", PerDay);
+	SetSolver(Model, MineralisationRateInLowerSoilBox, SoilSolver);
+	
 	auto SOCInUpperSoilBox = RegisterEquationODE(Model, "SOC in upper soil box", Kg);
 	SetSolver(Model, SOCInUpperSoilBox, SoilSolver);
-	SetInitialValue(Model, SOCInUpperSoilBox, InitialSOCInUpperSoil); //TODO: Has to be converted from kg/m2 to kg
+	SetInitialValue(Model, SOCInUpperSoilBox, InitialSOCInUpperSoil);
 	auto DOCInUpperSoilBox = RegisterEquationODE(Model, "DOC in upper soil box", Kg);
 	SetSolver(Model, DOCInUpperSoilBox, SoilSolver);
 	auto DICInUpperSoilBox = RegisterEquationODE(Model, "DIC in upper soil box", Kg);
@@ -78,7 +100,7 @@ AddCarbonInSoilModule(inca_model *Model)
 	
 	auto SOCInLowerSoilBox = RegisterEquationODE(Model, "SOC in lower soil box", Kg);
 	SetSolver(Model, SOCInLowerSoilBox, SoilSolver);
-	SetInitialValue(Model, SOCInLowerSoilBox, InitialSOCInLowerSoil); //TODO: Has to be converted from kg/m2 to kg
+	SetInitialValue(Model, SOCInLowerSoilBox, InitialSOCInLowerSoil);
 	auto DOCInLowerSoilBox = RegisterEquationODE(Model, "DOC in lower soil box", Kg);
 	SetSolver(Model, DOCInLowerSoilBox, SoilSolver);
 	auto DICInLowerSoilBox = RegisterEquationODE(Model, "DIC in lower soil box", Kg);
@@ -91,11 +113,11 @@ AddCarbonInSoilModule(inca_model *Model)
 	
 	
 	EQUATION(Model, InitialSOCInUpperSoil,
-		return PARAMETER(InitialSOCInSoilPerArea, UpperBox) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
+		return PARAMETER(InitialSOCInUpperSoilPerArea) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
 	)
 	
 	EQUATION(Model, InitialSOCInLowerSoil,
-		return PARAMETER(InitialSOCInSoilPerArea, LowerBox) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
+		return PARAMETER(InitialSOCInLowerSoilPerArea) * (PARAMETER(CatchmentArea) * 1e6) * (PARAMETER(Percent) / 100.0);
 	)
 	
 	EQUATION(Model, SoilMoistureFactor,
@@ -188,14 +210,14 @@ AddCarbonInSoilModule(inca_model *Model)
 		double relativedocconcentrationupp = SafeDivide(RESULT(DOCInUpperSoilBox), RESULT(UpperSoilMoisture));
 		double relativedocconcentrationlow = SafeDivide(RESULT(DOCInLowerSoilBox), RESULT(LowerSoilMoisture));
 		
-		return relativedocconcentration * RESULT(UpperSoilGroundwaterRecharge) + relativedocconcentrationlow * RESULT(LowerSoilGroundwaterRecharge);
+		return relativedocconcentrationupp * RESULT(UpperSoilGroundwaterRecharge) + relativedocconcentrationlow * RESULT(LowerSoilGroundwaterRecharge);
 	)
 	
 	EQUATION(Model, DICFromLandscapeUnitToGroundwater,
 		double relativedicconcentrationupp = SafeDivide(RESULT(DICInUpperSoilBox), RESULT(UpperSoilMoisture));
 		double relativedicconcentrationlow = SafeDivide(RESULT(DICInLowerSoilBox), RESULT(LowerSoilMoisture));
 		
-		return relativedicconcentration * RESULT(UpperSoilGroundwaterRecharge) + relativedicconcentrationlow * RESULT(LowerSoilGroundwaterRecharge);
+		return relativedicconcentrationupp * RESULT(UpperSoilGroundwaterRecharge) + relativedicconcentrationlow * RESULT(LowerSoilGroundwaterRecharge);
 	)
 }
 
@@ -209,68 +231,39 @@ AddCarbonInGroundwaterModule(inca_model *Model)
 	
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
 	
-	auto CatchmentArea = GetParameterDoubleHandle(Model, "Catchment area");
-	auto MaxBase       = GetParameterUIntHandle(Model, "Flow routing max base");
-	
 	auto DOCFromLandscapeUnitToGroundwater = GetEquationHandle(Model, "DOC from landscape unit to groundwater");
 	auto DICFromLandscapeUnitToGroundwater = GetEquationHandle(Model, "DIC from landscape unit to groundwater");
-	auto Percolation                       = GetEquationHandle(Model, "Percolation from upper to lower groundwater storage");
-	auto UpperRunoff                       = GetEquationHandle(Model, "Runoff from upper groundwater storage");
-	auto LowerRunoff                       = GetEquationHandle(Model, "Runoff from lower groundwater storage");
-	auto UpperStorage                      = GetEquationHandle(Model, "Upper groundwater storage");
-	auto LowerStorage                      = GetEquationHandle(Model, "Lower groundwater storage");
+	auto FastFlow                          = GetEquationHandle(Model, "Fast groundwater flow");
+	auto SlowFlow                          = GetEquationHandle(Model, "Slow groundwater flow");
+	auto GroundwaterStorage                = GetEquationHandle(Model, "Groundwater storage");
 	
 	auto DOCToGroundwater = RegisterEquationCumulative(Model, "DOC to Groundwater", DOCFromLandscapeUnitToGroundwater, LandscapeUnits);
 	auto DICToGroundwater = RegisterEquationCumulative(Model, "DIC to Groundwater", DICFromLandscapeUnitToGroundwater, LandscapeUnits);
 	
-	auto DOCInUpperGroundwaterStorage = RegisterEquationODE(Model, "DOC in upper groundwater storage", Kg);
-	SetSolver(Model, DOCInUpperGroundwaterStorage, GroundwaterSolver);
-	auto DICInUpperGroundwaterStorage = RegisterEquationODE(Model, "DIC in upper groundwater storage", Kg);
-	SetSolver(Model, DICInUpperGroundwaterStorage, GroundwaterSolver);
-	auto DOCInLowerGroundwaterStorage = RegisterEquationODE(Model, "DOC in lower groundwater storage", Kg);
-	SetSolver(Model, DOCInLowerGroundwaterStorage, GroundwaterSolver);
-	auto DICInLowerGroundwaterStorage = RegisterEquationODE(Model, "DIC in lower groundwater storage", Kg);
-	SetSolver(Model, DICInLowerGroundwaterStorage, GroundwaterSolver);
+	auto DOCInGroundwaterStorage = RegisterEquationODE(Model, "DOC in groundwater storage", Kg);
+	SetSolver(Model, DOCInGroundwaterStorage, GroundwaterSolver);
+	auto DICInGroundwaterStorage = RegisterEquationODE(Model, "DIC in groundwater storage", Kg);
+	SetSolver(Model, DICInGroundwaterStorage, GroundwaterSolver);
 	
 	auto DOCFromGroundwaterToRouting = RegisterEquation(Model, "DOC from groundwater to routing routine", KgPerDay);
+	SetSolver(Model, DOCFromGroundwaterToRouting, GroundwaterSolver);
 	auto DICFromGroundwaterToRouting = RegisterEquation(Model, "DIC from groundwater to routing routine", KgPerDay);
+	SetSolver(Model, DICFromGroundwaterToRouting, GroundwaterSolver);
 
-	
-	EQUATION(Model, DOCInUpperGroundwaterStorage,
-		
-		return
-			  RESULT(DOCToGroundwater)
-			- SafeDivide(RESULT(DOCInUpperGroundwaterStorage) * (RESULT(Percolation) + RESULT(UpperRunoff)), RESULT(UpperStorage));
-	)
-	
-	EQUATION(Model, DICInUpperGroundwaterStorage,
-		return
-			  RESULT(DICToGroundwater)
-			- SafeDivide(RESULT(DICInUpperGroundwaterStorage) * (RESULT(Percolation) + RESULT(UpperRunoff)), RESULT(UpperStorage));
-	)
-	
-	EQUATION(Model, DOCInLowerGroundwaterStorage,
-		return
-			  SafeDivide(RESULT(DOCInUpperGroundwaterStorage) * RESULT(Percolation), RESULT(UpperStorage))
-			- SafeDivide(RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
-	)
-	
-	EQUATION(Model, DICInLowerGroundwaterStorage,
-		return
-			  SafeDivide(RESULT(DICInUpperGroundwaterStorage) * RESULT(Percolation), RESULT(UpperStorage))
-			- SafeDivide(RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
-	)
-	
 	EQUATION(Model, DOCFromGroundwaterToRouting,
-		return
-			  SafeDivide(RESULT(DOCInUpperGroundwaterStorage) * RESULT(UpperRunoff), RESULT(UpperStorage))
-			+ SafeDivide(RESULT(DOCInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
+		return SafeDivide(RESULT(DOCInGroundwaterStorage) * (RESULT(FastFlow) + RESULT(SlowFlow)), RESULT(GroundwaterStorage));
 	)
 	
 	EQUATION(Model, DICFromGroundwaterToRouting,
-		return
-			  SafeDivide(RESULT(DICInUpperGroundwaterStorage) * RESULT(UpperRunoff), RESULT(UpperStorage))
-			+ SafeDivide(RESULT(DICInLowerGroundwaterStorage) * RESULT(LowerRunoff), RESULT(LowerStorage));
+		return SafeDivide(RESULT(DICInGroundwaterStorage) * (RESULT(FastFlow) + RESULT(SlowFlow)), RESULT(GroundwaterStorage));
+	)
+	
+	EQUATION(Model, DOCInGroundwaterStorage,
+		return RESULT(DOCToGroundwater) - RESULT(DOCFromGroundwaterToRouting);
+	)
+	
+	EQUATION(Model, DICInGroundwaterStorage,
+		return RESULT(DICToGroundwater) - RESULT(DICFromGroundwaterToRouting);
 	)	
 }
 

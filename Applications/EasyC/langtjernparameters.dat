@@ -1,8 +1,7 @@
-# Parameter file generated for SimplyC V0.0
+# Parameter file generated for Carbon Model V0.0 at 2019-02-14 13:29:25
 
 index_sets:
-"Landscape units" : {"Forest" "Peatland"}
-"Soil boxes" : {"Upper box" "Lower box"}
+"Landscape units" : {"Forest"}
 "Reaches" : {"R1"}
 
 parameters:
@@ -10,11 +9,8 @@ parameters:
 "Timesteps" :     #(days) [0, 18446744073709551615]
 10957
 
-"Start date" :     # ["1000-1-1", "3000-12-31"]
-"1986-1-1"
-
-"Flow routing max base" :     #(day) [1, 10] Width of the convolution filter that smooths out the flow from the groundwater to the river over time
-5
+"Start date" :     # ["1000-01-01", "3000-12-31"]
+"1986-01-01"
 
 "Degas velocity" :     #(m/day) [0, 100] DIC mass transfer velocity from upper soil layer/river to the atmosphere
 15
@@ -27,104 +23,116 @@ parameters:
 
 ###################### "Landscape units" ######################
 "Degree day factor" :     #(mm/°C/day) [1.5, 4] Degree day factor, rate at which the snow will melt water in snow will freeze
-2.5 2.5
+2.5
 
 "Refreezing coefficient" :     #(dimensionless) [0.01, 0.1] Proportion of meltwater that can refreeze
-0.05 0.05
+0.05
 
 "Storage fraction" :     #(dimensionless) [0.01, 0.2] Proportion of meltwater that can be stored in the snowpack
-0.1 0.1
+0.1
 
 "Snow threshold temperature" :     #(°C) [-3, 5] Threshold temperature above which precipitation falls as rain
-0 0
+0
 
 "Initial snow depth" :     #(mm) [0, 9999] The depth of snow, expressed as water equivalents, at the start of the simulation
-0 0
-
-"Water equivalent factor" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.3 0.3
+0
 
 "Growing degree threshold" :     #(°C) [-4, 4] The temperature at or above which plant growth and hence evapotranspiration are assumed to occur
-0 0
+0
 
 "Degree day evapotranspiration" :     #(mm/°C/day) [0.05, 0.2] Describes the baseline dependency of evapotranspiration on air temperature. The parameter represents the number of millimetres water evapotranspired per degree celcius above the growing degree threshold when evapotranspiration rates are not soil moisture limited
-0.12 0.12
+0.12
 
 "Fraction of field capacity where evapotranspiration reaches its maximal" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.7 0.7
+0.7
+
+"Field capacity in upper layer" :     #(mm) [10, 600] Maximum soil moisture storage in upper soil layer
+150
+
+"Field capacity in lower layer" :     #(mm) [10, 600] Maximum soil moisture storage in lower soil layer
+150
+
+"Beta recharge exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to groundwater recharge
+1
+
+"Initial soil moisture in upper soil layer" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+100
+
+"Initial soil moisture in lower soil layer" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+100
+
+"Upper soil recharge fraction" :     #(mm) [0, 1] How large a proportion of the soil moisture recharge goes to the upper soil layer
+0.8
 
 "Thermal conductivity of soil" :     #(W/m/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.7 0.7
+0.7
 
-"Specific heat capacity due to freeze/thaw" :     #(MJ/m3/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
-6.6 6.6
+"Specific heat capacity due to freeze/thaw" :     #(MJ/m3/°C) [1, 200] Controls the energy released when water is frozen and energy consumed under melting
+6.6
 
-"Snow depth / soil temperature factor" :     #(/cm) [-1.79769313486232e+308, 1.79769313486232e+308]
--0.02 -0.02
+"Water equivalent factor" :     #(dimensionless) [0.01, 1] 1mm of snow would produce this amount of water when melted
+0.3
+
+"Snow depth / soil temperature factor" :     #(/cm) [-0.03, -0.001] Defines an empirical relationship between snow pack depth and its insulating effect on soils
+-0.02
 
 "Specific heat capacity of soil" :     #(MJ/m3/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
-1.1 1.1
+1.1
 
 "Soil depth" :     #(m) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.2 0.2
+0.2
 
 "Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
-20 20
+20
+
+"Initial SOC in upper soil layer" :     #(kg/m2) [-1.79769313486232e+308, 1.79769313486232e+308]
+2
+
+"Initial SOC in lower soil layer" :     #(kg/m2) [-1.79769313486232e+308, 1.79769313486232e+308]
+2
 
 "Litter fall" :     #(kg/m2/day) [0, 10] Litter fall from the canopy to the upper soil layer
-0.02 0.02
+0.02
 
-###################### "Landscape units" "Soil boxes" ######################
-"Field capacity" :     #(mm) [100, 300] Maximum soil moisture storage
-150 150
-150 150
+"Sorption rate in upper soil" :     #(/day) [0, 1] Rate coefficient for DOC sorption (DOC to SOC)
+0.1
 
-"Relative runoff exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to runoff
-2 2
-2 2
+"Sorption rate in lower soil" :     #(/day) [0, 1] Rate coefficient for DOC sorption (DOC to SOC)
+0.1
 
-"Initial soil moisture" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-10 10
-10 10
+"Desorption rate in upper soil" :     #(/day) [0, 1] Rate coefficient for SOC desorption (SOC to DOC)
+0.0001
 
-"Initial SOC in soil box" :     #(kg/m2) [-1.79769313486232e+308, 1.79769313486232e+308]
-2 2
-2 2
+"Desorption rate in lower soil" :     #(/day) [0, 1] Rate coefficient for SOC desorption (SOC to DOC)
+0.0001
 
-###################### "Soil boxes" ######################
-"Percolation rate from soil box" :     #(mm/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1 0.1
+"Base mineralisation rate in upper soil" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1
 
-"Sorption rate" :     #(/day) [0, 1] Rate coefficient for DOC sorption (DOC to SOC)
-0.1 0.01
+"Base mineralisation rate in lower soil" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.1
 
-"Desorption rate" :     #(/day) [0, 1] Rate coefficient for SOC desorption (SOC to DOC)
-0.0001 1e-005
+"Zero rate depth" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+75
 
-"Base mineralisation rate in soil" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.001 1e-005
+"Max rate depth" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+150
 
 ###################### "Reaches" ######################
-"Recession coefficent for upper groundwater storage (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
+"Recession coefficient for groundwater slow flow (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.01
 
-"Recession coefficent for upper groundwater storage (K0)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
+"Recession coefficient for groundwater fast flow (K0)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.2
 
-"Recession coefficient for lower groundwater storage (K2)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
+"Threshold for second runoff in groundwater storage (UZL)" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+2
 
-"Threshold for second runoff in upper storage (UZL)" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Initial groundwater storage" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
 10
 
-"Percolation rate from upper to lower groundwater storage" :     #(mm/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.1
-
-"Initial upper groundwater storage" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-5
-
-"Initial lower groundwater storage" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-5
+"Flow routing max base" :     #(day) [1, 10] Width of the convolution filter that smooths out the flow from the groundwater to the river over time
+1
 
 "Catchment area" :     #(km2) [-1.79769313486232e+308, 1.79769313486232e+308]
 1
@@ -139,10 +147,10 @@ false
 1000
 
 "Reach width" :     #(m) [0.1, 9999] The average width of the main stem of the stream / reach in a subcatchment
-10
+1
 
 "a" :     #(/m2) [1e-005, 0.99] The flow velocity 'a' parameter V=aQ^b
-0.04
+0.4
 
 "b" :     #(dimensionless) [0.1, 0.99] The flow velocity 'b' parameter V=aQ^b
 0.67
@@ -170,5 +178,5 @@ false
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(dimensionless) [0, 100] How much of the catchment area that is made up by this type of land cover.
-50 50
+100
 

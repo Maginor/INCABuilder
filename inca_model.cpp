@@ -1480,9 +1480,9 @@ RunModel(inca_data_set *DataSet)
 		ValueSet.AllCurInputsBase  += DataSet->InputStorageStructure.TotalCount;
 		
 		ValueSet.DayOfYear++;
-		if(ValueSet.DayOfYear == (365 + IsLeapYear(Year)))
+		if(ValueSet.DayOfYear == (365 + IsLeapYear(Year) + 1))
 		{
-			ValueSet.DayOfYear = 0;
+			ValueSet.DayOfYear = 1;
 			Year++;
 			ValueSet.DaysThisYear = 365 + IsLeapYear(Year);
 		}

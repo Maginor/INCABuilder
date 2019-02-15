@@ -8,9 +8,9 @@ To learn the basics of how to build and compile models, see the quick start guid
 
 The C++-end code of the C++-python interface is in python_wrapper.h, while the python-end of it is in inca.py.
 
-To use a model with the python wrapper, create your own .cpp file along the lines of persistwrapper.cpp, and replace the model building part of it with the modules you want. Then make a .bat file along the lines of compilepersist.bat that compiles your .cpp file instead of persistwrapper.cpp.
+To use a model with the python wrapper, create your own .cpp file along the lines of persistwrapper.cpp, and replace the model building part of it with the modules you want. Then make a .bat file along the lines of compilepersist.bat that compiles your .cpp file. The C++ code compiles to a .dll (dynamically linked library) that can be loaded using inca.initialize('name_of_dll.dll')
 
-We have already built some examples atop of inca.py to show you how you can interact with the models through the interface. See e.g. optimization_example.py or some of the SimplyP examples. There is also docstring documentation in inca.py .
+We have already built some examples atop of inca.py to show you how you can interact with the models through the interface. See e.g. optimization_example.py or some of the SimplyP examples. There is also docstring documentation in inca.py . We have also made some calibration utilities available through inca_calibration.py .
 
 
 ![Alt text](simplyp_plots/triangle_plot.png?raw=true "Triangle plot from running emcee on reach flow in SimplyP")

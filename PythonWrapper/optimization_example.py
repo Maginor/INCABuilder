@@ -82,7 +82,7 @@ set_values(dataset, fake_real_parameters, calibration)
 
 dataset.run_model()
 fake_discharge = dataset.get_result_series(objective[1], objective[2])
-dataset.set_input_series(objective[3], objective[4], fake_discharge)    # Overwrites the existing input series with our result series as the fake real input.
+dataset.set_input_series(objective[3], objective[4], fake_discharge, alignwithresults=True)    # Overwrites the existing input series with our result series as the fake real input.
 	
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective)
 

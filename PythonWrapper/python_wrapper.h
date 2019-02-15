@@ -351,11 +351,11 @@ DllWriteParametersToFile(void *DataSetPtr, char *Filename)
 }
 
 DLLEXPORT void
-DllSetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *InputData, u64 InputDataLength)
+DllSetInputSeries(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCount, double *InputData, u64 InputDataLength, bool AlignWithResults)
 {
 	CHECK_ERROR_BEGIN
 	
-	SetInputSeries((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, InputData, (size_t)InputDataLength);
+	SetInputSeries((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, InputData, (size_t)InputDataLength, AlignWithResults);
 	
 	CHECK_ERROR_END
 }

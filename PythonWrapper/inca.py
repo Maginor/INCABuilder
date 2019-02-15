@@ -54,7 +54,7 @@ def initialize(dllname) :
 
 	incadll.DllGetParameterTime.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.c_char_p]
 
-	incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
+	incadll.DllSetInputSeries.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64, ctypes.POINTER(ctypes.c_double), ctypes.c_uint64, ctypes.c_bool]
 	
 	incadll.DllGetIndexSetsCount.argtypes = [ctypes.c_void_p]
 	incadll.DllGetIndexSetsCount.restype = ctypes.c_uint64
@@ -106,7 +106,7 @@ def _PackIndexes(indexes):
 	cindexes = [index.encode('utf-8') for index in indexes]
 	return (ctypes.c_char_p * len(cindexes))(*cindexes)
 	
-def check_error() :
+def check_dll_error() :
 	errmsgbuf = ctypes.create_string_buffer(1024)
 	errcode = incadll.DllEncounteredError(errmsgbuf)
 	if errcode == 1 :
@@ -120,7 +120,7 @@ class DataSet :
 	@classmethod
 	def setup_from_parameter_and_input_files(cls, parameterfilename, inputfilename) :
 		datasetptr = incadll.DllSetupModel(_CStr(parameterfilename), _CStr(inputfilename))
-		check_error()
+		check_dll_error()
 		return cls(datasetptr)
 		
 	def run_model(self) :
@@ -128,14 +128,14 @@ class DataSet :
 		Runs the model with the parameters and input series that are currently stored in the dataset. All result series will also be stored in the dataset.
 		'''
 		incadll.DllRunModel(self.datasetptr)
-		check_error()
+		check_dll_error()
 	
 	def copy(self) :
 		'''
 		Create a copy of the dataset that contains all the same parameter values and input series. Result series will not be copied.
 		'''
 		cp = DataSet(incadll.DllCopyDataSet(self.datasetptr))
-		check_error()
+		check_dll_error()
 		return cp
 		
 	def delete(self) :
@@ -143,14 +143,14 @@ class DataSet :
 		Delete all data that was allocated by the C++ code for this dataset. Interaction with the dataset after it was deleted is not recommended. Note that this will not delete the model itself, only the parameter, input and result data. This is because typically you can have multiple datasets sharing the same model (such as if you created dataset copies using dataste.copy()). There is currently no way to delete the model.
 		'''
 		incadll.DllDeleteDataSet(self.datasetptr)
-		check_error()
+		check_dll_error()
 		
 	def write_parameters_to_file(self, filename) :
 		'''
 		Write the parameters in the dataset to a standard INCABuilder parameter file.
 		'''
 		incadll.DllWriteParametersToFile(self.datasetptr, _CStr(filename))
-		check_error()
+		check_dll_error()
 		
 	def get_result_series(self, name, indexes) :
 		'''
@@ -164,12 +164,12 @@ class DataSet :
 			A numpy.array containing the specified timeseries.
 		'''
 		timesteps = incadll.DllGetTimesteps(self.datasetptr)
-		check_error()
+		check_dll_error()
 	
 		resultseries = (ctypes.c_double * timesteps)()
 	
 		incadll.DllGetResultSeries(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), resultseries)
-		check_error()
+		check_dll_error()
 	
 		return np.array(resultseries, copy=False)
 		
@@ -189,145 +189,303 @@ class DataSet :
 			timesteps = incadll.DllGetTimesteps(self.datasetptr)
 		else :
 			timesteps = incadll.DllGetInputTimesteps(self.datasetptr)
-		check_error()
+		check_dll_error()
 		
 		inputseries = (ctypes.c_double * timesteps)()
 		
 		incadll.DllGetInputSeries(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), inputseries, alignwithresults)
-		check_error()
+		check_dll_error()
 		
 		return np.array(inputseries, copy=False)
 		
-	def set_input_series(self, name, indexes, inputseries) :
-		#TODO: Should we not provide alignment here?????
+	def set_input_series(self, name, indexes, inputseries, alignwithresults=False) :
+		'''
+		Overwrite one of the input series in the dataset.
+		
+		Keyword arguments:
+			name             -- string. The name of the input series. Example : "Air temperature"
+			indexes          -- list of strings. A list of index names to identify the particular input series. Example : ["Langtjern"] or ["Langtjern", "Forest"]
+			alignwithresults -- boolean. If False: Start writing to the first timestep of the input series. If True: Start writing at the timestep corresponding to the parameter 'Start date'.
+		'''
 		array = (ctypes.c_double * len(inputseries))(*inputseries)
 		
-		incadll.DllSetInputSeries(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), array, len(inputseries))
-		check_error()
+		incadll.DllSetInputSeries(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), array, len(inputseries), alignwithresults)
+		check_dll_error()
 	
 	def set_parameter_double(self, name, indexes, value):
+		'''
+		Overwrite the value of one parameter. Can only be called on parameters that were registered with the type double.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Maximum capacity"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+			value            -- float. The value to write to the parameter.
+		'''
 		incadll.DllSetParameterDouble(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_double(value))
-		check_error()
+		check_dll_error()
 	
 	def set_parameter_uint(self, name, indexes, value):
+		'''
+		Overwrite the value of one parameter. Can only be called on parameters that were registered with the type uint.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Fertilizer addition start day"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+			value            -- unsigned integer. The value to write to the parameter.
+		'''
 		incadll.DllSetParameterUInt(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_uint64(value))
-		check_error()
+		check_dll_error()
 		
 	def set_parameter_bool(self, name, indexes, value):
+		'''
+		Overwrite the value of one parameter. Can only be called on parameters that were registered with the type bool.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Reach has effluent inputs"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+			value            -- bool. The value to write to the parameter.
+		'''
 		incadll.DllSetParameterBool(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), ctypes.c_bool(value))
-		check_error()
+		check_dll_error()
 		
 	def set_parameter_time(self, name, indexes, value):
+		'''
+		Overwrite the value of one parameter. Can only be called on parameters that were registered with the type time.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Start date"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+			value            -- string. The value to write to the parameter. Must be on the format "YYYY-MM-dd", e.g. "1999-05-15"
+		'''
+		
+		#TODO: Maybe we just want to take a datetime value as value instead since that is what most people are going to use?
+		
 		incadll.DllSetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), value.encode('utf-8'))
-		check_error()
+		check_dll_error()
 		
 	def get_parameter_double(self, name, indexes) :
+		'''
+		Read the value of one parameter. Can only be called on parameters that were registered with the type double.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Maximum capacity"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+		
+		Returns:
+			The value of the parameter (a floating point number).
+		'''
 		val = incadll.DllGetParameterDouble(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes))
-		check_error()
+		check_dll_error()
 		return val
 		
 	def get_parameter_uint(self, name, indexes) :
+		'''
+		Read the value of one parameter. Can only be called on parameters that were registered with the type uint.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Fertilizer addition start day"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+		
+		Returns:
+			The value of the parameter (a nonzero integer).
+		'''
 		val = incadll.DllGetParameterUInt(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes))
-		check_error()
+		check_dll_error()
 		return val
 		
 	def get_parameter_bool(self, name, indexes) :
+		'''
+		Read the value of one parameter. Can only be called on parameters that were registered with the type bool.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Reach has effluent inputs"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+		
+		Returns:
+			The value of the parameter (a boolean).
+		'''
 		return incadll.DllGetParameterBool(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes))
 		
 	def get_parameter_time(self, name, indexes) :
-		# NOTE: We allocate the string here instead of in the C++ code so that the python garbage collector can delete it if it goes out of use.
-		# ALTERNATIVELY, we could just return a datetime value from this function so that the user does not have to work with the string format.
+		'''
+		Read the value of one parameter. Can only be called on parameters that were registered with the type time.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Start date"
+			indexes          -- list of strings. A list of index names to identify the particular parameter instance. Example : [], ["Langtjern"] or ["Langtjern", "Forest"]
+		
+		Returns:
+			The value of the parameter (a string with the format "YYYY-MM-dd").
+		'''
+		
+		#TODO: Maybe we just want to return a datetime value from this instead since that is what most people are going to use?
+		
 		string = ctypes.create_string_buffer(32)
 		incadll.DllGetParameterTime(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes), string)
-		check_error()
+		check_dll_error()
 		return string.value.decode('utf-8')
 		
 	def get_parameter_double_min_max(self, name) :
+		'''
+		Retrieve the recommended min and max values for a parameter. Can only be called on a parameter that was registered with type double.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Baseflow index"
+			
+		Returns:
+			a tuple (min, max) where min and max are of type float
+		'''
 		min = ctypes.c_double(0)
 		max = ctypes.c_double(0)
 		incadll.DllGetParameterDoubleMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_double)(min), ctypes.POINTER(ctypes.c_double)(max))
-		check_error()
+		check_dll_error()
 		return (min.value, max.value)
 
 	def get_parameter_uint_min_max(self, name):
+		'''
+		Retrieve the recommended min and max values for a parameter. Can only be called on a parameter that was registered with type uint.
+		
+		Keyword arguments:
+			name             -- string. The name of the parameter. Example : "Fertilizer addition period"
+			
+		Returns:
+			a tuple (min, max) where min and max are of type nonzero integer
+		'''
 		min = ctypes.c_uint64(0)
 		max = ctypes.c_uint64(0)
 		incadll.DllGetParameterUIntMinMax(self.datasetptr, _CStr(name), ctypes.POINTER(ctypes.c_uint64)(min), ctypes.POINTER(ctypes.c_uint64)(max))
-		check_error()
+		check_dll_error()
 		return (min.value, max.value)
 		
 	def get_parameter_description(self, name):
+		'''
+		Retrieve (as a string) a longer form description of the parameter with the given name.
+		'''
 		desc = incadll.DllGetParameterDescription(self.datasetptr, _CStr(name))
-		check_error()
+		check_dll_error()
 		return desc.decode('utf-8')
 		
 	def get_parameter_unit(self, name):
+		'''
+		Retrieve (as a string) the unit of the parameter with the given name.
+		'''
 		unit = incadll.DllGetParameterUnit(self.datasetptr, _CStr(name))
-		check_error()
+		check_dll_error()
 		return unit.decode('utf-8')
 		
 	def get_result_unit(self, name) :
+		'''
+		Retrieve (as a string) the unit of the result series with the given name.
+		'''
 		unit = incadll.DllGetResultUnit(self.datasetptr, _CStr(name))
-		check_error()
+		check_dll_error()
 		return unit.decode('utf-8')
 		
 	def get_input_timesteps(self):
+		'''
+		Get the number of timesteps that was allocated for the input data.
+		'''
 		incadll.DllGetInputTimesteps(self.datasetptr)
-		check_error()
+		check_dll_error()
 		
 	def get_input_start_date(self):
+		'''
+		Get the start date that was set for the input data. Returns a string of the form "YYYY-MM-dd".
+		'''
 		string = ctypes.create_string_buffer(32)
 		incadll.DllGetInputStartDate(self.datasetptr, string)
-		check_error()
+		check_dll_error()
 		return string.value.decode('utf-8')
 		
 	def get_index_sets(self):
+		'''
+		Get the name of each index set that is present in the model. Returns a list of strings.
+		'''
 		num = incadll.DllGetIndexSetsCount(self.datasetptr)
-		check_error()
+		check_dll_error()
 		array = (ctypes.c_char_p * num)()
 		incadll.DllGetIndexSets(self.datasetptr, array)
-		check_error()
+		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
 	def get_indexes(self, index_set):
+		'''
+		Get the name of each index in an index set.
+		
+		Keyword arguments:
+			index_set          -- string. The name of the index set
+		
+		Returns:
+			A list of strings where each string is an index in the index set.
+		'''
 		num = incadll.DllGetIndexCount(self.datasetptr, _CStr(index_set))
-		check_error()
+		check_dll_error()
 		array = (ctypes.c_char_p * num)()
 		incadll.DllGetIndexes(self.datasetptr, _CStr(index_set), array)
-		check_error()
+		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
 	def get_parameter_index_sets(self, name):
+		'''
+		Get the name of each index set a parameter indexes over.
+		
+		Keyword arguments:
+			name            -- string. The name of the parameter
+		
+		Returns:
+			A list of strings where each string is the name of an index set.
+		'''
 		num = incadll.DllGetParameterIndexSetsCount(self.datasetptr, _CStr(name))
-		check_error()
+		check_dll_error()
 		array = (ctypes.c_char_p * num)()
 		incadll.DllGetParameterIndexSets(self.datasetptr, _CStr(name), array)
-		check_error()
+		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
 	def get_result_index_sets(self, name):
+		'''
+		Get the name of each index set a result indexes over.
+		
+		Keyword arguments:
+			name            -- string. The name of the result series
+		
+		Returns:
+			A list of strings where each string is the name of an index set.
+		'''
 		num = incadll.DllGetResultIndexSetsCount(self.datasetptr, _CStr(name))
-		check_error()
+		check_dll_error()
 		array = (ctypes.c_char_p * num)()
 		incadll.DllGetResultIndexSets(self.datasetptr, _CStr(name), array)
-		check_error()
+		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
 	def get_input_index_sets(self, name):
+		'''
+		Get the name of each index set an input series indexes over.
+		
+		Keyword arguments:
+			name            -- string. The name of the input series
+		
+		Returns:
+			A list of strings where each string is the name of an index set.
+		'''
 		num = incadll.DllGetInputIndexSetsCount(self.datasetptr, _CStr(name))
-		check_error()
+		check_dll_error()
 		array = (ctypes.c_char_p * num)()
 		incadll.DllGetResultInputSets(self.datasetptr, _CStr(name), array)
-		check_error()
+		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
 	def get_parameter_list(self) :
+		'''
+		Get the name of all the parameters in the model as a list of strings, each string being the name of a parameter.
+		'''
 		num = incadll.DllGetAllParametersCount(self.datasetptr)
-		check_error()
+		check_dll_error()
 		namearray = (ctypes.c_char_p * num)()
 		typearray = (ctypes.c_char_p * num)()
 		incadll.DllGetAllParameters(self.datasetptr, namearray, typearray)
-		check_error()
+		check_dll_error()
 		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
 		
 		

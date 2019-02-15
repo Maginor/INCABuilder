@@ -944,19 +944,12 @@ CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h Cumulate
 
 //TODO: There is so much code doubling between input / result access. Could it be merged?
 static void
-SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *IndexNames, size_t IndexCount, const double *InputSeries, size_t InputSeriesSize)
+SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *IndexNames, size_t IndexCount, const double *InputSeries, size_t InputSeriesSize, bool AlignWithResults = false)
 {
 	if(!DataSet->InputData)
 	{
 		AllocateInputStorage(DataSet, InputSeriesSize);
 	}
-	
-	if(InputSeriesSize != DataSet->InputDataTimesteps)
-	{
-		std::cout << "WARNING: When setting input series for " << Name << ", the size of the provided input series did not match the amount of timesteps in the already allocated input data." << std::endl;
-	}
-	
-	size_t WriteSize = Min(InputSeriesSize, DataSet->InputDataTimesteps);
 	
 	const inca_model *Model = DataSet->Model;
 	
@@ -975,13 +968,34 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 	{
 		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
 	}
-
-	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexSets.size(), DataSet->IndexCounts, Input.Handle);
-	double *At = DataSet->InputData + Offset;
 	
-	for(size_t Idx = 0; Idx < WriteSize; ++Idx)
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexCount, DataSet->IndexCounts, Input.Handle);
+	double *At = DataSet->InputData + Offset;
+	size_t TimestepOffset = 0;
+	
+	if(AlignWithResults && DataSet->InputDataHasSeparateStartDate)
 	{
-		*At = InputSeries[Idx];
+		//NOTE: In case the user asked for a input timeseries that starts at the start of the modelrun rather than at the start of the input series.
+		s64 DataSetStartDate = GetStartDate(DataSet);
+		s64 InputStartDate   = DataSet->InputDataStartDate;
+		size_t TimestepOffset = DayOffset(InputStartDate, DataSetStartDate); //TODO: If we later allow for different lengths of timestep we have to update this!
+	}
+	
+	if(InputSeriesSize + TimestepOffset > DataSet->InputDataTimesteps)
+	{
+		INCA_FATAL_ERROR("ERROR: When setting input series for " << Name << ", the lenght of the timeseries was longer than what was allocated space for in the dataset." << std::endl);
+	}
+	
+	for(size_t Idx = 0; Idx < DataSet->InputDataTimesteps; ++Idx)
+	{
+		if(Idx >= TimestepOffset && Idx <= InputSeriesSize + TimestepOffset)
+		{
+			*At = InputSeries[Idx - TimestepOffset];
+		}
+		else
+		{
+			*At = std::numeric_limits<double>::quiet_NaN();
+		}
 		At += DataSet->InputStorageStructure.TotalCount;
 	}
 }

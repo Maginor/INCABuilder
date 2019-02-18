@@ -32,7 +32,8 @@ int main()
 	AddSoilTemperatureModel(Model);
 	AddINCACModel(Model);
 	
-	ReadInputDependenciesFromFile(Model, InputFile);
+	//ReadInputDependenciesFromFile(Model, InputFile);
+	ReadInputDependenciesFromJson(Model, "pretty.json");
 	
 	EndModelDefinition(Model);
 	

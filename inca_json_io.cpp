@@ -100,14 +100,14 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 	
 	std::string StartDate = TimeString(StartDateS);
     
-    json Json = {
-                {"creation_date", CreationDate},
-                {"start_date", StartDate},
-                {"timesteps", Timesteps},
-                {"index_set_dependencies", IndexSetDependencies},
-                {"additional_timeseries", AdditionalTimeseries},
-                {"data", nullptr},
-            };
+	json Json = {
+				{"creation_date", CreationDate},
+				{"start_date", StartDate},
+				{"timesteps", Timesteps},
+				{"index_set_dependencies", IndexSetDependencies},
+				{"additional_timeseries", AdditionalTimeseries},
+				{"data", nullptr},
+			};
    
 	index_t CurrentIndexes[256];
 	for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
@@ -134,33 +134,69 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
     }
 */
     
-    std::ofstream out(Filename);
-    out << Json.dump(1,'\t') << std::endl;
+	std::ofstream Out(Filename);
+	Out << Json.dump(1,'\t') << std::endl;
 }
 
 
+static void
+ReadInputDependenciesFromJson(inca_model *Model, const char *Filename)
+{
+	std::ifstream Ifs(Filename);
+	nlohmann::json JData;
+	Ifs >> JData;
+	
+	if (JData.find("additional_timeseries") != JData.end())
+    {
+        std::vector<std::string> AdditionalTimeseries = JData["additional_timeseries"].get<std::vector<std::string>>();
+		
+		for(std::string &Str : AdditionalTimeseries)
+		{
+			const char *InputName = CopyString(Str.c_str());
+			RegisterInput(Model, InputName, true);
+		}
+    }
+    
+    if (JData.find("index_set_dependencies") != JData.end())
+    {
+        std::map<std::string, std::vector<std::string>> Dep = JData["index_set_dependencies"].get<std::map<std::string,std::vector<std::string>>>();
+		for(auto &D : Dep)
+		{
+			const std::string &Name = D.first;
+			std::vector<std::string> &IndexSets = D.second;
+			
+			input_h Input = GetInputHandle(Model, Name.c_str());
+			
+			for(std::string &IndexSet : IndexSets)
+			{
+				index_set_h IndexSetH = GetIndexSetHandle(Model, IndexSet.c_str());
+				AddInputIndexSetDependency(Model, Input, IndexSetH);
+			}
+		}
+    }
+}
 
 
 static void 
 ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
 {
-    std::ifstream Ifs(Filename);
-    nlohmann::json JData;
-    Ifs >> JData;
+	std::ifstream Ifs(Filename);
+	nlohmann::json JData;
+	Ifs >> JData;
  
-    if (JData.find("timesteps") != JData.end())
-    {
-        //data.timesteps = jData["timesteps"];
+	if (JData.find("timesteps") != JData.end())
+	{
+		//data.timesteps = jData["timesteps"];
 		DataSet->InputDataTimesteps = (u64)JData["timesteps"].get<u64>();
-    }
+	}
 	else
 	{
-		//TODO: Error
+		INCA_FATAL_ERROR("Input file " << Filename << " does not declare the number of timesteps for the input data." << std::endl);
 	}
     
-    if (JData.find("start_date") != JData.end())
-    {
-        std::string DateStr = JData["start_date"];
+	if (JData.find("start_date") != JData.end())
+	{
+		std::string DateStr = JData["start_date"];
 		
 		s64 SecondsSinceEpoch;
 		bool Success = ParseSecondsSinceEpoch(DateStr.c_str(), &SecondsSinceEpoch);
@@ -170,53 +206,38 @@ ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
 			INCA_FATAL_ERROR("Unrecognized date format \"" << DateStr << "\". Supported format: Y-m-d" << std::endl);
 		}
 		
-        DataSet->InputDataHasSeparateStartDate = true;
+		DataSet->InputDataHasSeparateStartDate = true;
 		DataSet->InputDataStartDate = SecondsSinceEpoch;
 	}
 
-//NOTE: These have to be done in a separate pass..	
-/*
-    if (JData.find("additional_timeseries") != JData.end())
-    {
-        std::vector<std::sctring>> AdditionalTimeseries = jData["additional_timeseries"].get<std::vector<std::string>>();
-		
-		for()
-    }
-    
-    if (jData.find("index_set_dependencies")!=jData.end())
-    {
-        data.index_set_dependencies = jData["index_set_dependencies"].get<std::map<std::string,std::vector<std::string>>>();
-    }
-*/
-    
-    //Populating data
-    if (JData.find("data") != JData.end())
-    {
-        for (nlohmann::json::iterator It = JData["data"].begin(); It != JData["data"].end(); ++It)
-        {
-            std::string Name = It.key();
+	
+	if (JData.find("data") != JData.end())
+	{
+		for (nlohmann::json::iterator It = JData["data"].begin(); It != JData["data"].end(); ++It)
+		{
+			std::string Name = It.key();
 			
-            for(auto Itit = It->begin(); Itit != It->end(); ++Itit)
-            {
+			for(auto Itit = It->begin(); Itit != It->end(); ++Itit)
+			{
 				std::vector<std::string> Indices = (*Itit)["indices"].get<std::vector<std::string>>();
 				std::vector<const char *> Indices2;
 				for(std::string &Str : Indices) Indices2.push_back(Str.c_str());
 				
-                //attributes.indexers = (*itit)["indexers"].get<std::vector<std::string>>();
-                //attributes.indices = (*itit)["indices"].get<std::vector<std::string>>();
-                if ( (*Itit)["values"][0].is_number_float() )
-                {
-                    std::vector<double> Values = (*Itit)["values"].get<std::vector<double>>();
-					
-					SetInputSeries(DataSet, Name.c_str(), Indices2, Values.data(), Values.size());
-                }
-                //else
-                //{
-                //    data.sparseInputs[attributes] 
-                //            = (*itit)["values"].get<std::vector<std::pair<std::string,double>>>();
-                //}
-            
-            }
-        }        
-    }
+				auto &Val = (*Itit)["values"];
+				std::vector<double> Values;
+				Values.reserve(Val.size());
+				for(auto &V : Val)
+				{
+					if(V.is_number_float())
+					{
+						double X = V;
+						Values.push_back(X);
+					}
+					else Values.push_back(std::numeric_limits<double>::quiet_NaN());
+				}
+
+				SetInputSeries(DataSet, Name.c_str(), Indices2, Values.data(), Values.size());
+			}
+		}
+	}
 }

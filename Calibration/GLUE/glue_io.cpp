@@ -6,23 +6,21 @@ ReadGLUESetupFromFile(glue_setup *Setup, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
-	token *Token;
-	
 	while(true)
 	{
-		Token = Stream.PeekToken();
+		token Token = Stream.PeekToken();
 		
 		bool ReadObs = false;
 		
-		if(Token->Type == TokenType_EOF)
+		if(Token.Type == TokenType_EOF)
 			break;
 
-		const char *Section = Stream.ExpectUnquotedString();
+		token_string Section = Stream.ExpectUnquotedString();
 		Stream.ExpectToken(TokenType_Colon);
 
-		if(strcmp(Section, "num_runs") == 0)
+		if(Section.Equals("num_runs"))
 		{
-			size_t NumRuns = Stream.ExpectUInt();
+			size_t NumRuns = (size_t)Stream.ExpectUInt();
 			if(NumRuns == 0)
 			{
 				Stream.PrintErrorHeader();
@@ -30,7 +28,7 @@ ReadGLUESetupFromFile(glue_setup *Setup, const char *Filename)
 			}
 			Setup->NumRuns = NumRuns;
 		}
-		else if(strcmp(Section, "num_threads") == 0)
+		else if(Section.Equals("num_threads"))
 		{
 			size_t NumThreads = (size_t)Stream.ExpectUInt();
 			if(NumThreads == 0)
@@ -40,21 +38,21 @@ ReadGLUESetupFromFile(glue_setup *Setup, const char *Filename)
 			}
 			Setup->NumThreads = NumThreads;
 		}
-		else if(strcmp(Section, "discard_timesteps") == 0)
+		else if(Section.Equals("discard_timesteps"))
 		{
 			Setup->DiscardTimesteps = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "parameter_calibration") == 0)
+		else if(Section.Equals("parameter_calibration"))
 		{
 			ReadParameterCalibration(Stream, Setup->Calibration, ParameterCalibrationReadDistribution);
 		}
-		else if(strcmp(Section, "objectives") == 0)
+		else if(Section.Equals("objectives"))
 		{
 			ReadCalibrationObjectives(Stream, Setup->Objectives, true);
 		}
-		else if(strcmp(Section, "quantiles") == 0)
+		else if(Section.Equals("quantiles"))
 		{
-			ReadDoubleSeries(Stream, Setup->Quantiles);
+			Stream.ReadDoubleSeries(Setup->Quantiles);
 		}
 		else
 		{

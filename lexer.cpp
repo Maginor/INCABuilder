@@ -29,110 +29,97 @@ const char *TokenNames[9] =
 struct token
 {
 	token_type Type;
-	char *StringValue;
-	u64 BeforeComma;
-	u64 AfterComma;
-	u64 Exponent;
-	bool HasComma;
-	bool IsNegative;
-	bool HasExponent;
-	bool ExponentIsNegative;
-	size_t DigitsAfterComma;
-	bool IsNAN;
+	token_string StringValue;
+	u64 UIntValue;
+	//s64 IntValue;
+	double DoubleValue;
+	bool IsUInt;
 	bool BoolValue;
-	
-	double GetDoubleValue();
-	u64    GetUIntValue() { return BeforeComma; };
 };
-
-double
-token::GetDoubleValue()
-{
-	if(this->IsNAN)
-	{
-		return std::numeric_limits<double>::quiet_NaN();
-	}
-	
-	//TODO: Check that this does not create numeric errors.
-	
-	double BeforeComma = (double)this->BeforeComma;
-	double AfterComma = (double)this->AfterComma;
-	for(size_t I = 0; I < this->DigitsAfterComma; ++I) AfterComma *= 0.1;
-	double Value = BeforeComma + AfterComma;
-	if(this->IsNegative) Value = -Value;
-	if(this->HasExponent)
-	{
-		//TODO: Check that exponent is not too large.
-		double multiplier = this->ExponentIsNegative ? 0.1 : 10.0;
-		for(u64 Exponent = 0; Exponent < this->Exponent; ++Exponent)
-		{
-			Value *= multiplier;
-		}
-	}
-	return Value;
-}
 
 struct token_stream
 {
-	const char *Filename;
-	u32 StartLine;
-	u32 StartColumn;
-	u32 Line;
-	u32 Column;
-	u32 PreviousColumn;
-	
-	FILE *File;
-	
-	std::vector<token> Tokens;
-	s64 AtToken;
-	
 	token_stream(const char *Filename)
 	{
+		FileData = 0;
+		FileDataLength = 0;
 		this->Filename = Filename;
-		File = fopen(Filename, "r");
+		FILE *File = fopen(Filename, "rb");
 		if(!File)
 		{
 			INCA_FATAL_ERROR("ERROR: Tried to open file " << Filename << ", but was not able to.");
 		}
+		fseek(File, 0, SEEK_END);
+		FileDataLength = ftell(File);
+		fseek(File, 0, SEEK_SET);
+		FileData = (char *)malloc(FileDataLength + 1);
+		if(FileData)
+		{
+			fread(FileData, 1, FileDataLength, File);
+			FileData[FileDataLength] = '\0';
+		}
+		fclose(File);
+		
+		AtChar = -1;
 		
 		StartLine = 0; StartColumn = 0; Line = 0; Column = 0; PreviousColumn = 0;
 		AtToken = -1;
+		
+		//std::cout << "length: " << FileDataLength << " end is " << (const char*)((FileData + (FileDataLength - 400))) << std::endl;
+		
+		if(!FileData)
+		{
+			INCA_FATAL_ERROR("Unable to allocate enough memory to read in file " << Filename << std::endl);
+		}
+		
 		Tokens.reserve(500); //NOTE: This will usually speed things up.
 	}
 	
 	~token_stream()
 	{
-		if(File) fclose(File);
-		for(token& Token : Tokens)
-		{
-			if(Token.StringValue)
-			{
-				free((void *)Token.StringValue);
-			}
-		}			
+		if(FileData) free(FileData);
 	}
 	
 	//NOTE! Any pointer to a previously read token may be invalidated if you read or peek a new one.
-	token * ReadToken();
-	token * PeekToken(size_t PeekAhead = 1);
-	token * ExpectToken(token_type);
+	token ReadToken();
+	token PeekToken(size_t PeekAhead = 1);
+	token ExpectToken(token_type);
 	
 	double ExpectDouble();
 	u64    ExpectUInt();
 	bool   ExpectBool();
 	s64    ExpectDate();
-	const char * ExpectQuotedString();
-	const char * ExpectUnquotedString();
+	token_string ExpectQuotedString();
+	token_string ExpectUnquotedString();
+	
+	void ReadQuotedStringList(std::vector<token_string> &ListOut);
+	void ReadQuotedStringList(std::vector<const char *> &ListOut);
+	void ReadDoubleSeries(std::vector<double> &ListOut);
+	void ReadParameterSeries(std::vector<parameter_value> &ListOut, parameter_type Type);
 	
 	void PrintErrorHeader(bool CurrentColumn=false);
+
+private:
+	const char *Filename;
+	s32 StartLine;
+	s32 StartColumn;
+	s32 Line;
+	s32 Column;
+	s32 PreviousColumn;
+	
+	bool AtEnd = false;
+	
+	//FILE *File;
+	char   *FileData;
+	size_t FileDataLength;
+	s64    AtChar;
+	
+	std::vector<token> Tokens;
+	s64 AtToken;
+	
+	void ReadTokenInternal_();
 	
 };
-
-static bool
-IsAlpha(char c)
-{
-	return isalpha(c) || c == '_';
-}
 
 void
 token_stream::PrintErrorHeader(bool CurrentColumn)
@@ -140,6 +127,51 @@ token_stream::PrintErrorHeader(bool CurrentColumn)
 	u32 Col = StartColumn;
 	if(CurrentColumn) Col = Column;
 	INCA_PARTIAL_ERROR("ERROR: In file " << Filename << " line " << (StartLine+1) << " column " << (Col) << ": ");
+}
+
+token
+token_stream::ReadToken()
+{
+	AtToken++;
+	if(AtToken >= (s64)Tokens.size())
+	{
+		ReadTokenInternal_();
+	}
+
+	return Tokens[AtToken];
+}
+
+token
+token_stream::PeekToken(size_t PeekAhead)
+{
+	while(AtToken + PeekAhead >= Tokens.size())
+	{
+		ReadTokenInternal_();
+	}
+	return Tokens[AtToken + PeekAhead];
+}
+
+token
+token_stream::ExpectToken(token_type Type)
+{
+	token Token = ReadToken();
+	if(Token.Type != Type)
+	{
+		PrintErrorHeader();
+		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a " << TokenNames[Token.Type]);
+		if(Token.Type == TokenType_QuotedString || Token.Type == TokenType_UnquotedString)
+		{
+			INCA_PARTIAL_ERROR(" (" << Token.StringValue << ")");
+		}
+		INCA_FATAL_ERROR(std::endl);
+	}
+	return Token;
+}
+
+static bool
+IsIdentifier(char c)
+{
+	return isalpha(c) || c == '_';
 }
 
 static bool
@@ -151,21 +183,33 @@ MultiplyByTenAndAdd(u64 *Number, u64 Addendand)
 	return true;
 }
 
-static token *
-ReadTokenInternal_(token_stream *Stream)
+void
+token_stream::ReadTokenInternal_()
 {
 	//TODO: we should do heavy cleanup of this function, especially the floating point reading.
 	
-	Stream->Tokens.resize(Stream->Tokens.size()+1, {});
-	token &Token = Stream->Tokens[Stream->Tokens.size()-1];
+	Tokens.resize(Tokens.size()+1, {});
+	token &Token = Tokens[Tokens.size()-1];
 	
-	const size_t TOKEN_BUFFER_SIZE = 1024;
+	if(AtEnd)
+	{
+		Token.Type = TokenType_EOF;
+		return;
+	}
 	
-	char TokenBuffer[TOKEN_BUFFER_SIZE];
-	for(size_t I = 0; I < TOKEN_BUFFER_SIZE; ++I) TokenBuffer[I] = 0;
-	size_t TokenBufferPos = 0;
+	//assert(Token.StringValue.Length == 0);
 	
 	s32 NumericPos = 0;
+	bool IsNegative  = false;
+	bool HasComma    = false;
+	bool HasExponent = false;
+	//bool IsNAN       = false;
+	bool ExponentIsNegative = false;
+	u64 BeforeComma = 0;
+	u64 AfterComma = 0;
+	u64 Exponent = 0;
+	u64 DigitsAfterComma = 0;
+	
 	
 	bool TokenHasStarted = false;
 	
@@ -173,23 +217,28 @@ ReadTokenInternal_(token_stream *Stream)
 	
 	while(true)
 	{
-		char c = (char)fgetc(Stream->File);
-		if(c == '\n')
-		{
-			++Stream->Line;
-			Stream->PreviousColumn = Stream->Column;
-			Stream->Column = 0;
-		}
-		else ++Stream->Column;
+		++AtChar;
 		
-		if(c == EOF)
+		char c = FileData[AtChar];
+		
+		if(c == EOF || c == '\0')
 		{
 			if(!TokenHasStarted)
 			{
 				Token.Type = TokenType_EOF;
+				AtEnd = true;
+				return;
 			}
-			break;
+			//break;
 		}
+		
+		if(c == '\n')
+		{
+			++Line;
+			PreviousColumn = Column;
+			Column = 0;
+		}
+		else ++Column;
 		
 		if(SkipLine)
 		{
@@ -206,7 +255,7 @@ ReadTokenInternal_(token_stream *Stream)
 			else if(c == '}') Token.Type = TokenType_CloseBrace;
 			else if(c == '"') Token.Type = TokenType_QuotedString;
 			else if(c == '-' || c == '.' || isdigit(c)) Token.Type = TokenType_Numeric;
-			else if(IsAlpha(c)) Token.Type = TokenType_UnquotedString;
+			else if(IsIdentifier(c)) Token.Type = TokenType_UnquotedString;
 			else if(c == '#')
 			{
 				SkipLine = true;
@@ -214,137 +263,169 @@ ReadTokenInternal_(token_stream *Stream)
 			}
 			else
 			{
-				Stream->PrintErrorHeader(true);
+				PrintErrorHeader(true);
 				INCA_FATAL_ERROR("Found a token of unknown type" << std::endl);
 			}
 			TokenHasStarted = true;
-			Stream->StartLine = Stream->Line;
-			Stream->StartColumn = Stream->Column;
+			StartLine = Line;
+			StartColumn = Column;
+			
+			Token.StringValue.Data = FileData + AtChar;
+			Token.StringValue.Length = 1;
+			
+			if(Token.Type == TokenType_QuotedString)
+			{
+				//NOTE: For quoted strings we don't want to record the actual " symbol into the sting value.
+				Token.StringValue.Data = FileData + AtChar + 1;
+				Token.StringValue.Length = 0;
+			}
+		}
+		else
+		{
+			Token.StringValue.Length++;
 		}
 		
 		if(Token.Type == TokenType_Colon || Token.Type == TokenType_OpenBrace || Token.Type == TokenType_CloseBrace)
 		{
-			return &Token;
+			//NOTE: These tokens are always one character only
+			return;
 		}
 		
 		if(Token.Type == TokenType_QuotedString)
 		{
-			if(c == '"' && TokenBufferPos > 0)
+			if(c == '"' && Token.StringValue.Length > 0)
 			{
-				break;
+				Token.StringValue.Length--; //NOTE: Don't record this " in the string value.
+				
+				//std::cout << Token.StringValue << std::endl;
+				
+				return;
 			}
 			else if (c != '"')
 			{
 				if(c == '\n')
 				{
-					Stream->PrintErrorHeader();
+					PrintErrorHeader();
 					INCA_FATAL_ERROR("Newline within quoted string." << std::endl);
 				}
-				TokenBuffer[TokenBufferPos] = c;
-				++TokenBufferPos;
 			}
 		}
 		else if(Token.Type == TokenType_UnquotedString)
 		{
-			if(!IsAlpha(c))
+			if(!IsIdentifier(c))
 			{
-				char ug = ungetc((int)c, Stream->File);
-				if(ug == '\n')
+				// NOTE: We assume that the latest read char was the start of another token, so go back one char to make the position correct for the next call to ReadTokenInternal_.
+				if(c == '\n')
 				{
-					Stream->Line--;
-					Stream->Column = Stream->PreviousColumn;
+					Line--;
+					Column = PreviousColumn;
 				}
 				else
-					Stream->Column--;
+					Column--;
 				
-				break;
-			}
-			else
-			{
-				TokenBuffer[TokenBufferPos] = c;
-				++TokenBufferPos;
+				Token.StringValue.Length--;
+				AtChar--;
+				
+				if(Token.StringValue.Equals("true"))
+				{
+					Token.Type = TokenType_Bool;
+					Token.BoolValue = true;
+				}
+				else if(Token.StringValue.Equals("false"))
+				{
+					Token.Type = TokenType_Bool;
+					Token.BoolValue = false;
+				}
+				else if(Token.StringValue.Equals("NaN") || Token.StringValue.Equals("nan") || Token.StringValue.Equals("Nan"))
+				{
+					Token.Type = TokenType_Numeric;
+					Token.DoubleValue = std::numeric_limits<double>::quiet_NaN();
+				}
+				//else std::cout << Token.StringValue << std::endl;
+				
+				return;
 			}
 		}
 		else if(Token.Type == TokenType_Numeric)
 		{
 			if(c == '-')
 			{
-				if( (Token.HasComma && !Token.HasExponent) || (Token.IsNegative && !Token.HasExponent) || NumericPos != 0)
+				if( (HasComma && !HasExponent) || (IsNegative && !HasExponent) || NumericPos != 0)
 				{
-					Stream->PrintErrorHeader();
+					PrintErrorHeader();
 					INCA_FATAL_ERROR("Misplaced minus in numeric literal." << std::endl);
 				}
 				
-				if(Token.HasExponent)
+				if(HasExponent)
 				{
-					Token.ExponentIsNegative = true;
+					ExponentIsNegative = true;
 				}
 				else
 				{
-					Token.IsNegative = true;
+					IsNegative = true;
 				}
 				NumericPos = 0;
 			}
 			else if(c == '+')
 			{
-				if(!Token.HasExponent || NumericPos != 0)
+				if(!HasExponent || NumericPos != 0)
 				{
-					Stream->PrintErrorHeader();
+					PrintErrorHeader();
 					INCA_FATAL_ERROR("Misplaced plus in numeric literal." << std::endl);
 				}
 				//ignore the plus.
 			}
 			else if(c == '.')
 			{
-				if(Token.HasExponent)
+				if(HasExponent)
 				{
-					Stream->PrintErrorHeader();
+					PrintErrorHeader();
 					INCA_FATAL_ERROR("Comma in exponent in numeric literal." << std::endl);
 				}
-				if(Token.HasComma)
+				if(HasComma)
 				{
-					Stream->PrintErrorHeader();
+					PrintErrorHeader();
 					INCA_FATAL_ERROR("More than one comma in a numeric literal." << std::endl);
 				}
 				NumericPos = 0;
-				Token.HasComma = true;
+				HasComma = true;
 			}
 			else if(c == 'e' || c == 'E')
 			{
-				if(Token.HasExponent)
+				if(HasExponent)
 				{
-					Stream->PrintErrorHeader();
+					PrintErrorHeader();
 					INCA_FATAL_ERROR("More than one exponent sign ('e' or 'E') in a numeric literal." << std::endl);
 				}
 				NumericPos = 0;
-				Token.HasExponent = true;
+				HasExponent = true;
 			}
 			else if(isdigit(c))
 			{
-				if(Token.HasExponent)
+				if(HasExponent)
 				{
-					MultiplyByTenAndAdd(&Token.Exponent, (u64)(c - '0'));
+					MultiplyByTenAndAdd(&Exponent, (u64)(c - '0'));
 					u64 MaxExponent = 308; //NOTE: This is not a really thorough test, because we could overflow still..
-					if(Token.Exponent > MaxExponent)
+					if(Exponent > MaxExponent)
 					{
-						Stream->PrintErrorHeader();
+						PrintErrorHeader();
 						INCA_FATAL_ERROR("Too large exponent in numeric literal" << std::endl);
 					}
 				}
-				else if(Token.HasComma)
+				else if(HasComma)
 				{
-					if(!MultiplyByTenAndAdd(&Token.AfterComma, (u64)(c - '0')))
+					if(!MultiplyByTenAndAdd(&AfterComma, (u64)(c - '0')))
 					{
-						Stream->PrintErrorHeader();
+						PrintErrorHeader();
 						INCA_FATAL_ERROR("Numeric overflow after comma in numeric literal (too many digits)." << std::endl);
 					}
-					Token.DigitsAfterComma++;
+					DigitsAfterComma++;
 				}
 				else
 				{
-					if(!MultiplyByTenAndAdd(&Token.BeforeComma, (u64)(c - '0')))
+					if(!MultiplyByTenAndAdd(&BeforeComma, (u64)(c - '0')))
 					{
-						Stream->PrintErrorHeader();
+						PrintErrorHeader();
 						INCA_FATAL_ERROR("Numeric overflow in numeric literal (too many digits). If this is a double, try to use scientific notation instead." << std::endl);
 					}
 				}
@@ -352,140 +433,80 @@ ReadTokenInternal_(token_stream *Stream)
 			}
 			else
 			{
-				char ug = ungetc((int)c, Stream->File);
-				if(ug == '\n')
+				// NOTE: We assume that the latest read char was the start of another token, so go back one char to make the position correct for the next call to ReadTokenInternal_.
+				if(c == '\n')
 				{
-					Stream->Line--;
-					Stream->Column = Stream->PreviousColumn;
+					Line--;
+					Column = PreviousColumn;
 				}
 				else
-					Stream->Column--;
+					Column--;
+				
+				Token.StringValue.Length--;
+				AtChar--;
 				
 				break;
 			}
+		}	
+	}
+	
+	if(Token.Type == TokenType_Numeric)
+	{
+		if(!HasComma && !HasExponent && !IsNegative)
+		{
+			Token.IsUInt = true;
 		}
 		
-		if(TokenBufferPos >= TOKEN_BUFFER_SIZE)
-		{
-			Stream->PrintErrorHeader();
-			INCA_FATAL_ERROR("ERROR: Encountered a token longer than " << TOKEN_BUFFER_SIZE << " characters." << std::endl);
-		}
+		Token.UIntValue = BeforeComma;
 		
-	}
-	
-	if(Token.Type == TokenType_UnquotedString)
-	{
-		if(strcmp(TokenBuffer, "true") == 0)
+		double BC = (double)BeforeComma;
+		double AC = (double)AfterComma;
+		for(size_t I = 0; I < DigitsAfterComma; ++I) AC *= 0.1;
+		Token.DoubleValue = BC + AC;
+		if(IsNegative) Token.DoubleValue = -Token.DoubleValue;
+		if(HasExponent)
 		{
-			Token.Type = TokenType_Bool;
-			Token.BoolValue = true;
-		}
-		else if(strcmp(TokenBuffer, "false") == 0)
-		{
-			Token.Type = TokenType_Bool;
-			Token.BoolValue = false;
-		}
-		else if(strcmp(TokenBuffer, "NaN") == 0 || strcmp(TokenBuffer, "nan") == 0 || strcmp(TokenBuffer, "Nan") == 0)
-		{
-			Token.Type = TokenType_Numeric;
-			Token.IsNAN = true;
+			double Multiplier = ExponentIsNegative ? 0.1 : 10.0;
+			for(u64 Ex = 0; Ex < Exponent; ++Ex)
+			{
+				Token.DoubleValue *= Multiplier;
+			}
 		}
 	}
 	
-	if(Token.Type == TokenType_UnquotedString || Token.Type == TokenType_QuotedString)
-	{
-		Token.StringValue = (char *)malloc(sizeof(char)*(TokenBufferPos + 2));
-		Token.StringValue[TokenBufferPos + 1] = 0;
-		strcpy(Token.StringValue, TokenBuffer);
-	}
+	//std::cout << StartLine << ": " << Token.StringValue << std::endl;
 	
-	return &Token;
-}
-
-static void
-AssertInt(token_stream &Stream, token& Token)
-{
-	if(Token.HasComma || Token.HasExponent || Token.IsNAN)
-	{
-		Stream.PrintErrorHeader();
-		INCA_FATAL_ERROR("Got a value of type double when expecting an integer." << std::endl);
-	}
-}
-
-static void
-AssertUInt(token_stream &Stream, token& Token)
-{
-	AssertInt(Stream, Token);
-	if(Token.IsNegative)
-	{
-		Stream.PrintErrorHeader();
-		INCA_FATAL_ERROR("Got a signed value when expecting an unsigned integer." << std::endl);
-	}
-}
-
-token *
-token_stream::ReadToken()
-{
-	AtToken++;
-	if(AtToken >= (s64)Tokens.size())
-	{
-		ReadTokenInternal_(this);
-	}
-
-	return &Tokens[AtToken];
-}
-
-token *
-token_stream::PeekToken(size_t PeekAhead)
-{
-	while(AtToken + PeekAhead >= Tokens.size())
-	{
-		ReadTokenInternal_(this);
-	}
-	return &Tokens[AtToken + PeekAhead];
-}
-
-token *
-token_stream::ExpectToken(token_type Type)
-{
-	token *Token = ReadToken();
-	if(Token->Type != Type)
-	{
-		PrintErrorHeader();
-		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a " << TokenNames[Token->Type]);
-		if(Token->Type == TokenType_QuotedString || Token->Type == TokenType_UnquotedString)
-		{
-			INCA_PARTIAL_ERROR(" (" << Token->StringValue << ")");
-		}
-		INCA_FATAL_ERROR(std::endl);
-	}
-	return Token;
+	return;
 }
 
 double token_stream::ExpectDouble()
 {
-	token *Token = ExpectToken(TokenType_Numeric);
-	return Token->GetDoubleValue();
+	token Token = ExpectToken(TokenType_Numeric);
+	return Token.DoubleValue;
 }
 
 u64 token_stream::ExpectUInt()
 {
-	token *Token = ExpectToken(TokenType_Numeric);
-	AssertUInt(*this, *Token);
-	return Token->GetUIntValue();
+	token Token = ExpectToken(TokenType_Numeric);
+	if(!Token.IsUInt)
+	{
+		PrintErrorHeader();
+		INCA_FATAL_ERROR("Got a signed value when expecting an unsigned integer." << std::endl);
+	}
+	return Token.UIntValue;
 }
 
 bool token_stream::ExpectBool()
 {
-	token *Token = ExpectToken(TokenType_Bool);
-	return Token->BoolValue;
+	token Token = ExpectToken(TokenType_Bool);
+	return Token.BoolValue;
 }
 
 s64 token_stream::ExpectDate()
 {
 	s64 Date;
-	const char *DateStr = ExpectQuotedString();
-	bool ParseSuccess = ParseSecondsSinceEpoch(DateStr, &Date);
+	token_string DateStr = ExpectQuotedString();
+	bool ParseSuccess = ParseSecondsSinceEpoch(DateStr.Data, &Date);
 	if(!ParseSuccess)
 	{
 		PrintErrorHeader();
@@ -494,94 +515,91 @@ s64 token_stream::ExpectDate()
 	return Date;
 }
 
-const char * token_stream::ExpectQuotedString()
+token_string token_stream::ExpectQuotedString()
 {
-	token *Token = ExpectToken(TokenType_QuotedString);
-	return Token->StringValue;
+	token Token = ExpectToken(TokenType_QuotedString);
+	return Token.StringValue;
 }
 
-const char * token_stream::ExpectUnquotedString()
+token_string token_stream::ExpectUnquotedString()
 {
-	token *Token = ExpectToken(TokenType_UnquotedString);
-	return Token->StringValue;
+	token Token = ExpectToken(TokenType_UnquotedString);
+	return Token.StringValue;
 }
 
-static void
-ReadQuotedStringList(token_stream &Stream, std::vector<const char *> &ListOut, bool CopyStrings = false)
+void
+token_stream::ReadQuotedStringList(std::vector<token_string> &ListOut)
 {
-	Stream.ExpectToken(TokenType_OpenBrace);
+	ExpectToken(TokenType_OpenBrace);
 	while(true)
 	{
-		token *Token = Stream.ReadToken();
+		token Token = ReadToken();
 		
-		if(Token->Type == TokenType_QuotedString)
+		if(Token.Type == TokenType_QuotedString)
 		{
-			const char *Str;
-			if(CopyStrings)
-			{
-				Str = CopyString(Token->StringValue);
-			}
-			else
-			{
-				Str = Token->StringValue;
-			}
-			ListOut.push_back(Str);
+			ListOut.push_back(Token.StringValue);
 		}
-		else if(Token->Type == TokenType_CloseBrace)
+		else if(Token.Type == TokenType_CloseBrace)
 		{
 			break;
 		}
-		else if(Token->Type == TokenType_EOF)
+		else if(Token.Type == TokenType_EOF)
 		{
-			Stream.PrintErrorHeader();
+			PrintErrorHeader();
 			INCA_FATAL_ERROR("End of file before list was ended." << std::endl);
 		}
 		else
 		{
-			Stream.PrintErrorHeader();
+			PrintErrorHeader();
 			INCA_FATAL_ERROR("Unexpected token." << std::endl);
 		}
 	}
 }
 
-static void
-ReadDoubleSeries(token_stream &Stream, std::vector<double> &ListOut)
+void
+token_stream::ReadQuotedStringList(std::vector<const char *> &ListOut)
 {
+	//NOTE: This one makes a copy of the strings.
+	ExpectToken(TokenType_OpenBrace);
 	while(true)
 	{
-		token *Token = Stream.PeekToken();
-		if(Token->Type != TokenType_Numeric) break;
-		Token = Stream.ReadToken(); //NOTE: Consume the token we peeked.
-		ListOut.push_back(Token->GetDoubleValue());
+		token Token = ReadToken();
+		
+		if(Token.Type == TokenType_QuotedString)
+		{
+			ListOut.push_back(Token.StringValue.Copy().Data);
+		}
+		else if(Token.Type == TokenType_CloseBrace)
+		{
+			break;
+		}
+		else if(Token.Type == TokenType_EOF)
+		{
+			PrintErrorHeader();
+			INCA_FATAL_ERROR("End of file before list was ended." << std::endl);
+		}
+		else
+		{
+			PrintErrorHeader();
+			INCA_FATAL_ERROR("Unexpected token." << std::endl);
+		}
 	}
 }
 
-static void
-ReadUIntSeries(token_stream &Stream, std::vector<u64> &ListOut)
+void
+token_stream::ReadDoubleSeries(std::vector<double> &ListOut)
 {
 	while(true)
 	{
-		token *Token = Stream.PeekToken();
-		if(Token->Type != TokenType_Numeric) break;
-		Token = Stream.ReadToken(); //NOTE: Consume the token we peeked.
-		ListOut.push_back(Token->GetUIntValue());
+		token Token = PeekToken();
+		if(Token.Type != TokenType_Numeric) break;
+		ListOut.push_back(ExpectDouble());
 	}
 }
 
-static void
-ReadBoolSeries(token_stream &Stream, std::vector<bool> &ListOut)      //NOOOO! We run into the std::vector<bool> template specialisation!! It is probably not too big of a deal though.
-{
-	while(true)
-	{
-		token *Token = Stream.PeekToken();
-		if(Token->Type != TokenType_Bool) break;
-		Token = Stream.ReadToken(); //NOTE: Consume the token we peeked.
-		ListOut.push_back(Token->BoolValue);
-	}
-}
 
-static void
-ReadParameterSeries(token_stream &Stream, std::vector<parameter_value> &ListOut, parameter_type Type)
+void
+token_stream::ReadParameterSeries(std::vector<parameter_value> &ListOut, parameter_type Type)
 {
 	parameter_value Value;
 	
@@ -589,9 +607,9 @@ ReadParameterSeries(token_stream &Stream, std::vector<parameter_value> &ListOut,
 	{
 		while(true)
 		{
-			token *Token = Stream.PeekToken();
-			if(Token->Type != TokenType_Numeric) break;
-			Value.ValDouble = Stream.ExpectDouble();
+			token Token = PeekToken();
+			if(Token.Type != TokenType_Numeric) break;
+			Value.ValDouble = ExpectDouble();
 			ListOut.push_back(Value);
 		}
 	}
@@ -599,9 +617,9 @@ ReadParameterSeries(token_stream &Stream, std::vector<parameter_value> &ListOut,
 	{
 		while(true)
 		{
-			token *Token = Stream.PeekToken();
-			if(Token->Type != TokenType_Numeric) break;
-			Value.ValUInt = Stream.ExpectUInt();
+			token Token = PeekToken();
+			if(Token.Type != TokenType_Numeric) break;
+			Value.ValUInt = ExpectUInt();
 			ListOut.push_back(Value);
 		}
 	}
@@ -609,9 +627,9 @@ ReadParameterSeries(token_stream &Stream, std::vector<parameter_value> &ListOut,
 	{
 		while(true)
 		{
-			token *Token = Stream.PeekToken();
-			if(Token->Type != TokenType_Bool) break;
-			Value.ValBool = Stream.ExpectBool();
+			token Token = PeekToken();
+			if(Token.Type != TokenType_Bool) break;
+			Value.ValBool = ExpectBool();
 			ListOut.push_back(Value);
 		}
 	}

@@ -71,36 +71,34 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
-	token *Token;
-	
 	while(true)
 	{
-		Token = Stream.PeekToken();
+		token Token = Stream.PeekToken();
 		
-		if(Token->Type == TokenType_EOF)
+		if(Token.Type == TokenType_EOF)
 		{
 			break;
 		}
 		
-		const char *Section = Stream.ExpectUnquotedString();
+		token_string Section = Stream.ExpectUnquotedString();
 		Stream.ExpectToken(TokenType_Colon);
 
-		if(strcmp(Section, "algorithm") == 0)
+		if(Section.Equals("algorithm"))
 		{
-			const char *Alg = Stream.ExpectUnquotedString();
-			if(strcmp(Alg, "differential_evolution") == 0)
+			token_string Alg = Stream.ExpectUnquotedString();
+			if(Alg.Equals("differential_evolution"))
 			{
 				Setup->Algorithm = MCMCAlgorithm_DifferentialEvolution;
 			}
-			else if(strcmp(Alg, "metropolis_hastings") == 0)
+			else if(Alg.Equals("metropolis_hastings"))
 			{
 				Setup->Algorithm = MCMCAlgorithm_RandomWalkMetropolisHastings;
 			}
-			else if(strcmp(Alg, "hamiltonian_monte_carlo") == 0)
+			else if(Alg.Equals("hamiltonian_monte_carlo"))
 			{
 				Setup->Algorithm = MCMCAlgorithm_HamiltonianMonteCarlo;
 			}
-			else if(strcmp(Alg, "metropolis_adjusted_langevin") == 0)
+			else if(Alg.Equals("metropolis_adjusted_langevin"))
 			{
 				Setup->Algorithm = MCMCAlgorithm_MetropolisAdjustedLangevin;
 			}
@@ -111,54 +109,54 @@ ReadMCMCSetupFromFile(mcmc_setup *Setup, const char *Filename)
 				INCA_FATAL_ERROR("Unknown or unimplemented algorithm " << Alg << std::endl);
 			}
 		}
-		else if(strcmp(Section, "chains") == 0)
+		else if(Section.Equals("chains"))
 		{
 			Setup->NumChains = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "generations") == 0)
+		else if(Section.Equals("generations"))
 		{
 			Setup->NumGenerations = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "burnin") == 0)
+		else if(Section.Equals("burnin"))
 		{
 			Setup->NumBurnin = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "discard_timesteps") == 0)
+		else if(Section.Equals("discard_timesteps"))
 		{
 			Setup->DiscardTimesteps = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "de_b") == 0)
+		else if(Section.Equals("de_b"))
 		{
 			Setup->DeBound = Stream.ExpectDouble();
 		}
-		else if(strcmp(Section, "de_jumps") == 0)
+		else if(Section.Equals("de_jumps"))
 		{
 			Setup->DeJumps = Stream.ExpectBool();
 		}
-		else if(strcmp(Section, "de_jump_gamma") == 0)
+		else if(Section.Equals("de_jump_gamma"))
 		{
 			Setup->DeJumpGamma = Stream.ExpectDouble();
 		}
-		else if(strcmp(Section, "step_size") == 0)
+		else if(Section.Equals("step_size"))
 		{
 			Setup->StepSize = Stream.ExpectDouble();
 		}
-		else if(strcmp(Section, "hmc_leap_steps") == 0)
+		else if(Section.Equals("hmc_leap_steps"))
 		{
 			Setup->HMCLeapSteps = Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "parameter_calibration") == 0)
+		else if(Section.Equals("parameter_calibration"))
 		{
 			ReadParameterCalibration(Stream, Setup->Calibration, ParameterCalibrationReadInitialGuesses); //TODO: We should also read distributions here!
 		}
-		else if(strcmp(Section, "objectives") == 0)
+		else if(Section.Equals("objectives"))
 		{
 			ReadCalibrationObjectives(Stream, Setup->Objectives, false);
 		}
 		else
 		{
 			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Unknown section name: " << Token->StringValue << std::endl);
+			INCA_FATAL_ERROR("Unknown section name: " << Section << std::endl);
 		}
 	}
 	
@@ -229,10 +227,9 @@ static void RunMCMC(inca_data_set *DataSet, mcmc_setup *Setup, mcmc_results *Res
 	arma::vec LowerBounds(Dimensions + 1);
 	arma::vec UpperBounds(Dimensions + 1);
 	
-	size_t ValIdx;
+	size_t ValIdx = 0;
 	for(parameter_calibration &Cal : RunData.Calibration)
 	{
-		parameter_calibration &Cal = RunData.Calibration[CalIdx];
 		for(size_t Dim = 0; Dim < GetDimensions(Cal); ++Dim)
 		{
 			InitialGuess[ValIdx] = Cal.InitialGuess;   //TODO: This gets WRONG for partition setups.

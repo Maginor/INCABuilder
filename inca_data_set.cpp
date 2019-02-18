@@ -440,7 +440,7 @@ GetTimesteps(inca_data_set *DataSet)
 
 
 static void
-SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<const char *>& IndexNames)
+SetIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::vector<token_string>& IndexNames)
 {
 	const inca_model *Model = DataSet->Model;
 	
@@ -470,7 +470,7 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 		{
 			for(size_t IdxIdx = 0; IdxIdx < Spec.RequiredIndexes.size(); ++IdxIdx)
 			{
-				if(strcmp(Spec.RequiredIndexes[IdxIdx], IndexNames[IdxIdx]) != 0)
+				if(!IndexNames[IdxIdx].Equals(Spec.RequiredIndexes[IdxIdx]))
 				{
 					Correct = false;
 					break;
@@ -486,7 +486,7 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 				INCA_PARTIAL_ERROR("\"" << IndexName << "\" ");
 			}
 			INCA_PARTIAL_ERROR(std::endl << "in that order. We got the indexes: " << std::endl);
-			for(const char *IndexName : IndexNames)
+			for(token_string IndexName : IndexNames)
 			{
 				INCA_PARTIAL_ERROR("\"" << IndexName << "\" ");
 			}
@@ -499,7 +499,7 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 	
 	for(size_t IndexIndex = 0; IndexIndex < IndexNames.size(); ++IndexIndex)
 	{
-		const char *IndexName = CopyString(IndexNames[IndexIndex]); //NOTE: Leaks unless we free it.
+		const char *IndexName = IndexNames[IndexIndex].Copy().Data; //NOTE: Leaks unless we free it.
 		DataSet->IndexNames[IndexSetHandle][IndexIndex] = IndexName;
 		DataSet->IndexNamesToHandle[IndexSetHandle][IndexName] = IndexIndex;
 	}
@@ -522,7 +522,7 @@ SetIndexes(inca_data_set *DataSet, const char* IndexSetName, const std::vector<c
 }
 
 static void
-SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::vector<std::pair<const char *, std::vector<const char *>>>& Inputs)
+SetBranchIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::vector<std::pair<token_string, std::vector<token_string>>>& Inputs)
 {
 	const inca_model *Model = DataSet->Model;
 	
@@ -549,11 +549,11 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 
 	DataSet->BranchInputs[IndexSetHandle] = AllocClearedArray(branch_inputs, Inputs.size());
 	index_t IndexIndex = 0;
-	for(const auto &Data : Inputs)
+	for(const auto &InputData : Inputs)
 	{
-		const char *IndexName = CopyString(Data.first); //NOTE: Leaks unless we free it.
+		const char *IndexName = InputData.first.Copy().Data; //NOTE: Leaks unless we free it.
 
-		const std::vector<const char *> &InputNames = Data.second;
+		const std::vector<token_string> &InputNames = InputData.second;
 		if(DataSet->IndexNamesToHandle[IndexSetHandle].find(IndexName) != DataSet->IndexNamesToHandle[IndexSetHandle].end())
 		{
 			INCA_FATAL_ERROR("ERROR: Got duplicate indexes for index set " << IndexSetName << std::endl);
@@ -566,7 +566,7 @@ SetBranchIndexes(inca_data_set *DataSet, const char *IndexSetName, const std::ve
 		DataSet->BranchInputs[IndexSetHandle][IndexIndex].Inputs = AllocClearedArray(index_t, InputNames.size());
 		
 		index_t InputIdxIdx = 0;
-		for(const char *InputName : InputNames)
+		for(token_string InputName : InputNames)
 		{
 			auto Find = DataSet->IndexNamesToHandle[IndexSetHandle].find(InputName);
 			if(Find == DataSet->IndexNamesToHandle[IndexSetHandle].end())
@@ -739,7 +739,7 @@ AllocateResultStorage(inca_data_set *DataSet, u64 Timesteps)
 
 //NOTE: Returns the numeric index corresponding to an index name and an index_set.
 inline index_t
-GetIndex(inca_data_set *DataSet, index_set_h IndexSet, const char *IndexName)
+GetIndex(inca_data_set *DataSet, index_set_h IndexSet, token_string IndexName)
 {
 	auto &IndexMap = DataSet->IndexNamesToHandle[IndexSet.Handle];
 	auto Find = IndexMap.find(IndexName);

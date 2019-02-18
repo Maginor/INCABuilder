@@ -218,25 +218,23 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 	
 	const inca_model *Model = DataSet->Model;
 	
-	token *Token;
-	
 	while(true)
 	{
-		Token = Stream.PeekToken();
+		token Token = Stream.PeekToken();
 		
-		if(Token->Type == TokenType_EOF)
+		if(Token.Type == TokenType_EOF)
 			break;
 		
-		const char *Section = Stream.ExpectUnquotedString();
+		token_string Section = Stream.ExpectUnquotedString();
 		Stream.ExpectToken(TokenType_Colon);
 		
 		int Mode = -1;
 
-		if(strcmp(Section, "index_sets") == 0)
+		if(Section.Equals("index_sets"))
 		{
 			Mode = 0;
 		}
-		else if(strcmp(Section, "parameters") == 0)
+		else if(Section.Equals("parameters"))
 		{
 			Mode = 1;
 		}
@@ -250,27 +248,27 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 		{
 			while(true)
 			{
-				Token = Stream.PeekToken();
-				if(Token->Type != TokenType_QuotedString) break;
+				token Token = Stream.PeekToken();
+				if(Token.Type != TokenType_QuotedString) break;
 				
-				const char *IndexSetName = Stream.ExpectQuotedString();
+				token_string IndexSetName = Stream.ExpectQuotedString();
 				index_set_h IndexSet = GetIndexSetHandle(Model, IndexSetName);
 				Stream.ExpectToken(TokenType_Colon);
 				if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Basic)
 				{
-					std::vector<const char *> Indexes;
-					ReadQuotedStringList(Stream, Indexes);
+					std::vector<token_string> Indexes;
+					Stream.ReadQuotedStringList(Indexes);
 					SetIndexes(DataSet, IndexSetName, Indexes);
 				}
 				else if(Model->IndexSetSpecs[IndexSet.Handle].Type == IndexSetType_Branched)
 				{
 					//TODO: Make a helper function for this too!
-					std::vector<std::pair<const char *, std::vector<const char *>>> Indexes;
+					std::vector<std::pair<token_string, std::vector<token_string>>> Indexes;
 					Stream.ExpectToken(TokenType_OpenBrace);
 					while(true)
 					{
 						Token = Stream.ReadToken();
-						if(Token->Type == TokenType_CloseBrace)
+						if(Token.Type == TokenType_CloseBrace)
 						{
 							if(Indexes.empty())
 							{
@@ -283,30 +281,30 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 							}
 							break;
 						}				
-						else if(Token->Type == TokenType_QuotedString)
+						else if(Token.Type == TokenType_QuotedString)
 						{
-							Indexes.push_back({Token->StringValue, {}});
+							Indexes.push_back({Token.StringValue, {}});
 						}
-						else if(Token->Type == TokenType_OpenBrace)
+						else if(Token.Type == TokenType_OpenBrace)
 						{
-							const char *IndexName = 0;
-							std::vector<const char*> Inputs;
+							token_string IndexName;
+							std::vector<token_string> Inputs;
 							while(true)
 							{
 								Token = Stream.ReadToken();
-								if(Token->Type == TokenType_CloseBrace)
+								if(Token.Type == TokenType_CloseBrace)
 								{
-									if(!IndexName || Inputs.empty())
+									if(!IndexName.Data || Inputs.empty())
 									{
 										Stream.PrintErrorHeader();
 										INCA_FATAL_ERROR("No inputs in the braced list for one of the indexes of index set " << IndexSetName << std::endl);
 									}
 									break;
 								}
-								else if(Token->Type == TokenType_QuotedString)
+								else if(Token.Type == TokenType_QuotedString)
 								{
-									if(!IndexName) IndexName = Token->StringValue;
-									else Inputs.push_back(Token->StringValue);
+									if(!IndexName.Data) IndexName = Token.StringValue;
+									else Inputs.push_back(Token.StringValue);
 								}
 								else
 								{
@@ -330,14 +328,14 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 			while(true)
 			{
 				Token = Stream.PeekToken();
-				if(Token->Type != TokenType_QuotedString) break;
+				if(Token.Type != TokenType_QuotedString) break;
 					
 				if(!DataSet->ParameterData)
 				{
 					AllocateParameterStorage(DataSet);
 				}
 				
-				const char *ParameterName = Stream.ExpectQuotedString();
+				token_string ParameterName = Stream.ExpectQuotedString();
 				Stream.ExpectToken(TokenType_Colon);
 				
 				entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName);
@@ -366,7 +364,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 				{
 					std::vector<parameter_value> Values;
 					Values.reserve(ExpectedCount);
-					ReadParameterSeries(Stream, Values, Type);
+					Stream.ReadParameterSeries(Values, Type);
 					if(Values.size() != ExpectedCount)                                                                   
 					{                                                                                                    
 						Stream.PrintErrorHeader();                                                                       
@@ -386,43 +384,41 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 	
 	token_stream Stream(Filename);
 	
-	token *Token;
-	
 	u64 Timesteps = 0;
 	
 	while(true)
 	{
-		Token = Stream.PeekToken();
+		token Token = Stream.PeekToken();
 		
-		if(Token->Type == TokenType_EOF)
+		if(Token.Type == TokenType_EOF)
 		{
 			Stream.PrintErrorHeader();
 			INCA_FATAL_ERROR("Expected one of the code words timesteps, start_date, inputs, additional_timeseries or index_set_dependencies" << std::endl);
 		}
 		
-		const char *Section = Stream.ExpectUnquotedString();
+		token_string Section = Stream.ExpectUnquotedString();
 		Stream.ExpectToken(TokenType_Colon);
 
-		if(strcmp(Section, "timesteps") == 0)
+		if(Section.Equals("timesteps"))
 		{
 			Timesteps = Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "start_date") == 0)
+		else if(Section.Equals("start_date"))
 		{
 			DataSet->InputDataStartDate = Stream.ExpectDate();
 			DataSet->InputDataHasSeparateStartDate = true;
 		}
-		else if(strcmp(Section, "inputs") == 0)
+		else if(Section.Equals("inputs"))
 		{
 			break;
 		}
-		else if(strcmp(Section, "index_set_dependencies") == 0 || strcmp(Section, "additional_timeseries") == 0)
+		else if(Section.Equals("index_set_dependencies") || Section.Equals("additional_timeseries"))
 		{
 			//NOTE: These are handled in a separate call, so we have to skip through them here.
 			while(true)
 			{
 				Token = Stream.PeekToken();
-				if(Token->Type == TokenType_UnquotedString) break; //We hit a new section;
+				if(Token.Type == TokenType_UnquotedString) break; //We hit a new section;
 				Stream.ReadToken(); //Otherwise consume the token and ignore it.
 			}
 		}
@@ -446,25 +442,27 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 	
 	while(true)
 	{
-		Token = Stream.ReadToken();
-		if(Token->Type == TokenType_EOF)
+		token Token = Stream.ReadToken();
+		if(Token.Type == TokenType_EOF)
 		{
 			break;
 		}
-		if(Token->Type != TokenType_QuotedString)
+		if(Token.Type != TokenType_QuotedString)
 		{
+			//std::cout << "token type: " << TokenNames[Token.Type] << " " << Token.StringValue << std::endl;
+			
 			Stream.PrintErrorHeader();
 			INCA_FATAL_ERROR("Expected the quoted name of an input" << std::endl);
 		}
-		const char *InputName = Token->StringValue;
+		token_string InputName = Token.StringValue;
 		
 		input_h Input = GetInputHandle(Model, InputName);
-		std::vector<const char *> IndexNames;
+		std::vector<token_string> IndexNames;
 		
 		Token = Stream.PeekToken();
-		if(Token->Type == TokenType_OpenBrace)
+		if(Token.Type == TokenType_OpenBrace)
 		{
-			ReadQuotedStringList(Stream, IndexNames);
+			Stream.ReadQuotedStringList(IndexNames);
 		}
 		
 		Stream.ExpectToken(TokenType_Colon);
@@ -495,11 +493,11 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		//NOTE: For the first timestep, try to figure out what format the data was provided in.
 		int FormatType = -1;
 		Token = Stream.PeekToken();
-		if(Token->Type == TokenType_Numeric)
+		if(Token.Type == TokenType_Numeric)
 		{
 			FormatType = 0;
 		}
-		else if(Token->Type == TokenType_QuotedString)
+		else if(Token.Type == TokenType_QuotedString)
 		{
 			FormatType = 1;
 			double *WriteNanTo = WriteTo;
@@ -532,9 +530,9 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			{
 				s64 CurTimestep;
 				
-				Token = Stream.PeekToken();
+				token Token = Stream.PeekToken();
 				
-				if(Token->Type == TokenType_QuotedString)
+				if(Token.Type == TokenType_QuotedString)
 				{
 					s64 Date = Stream.ExpectDate();
 					
@@ -543,19 +541,20 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					if(CurTimestep < 0 || CurTimestep >= (s64)Timesteps)
 					{
 						Stream.PrintErrorHeader();
-						INCA_FATAL_ERROR("The date " << Token->StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
+						INCA_FATAL_ERROR("The date " << Token.StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
 					}
 				}
-				else if(Token->Type == TokenType_UnquotedString)
+				else if(Token.Type == TokenType_UnquotedString)
 				{
-					if(strcmp(Stream.ExpectUnquotedString(), "end_timeseries") == 0)
+					if(Token.StringValue.Equals("end_timeseries"))
 					{
+						Stream.ReadToken(); //NOTE: Consume it.
 						break;
 					}
 					else
 					{
 						Stream.PrintErrorHeader();
-						INCA_FATAL_ERROR("Unexpected command word: " << Token->StringValue << std::endl);
+						INCA_FATAL_ERROR("Unexpected command word: " << Token.StringValue << std::endl);
 					}
 				}
 				else
@@ -575,27 +574,25 @@ static void
 ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 {
 	token_stream Stream(Filename);
-	
-	token *Token;
 
 	while(true)
 	{
-		Token = Stream.PeekToken();
-		if(Token->Type == TokenType_EOF)
+		token Token = Stream.PeekToken();
+		if(Token.Type == TokenType_EOF)
 			break;
 		
-		const char *Section = Stream.ExpectUnquotedString();
+		token_string Section = Stream.ExpectUnquotedString();
 		Stream.ExpectToken(TokenType_Colon);
 
-		if(strcmp(Section, "index_set_dependencies") == 0)
+		if(Section.Equals("index_set_dependencies"))
 		{
 			while(true)
 			{
-				Token = Stream.PeekToken();
-				if(Token->Type == TokenType_QuotedString)
+				token Token = Stream.PeekToken();
+				if(Token.Type == TokenType_QuotedString)
 				{
 					Token = Stream.ReadToken();
-					const char *InputName = Token->StringValue;
+					token_string InputName = Token.StringValue;
 					input_h Input = GetInputHandle(Model, InputName);
 					std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
 					if(!IndexSets.empty()) //TODO: OR we could just clear it and give a warning..
@@ -605,10 +602,10 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 					}
 					Stream.ExpectToken(TokenType_Colon);
 					
-					std::vector<const char *> IndexSetNames;
-					ReadQuotedStringList(Stream, IndexSetNames, false);
+					std::vector<token_string> IndexSetNames;
+					Stream.ReadQuotedStringList(IndexSetNames);
 					
-					for(const char *IndexSetName : IndexSetNames)
+					for(token_string IndexSetName : IndexSetNames)
 					{
 						IndexSets.push_back(GetIndexSetHandle(Model, IndexSetName));
 					}
@@ -616,21 +613,21 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 				else break;
 			}
 		}
-		else if(strcmp(Section, "additional_timeseries") == 0)
+		else if(Section.Equals("additional_timeseries"))
 		{
 			while(true)
 			{
-				Token = Stream.PeekToken();
-				if(Token->Type == TokenType_QuotedString)
+				token Token = Stream.PeekToken();
+				if(Token.Type == TokenType_QuotedString)
 				{
 					Token = Stream.ReadToken();
-					const char *InputName = CopyString(Token->StringValue); //TODO: Leaks, and there is no way to know if we should free it since it gets mixed with other input names that may be statically allocated. Need to make a better system.
-					RegisterInput(Model, InputName);
+					token_string InputName = Token.StringValue.Copy(); //TODO: Leaks, and there is no way to know if we should free it since it gets mixed with other input names that may be statically allocated. Need to make a better system.
+					RegisterInput(Model, InputName.Data);
 				}
 				else break;
 			}
 		}
-		else if(strcmp(Section, "inputs") == 0)
+		else if(Section.Equals("inputs"))
 		{
 			//NOTE: "index_set_dependencies" and "additional_timeseries" are assumed to come before "inputs" in the file.
 			// This is so that we don't have to skip through the entire inputs section on this read since it can be quite long.
@@ -642,7 +639,7 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 			while(true)
 			{
 				Token = Stream.PeekToken();
-				if(Token->Type == TokenType_UnquotedString) break; //We hit a new section;
+				if(Token.Type == TokenType_UnquotedString) break; //We hit a new section;
 				Stream.ReadToken(); //Otherwise consume the token and ignore it.
 			}
 		}

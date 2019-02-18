@@ -13,6 +13,7 @@ AddIncaNModel(inca_model *Model)
 	auto JulianDay          = RegisterUnit(Model, "Julian day");
 	auto MetresPerDay       = RegisterUnit(Model, "m/day");
 	auto KgPerHectarePerDay = RegisterUnit(Model, "kg/Ha/day");
+	auto KgPerHectarePerYear= RegisterUnit(Model, "kg/Ha/year");
 	auto KgPerHectare       = RegisterUnit(Model, "kg/Ha");
 	auto Metres             = RegisterUnit(Model, "m");
 	auto MilliMetres        = RegisterUnit(Model, "mm");
@@ -42,7 +43,7 @@ AddIncaNModel(inca_model *Model)
 	auto SoilwaterDenitrificationRate   = RegisterParameterDouble(Model, Land, "Soil water denitrification rate", MetresPerDay, 20.0);
 	auto AmmoniumNitrificationRate      = RegisterParameterDouble(Model, Land, "Ammonium nitrification rate", MetresPerDay, 20.0);
 	auto NitrogenFixationRate           = RegisterParameterDouble(Model, Land, "Nitrogen fixation rate", KgPerHectarePerDay, 20.0);
-	auto MaximumNitrogenUptake          = RegisterParameterDouble(Model, Land, "Maximum nitrogen uptake", KgPerHectare, 20.0);
+	auto MaximumNitrogenUptake          = RegisterParameterDouble(Model, Land, "Maximum nitrogen uptake", KgPerHectarePerYear, 20.0);
 	auto FertilizerAdditionStartDay     = RegisterParameterUInt(Model, Land, "Fertilizer addition start day", JulianDay, 20, 1, 365, "Day of year when fertiliser application begins.");
 	auto FertilizerAdditionPeriod       = RegisterParameterUInt(Model, Land, "Fertilizer addition period", JulianDay, 20, 0, 365, "Length of fertiliser addition period in days.");
 	auto FertilizerNitrateAdditionRate  = RegisterParameterDouble(Model, Land, "Fertilizer nitrate addition rate", KgPerHectarePerDay, 20.0, 0.0, 100.0, "Amount of nitrate added as fertiliser on each day of fertiliser addition period.");

@@ -25,28 +25,27 @@ ReadOptimizationSetup(optimization_setup *Setup, const char *Filename)
 {
 	token_stream Stream(Filename);
 	
-	token *Token;
 	while(true)
 	{
-		Token = Stream.PeekToken();
-		if(Token->Type == TokenType_EOF)
+		token Token = Stream.PeekToken();
+		if(Token.Type == TokenType_EOF)
 			break;
 		
-		const char *Section = Stream.ExpectUnquotedString();
+		token_string Section = Stream.ExpectUnquotedString();
 		Stream.ExpectToken(TokenType_Colon);
-		if(strcmp(Section, "max_function_calls") == 0)
+		if(Section.Equals("max_function_calls"))
 		{
 			Setup->MaxFunctionCalls = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "discard_timesteps") == 0)
+		else if(Section.Equals("discard_timesteps"))
 		{
 			Setup->DiscardTimesteps = (size_t)Stream.ExpectUInt();
 		}
-		else if(strcmp(Section, "parameter_calibration") == 0)
+		else if(Section.Equals("parameter_calibration"))
 		{
 			ReadParameterCalibration(Stream, Setup->Calibration);
 		}
-		else if(strcmp(Section, "objectives") == 0)
+		else if(Section.Equals("objectives"))
 		{
 			ReadCalibrationObjectives(Stream, Setup->Objectives);
 		}

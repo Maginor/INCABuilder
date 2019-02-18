@@ -93,21 +93,21 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 		
 		while(true)
 		{
-			token *Token = Stream.PeekToken();
-			if(Token->Type == TokenType_QuotedString)
+			token Token = Stream.PeekToken();
+			if(Token.Type == TokenType_QuotedString)
 			{
-				const char *ParameterName = CopyString(Token->StringValue); //NOTE: The copied string leaks unless somebody frees it later
+				const char *ParameterName = Token.StringValue.Copy().Data; //NOTE: The copied string leaks unless somebody frees it later
 				
 				Calib.ParameterNames.push_back(ParameterName);  
 				Stream.ReadToken(); //NOTE: Consumes the token we peeked.
 				
 				std::vector<const char *> Indexes;
-				ReadQuotedStringList(Stream, Indexes, true); //NOTE: The copied strings leak unless we free them later
+				Stream.ReadQuotedStringList(Indexes); //NOTE: The copied strings leak unless we free them later
 				Calib.ParameterIndexes.push_back(Indexes);
 				
 				if(!WeAreInLink) break;
 			}
-			else if(Token->Type == TokenType_UnquotedString)
+			else if(Token.Type == TokenType_UnquotedString)
 			{
 				if(WeAreInLink)
 				{
@@ -115,14 +115,14 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 					INCA_FATAL_ERROR("Unexpected token inside link." << std::endl);
 				}
 				
-				if(strcmp(Token->StringValue, "link") == 0)
+				if(Token.StringValue.Equals("link"))
 				{
 					WeAreInLink = true;
 					Stream.ReadToken(); //NOTE: Consumes the token we peeked.
 					Stream.ExpectToken(TokenType_OpenBrace);
 					Calib.LinkType = LinkType_Link;
 				}
-				else if(strcmp(Token->StringValue, "partition") == 0)
+				else if(Token.StringValue.Equals("partition"))
 				{
 					WeAreInLink = true;
 					Stream.ReadToken(); //NOTE: Consumes the token we peeked.
@@ -136,12 +136,12 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 					return;
 				}
 			}
-			else if(WeAreInLink && Token->Type == TokenType_CloseBrace)
+			else if(WeAreInLink && Token.Type == TokenType_CloseBrace)
 			{
 				Stream.ReadToken(); //NOTE: Consumes the token we peeked.
 				break;
 			}
-			else if(Token->Type == TokenType_EOF)
+			else if(Token.Type == TokenType_EOF)
 			{
 				if(WeAreInLink)
 				{
@@ -161,8 +161,8 @@ ReadParameterCalibration(token_stream &Stream, std::vector<parameter_calibration
 		
 		if(Flags & ParameterCalibrationReadDistribution)
 		{
-			const char *DistrName = Stream.ExpectUnquotedString();
-			if(strcmp(DistrName, "uniform") == 0)
+			token_string DistrName = Stream.ExpectUnquotedString();
+			if(DistrName.Equals("uniform"))
 			{
 				Calib.Distribution = ParameterDistribution_Uniform;
 			}
@@ -218,29 +218,29 @@ ReadCalibrationObjectives(token_stream &Stream, std::vector<calibration_objectiv
 	{
 		calibration_objective Objective = {};
 		
-		token *Token = Stream.PeekToken();
-		if(Token->Type == TokenType_QuotedString)
+		token Token = Stream.PeekToken();
+		if(Token.Type == TokenType_QuotedString)
 		{
-			Objective.ModeledName = CopyString(Stream.ExpectQuotedString());
-			ReadQuotedStringList(Stream, Objective.ModeledIndexes, true);
+			Objective.ModeledName = Stream.ExpectQuotedString().Copy().Data;
+			Stream.ReadQuotedStringList(Objective.ModeledIndexes);
 			
-			Objective.ObservedName = CopyString(Stream.ExpectQuotedString());
-			ReadQuotedStringList(Stream, Objective.ObservedIndexes, true);
+			Objective.ObservedName = Stream.ExpectQuotedString().Copy().Data;
+			Stream.ReadQuotedStringList(Objective.ObservedIndexes);
 			
-			const char *PerformanceMeasure = Stream.ExpectUnquotedString();
-			if(strcmp(PerformanceMeasure, "mean_absolute_error") == 0)
+			token_string PerformanceMeasure = Stream.ExpectUnquotedString();
+			if(PerformanceMeasure.Equals("mean_absolute_error"))
 			{
 				Objective.PerformanceMeasure = PerformanceMeasure_MeanAbsoluteError;
 			}
-			else if(strcmp(PerformanceMeasure, "mean_square_error") == 0)
+			else if(PerformanceMeasure.Equals("mean_square_error"))
 			{
 				Objective.PerformanceMeasure = PerformanceMeasure_MeanSquareError;
 			}
-			else if(strcmp(PerformanceMeasure, "nash_sutcliffe") == 0)
+			else if(PerformanceMeasure.Equals("nash_sutcliffe"))
 			{
 				Objective.PerformanceMeasure = PerformanceMeasure_NashSutcliffe;
 			}
-			else if(strcmp(PerformanceMeasure, "ll_proportional_normal") == 0)
+			else if(PerformanceMeasure.Equals("ll_proportional_normal"))
 			{
 				Objective.PerformanceMeasure = PerformanceMeasure_LogLikelyhood_ProportionalNormal;
 			}

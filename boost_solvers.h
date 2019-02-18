@@ -140,7 +140,7 @@ INCA_SOLVER_FUNCTION(BoostCashCarp54Impl_)
 
 INCA_SOLVER_SETUP_FUNCTION(BoostCashCarp54)
 {
-	SolverSpec->SolverFunction = BoostRK4Impl_;
+	SolverSpec->SolverFunction = BoostCashCarp54Impl_;
 	SolverSpec->UsesJacobian = false;
 	SolverSpec->UsesErrorControl = true;
 }

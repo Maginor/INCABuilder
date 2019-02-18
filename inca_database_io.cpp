@@ -492,7 +492,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 	
 	const inca_model *Model = DataSet->Model;
 	std::map<int, index_set_h> IDToIndexSet;
-	std::vector<std::vector<const char *>> IndexNames;
+	std::vector<std::vector<token_string>> IndexNames;
 	IndexNames.resize(Model->FirstUnusedIndexSetHandle);
 	
 	//NOTE: This routine assumes that the database entries are in the same order as when created by the CreateParameterDatabase routine.
@@ -511,9 +511,9 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 			//NOTE: Indexes appear several times in the database structure, so we have to make sure we add them uniquely.
 			index_set_h IndexSet = IDToIndexSet[Entry.ParentID];
 			bool Found = false;
-			for(const char * IndexName : IndexNames[IndexSet.Handle]) //NOTE: No obvious way to use the std::find since we need to compare using strcmp.
+			for(token_string IndexName : IndexNames[IndexSet.Handle]) //NOTE: No obvious way to use the std::find since we need to compare using strcmp.
 			{
-				if(strcmp(IndexName, Entry.Name.data()) == 0)
+				if(IndexName.Equals(Entry.Name.data()))
 				{
 					Found = true;
 					break;
@@ -538,8 +538,8 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		}
 		else if(Spec.Type == IndexSetType_Branched)
 		{
-			std::vector<std::pair<const char *, std::vector<const char *>>> Inputs;
-			for(const char *Index : IndexNames[IndexSetHandle])
+			std::vector<std::pair<token_string, std::vector<token_string>>> Inputs;
+			for(token_string Index : IndexNames[IndexSetHandle])
 			{
 				Inputs.push_back({Index, {}});
 			}

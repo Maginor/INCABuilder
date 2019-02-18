@@ -389,8 +389,58 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 		}
 	}
 	
-	
-	//TODO: Actual parameter values!
+	//TODO: Find crash bug here..
+	if(JData.find("parameters") != JData.end())
+	{
+		for (nlohmann::json::iterator It = JData["parameters"].begin(); It != JData["parameters"].end(); ++It)
+		{
+			std::string ParameterName = It.key();
+			entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName.c_str());
+			std::vector<parameter_value> Values;
+			const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+			if(Spec.Type == ParameterType_Double)
+			{
+				std::vector<double> Val = It->get<std::vector<double>>();
+				for(double D : Val)
+				{
+					parameter_value ParVal; ParVal.ValDouble = D;
+					Values.push_back(ParVal);
+				}
+			}
+			else if(Spec.Type == ParameterType_UInt)
+			{
+				std::vector<u64> Val = It->get<std::vector<u64>>();
+				for(u64 D : Val)
+				{
+					parameter_value ParVal; ParVal.ValUInt = D;
+					Values.push_back(ParVal);
+				}
+			}
+			else if(Spec.Type == ParameterType_Bool)
+			{
+				std::vector<bool> Val = It->get<std::vector<bool>>();
+				for(bool D : Val)
+				{
+					parameter_value ParVal; ParVal.ValBool = D;
+					Values.push_back(ParVal);
+				}
+			}
+			else if(Spec.Type == ParameterType_Time)
+			{
+				std::vector<std::string> Val = It->get<std::vector<std::string>>();
+				for(std::string &D : Val)
+				{
+					s64 SecondsSinceEpoch;
+					bool Success = ParseSecondsSinceEpoch(D.c_str(), &SecondsSinceEpoch);
+					//TODO: On failure..
+					parameter_value ParVal; ParVal.ValTime = SecondsSinceEpoch;
+					Values.push_back(ParVal);
+				}
+			}
+			
+			SetMultipleValuesForParameter(DataSet, ParameterHandle, Values.data(), Values.size());
+		}
+	}
 }
 
 

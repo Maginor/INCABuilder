@@ -52,7 +52,7 @@ int main()
 	//WriteParametersToFile(DataSet, "newparams.dat");
 	
 	//WriteInputsToJson(DataSet, "pretty.json");
-	//WriteParametersToJson(DataSet, "parameters.json");
+	WriteParametersToJson(DataSet, "parameters.json");
 	
 	//PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);

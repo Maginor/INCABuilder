@@ -1,5 +1,6 @@
 
-#include "json/json.hpp"
+#include "json/json.hpp"    //NOTE: download at https://github.com/nlohmann/json
+
 
 static void
 WriteInputToJsonRecursive(inca_data_set *DataSet, nlohmann::json &Json, input_h Input, index_t *CurrentIndexes, u64 Timesteps, s32 Level = -1)
@@ -114,26 +115,7 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 	{
 		WriteInputToJsonRecursive(DataSet, Json, input_h {InputHandle}, CurrentIndexes, Timesteps);
 	}
-	
-   
-/*   
-    for (auto&i : data.sparseInputs)
-    {
-        json idxi(i.first.indexers),
-             idxj(i.first.indices),
-             v(i.second);        
-        
-        json jobj
-        {
-            {"indexers", idxi},
-            {"indices", idxj},
-            {"values", v},
-        };
-        
-        j["data"][i.first.name].push_back(jobj);
-    }
-*/
-    
+  
 	std::ofstream Out(Filename);
 	Out << Json.dump(1,'\t') << std::endl;
 }
@@ -241,3 +223,174 @@ ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
 		}
 	}
 }
+
+
+static void
+WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
+{
+	using nlohmann::json;
+	
+	const inca_model *Model = DataSet->Model;
+	
+	json Json
+	{
+		{"index_sets", nullptr},
+		{"parameters", nullptr},
+	};
+	
+	for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+	{
+		const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
+		if(Spec.Type == IndexSetType_Basic)
+		{
+			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+			{
+				std::string IndexName = DataSet->IndexNames[IndexSetHandle][Index];
+				Json["index_sets"][Spec.Name].push_back(IndexName);
+			}
+		}
+		else if(Spec.Type == IndexSetType_Branched)
+		{
+			std::map<std::string, std::vector<std::string>> BranchInputs;
+			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+			{
+				std::string IndexName = DataSet->IndexNames[IndexSetHandle][Index];
+				
+				std::vector<std::string> Branches;
+				for(size_t In = 0; In < DataSet->BranchInputs[IndexSetHandle][Index].Count; ++In)
+				{
+					index_t InIndex = DataSet->BranchInputs[IndexSetHandle][Index].Inputs[In];
+					
+					std::string InName = DataSet->IndexNames[IndexSetHandle][InIndex];
+					Branches.push_back(InName);
+				}
+				
+				BranchInputs[IndexName] = Branches;
+				
+				Json["index_sets"][Spec.Name] = BranchInputs;
+			}
+		}
+	}
+	
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	{
+		const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+		
+		//NOTE: This is pretty horrible. It should be wrapped up somehow instead.
+		size_t UnitIdx = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+		storage_unit_specifier &Unit = DataSet->ParameterStorageStructure.Units[UnitIdx];
+		size_t ParametersInUnit = Unit.Handles.size();
+		size_t TotalValuesInUnit = DataSet->ParameterStorageStructure.TotalCountForUnit[UnitIdx];
+		size_t ValuesPerPar = TotalValuesInUnit / ParametersInUnit;
+		
+		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
+		
+		if(Spec.Type == ParameterType_Double)
+		{
+			std::vector<double> Values;
+			
+			parameter_value *At = DataSet->ParameterData + Offset;
+			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
+			{
+				Values.push_back((*At).ValDouble);
+				At += ParametersInUnit;
+			}
+			
+			Json["parameters"][Spec.Name] = Values;
+		}
+		else if(Spec.Type == ParameterType_UInt)
+		{
+			std::vector<u64> Values;
+			
+			parameter_value *At = DataSet->ParameterData + Offset;
+			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
+			{
+				Values.push_back((*At).ValUInt);
+				At += ParametersInUnit;
+			}
+			
+			Json["parameters"][Spec.Name] = Values;
+		}
+		else if(Spec.Type == ParameterType_Bool)
+		{
+			std::vector<bool> Values;
+			
+			parameter_value *At = DataSet->ParameterData + Offset;
+			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
+			{
+				Values.push_back((*At).ValBool);
+				At += ParametersInUnit;
+			}
+			
+			Json["parameters"][Spec.Name] = Values;
+		}
+		else if(Spec.Type == ParameterType_Time)
+		{
+			std::vector<std::string> Values;
+			
+			parameter_value *At = DataSet->ParameterData + Offset;
+			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
+			{
+				s64 SecondsSinceEpoch = (*At).ValTime;
+				std::string Date = TimeString(SecondsSinceEpoch);
+				Values.push_back(Date);
+				At += ParametersInUnit;
+			}
+			
+			Json["parameters"][Spec.Name] = Values;
+		}
+	}
+	
+	std::ofstream Out(Filename);
+	Out << Json.dump(1,'\t') << std::endl;
+}
+
+static void
+ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	std::ifstream Ifs(Filename);
+	nlohmann::json JData;
+	Ifs >> JData;
+	
+	if(JData.find("index_sets") != JData.end())
+	{
+		for (nlohmann::json::iterator It = JData["index_sets"].begin(); It != JData["index_sets"].end(); ++It)
+		{
+			std::string IndexSetName = It.key();
+			
+			index_set_h IndexSet = GetIndexSetHandle(Model, IndexSetName.c_str());
+			const index_set_spec &Spec = Model->IndexSetSpecs[IndexSet.Handle];
+			
+			if(Spec.Type == IndexSetType_Basic)
+			{
+				std::vector<std::string> IndexNames = It->get<std::vector<std::string>>();
+				std::vector<token_string> IndexNames2;
+				for(std::string &Str : IndexNames) IndexNames2.push_back(Str.c_str());
+				
+				SetIndexes(DataSet, IndexSetName.c_str(), IndexNames2);
+			}
+			else if(Spec.Type == IndexSetType_Branched)
+			{
+				std::map<std::string, std::vector<std::string>> Indexes = It->get<std::map<std::string, std::vector<std::string>>>();
+				
+				std::vector<std::pair<token_string, std::vector<token_string>>> Inputs;
+				
+				for(auto &Branch : Indexes)
+				{
+					std::vector<token_string> IndexNames2;
+					for(std::string &Str : Branch.second) IndexNames2.push_back(Str.c_str());
+					Inputs.push_back({Branch.first.c_str(), IndexNames2});
+				}
+				
+				SetBranchIndexes(DataSet, IndexSetName.c_str(), Inputs);
+			}
+		}
+	}
+	
+	
+	//TODO: Actual parameter values!
+}
+
+

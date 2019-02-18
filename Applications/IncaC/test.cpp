@@ -33,22 +33,28 @@ int main()
 	AddINCACModel(Model);
 	
 	//ReadInputDependenciesFromFile(Model, InputFile);
-	ReadInputDependenciesFromJson(Model, "pretty.json");
+	//ReadInputDependenciesFromJson(Model, "pretty.json");
 	
 	EndModelDefinition(Model);
 	
 	inca_data_set *DataSet = GenerateDataSet(Model);
     
-	ReadParametersFromFile(DataSet, ParameterFile);
+	//ReadParametersFromFile(DataSet, ParameterFile);
+	ReadParametersFromJson(DataSet, "parameters.json");
     
+	
+	PrintIndexes(DataSet, "Landscape units");
+	PrintIndexes(DataSet, "Soils");
+	PrintIndexes(DataSet, "Reaches");
 	//ReadInputsFromFile(DataSet, InputFile);
-	ReadInputsFromJson(DataSet, "pretty.json");
+	//ReadInputsFromJson(DataSet, "pretty.json");
 	
-	WriteParametersToFile(DataSet, "newparams.dat");
+	//WriteParametersToFile(DataSet, "newparams.dat");
 	
-	WriteInputsToJson(DataSet, "pretty.json");
+	//WriteInputsToJson(DataSet, "pretty.json");
+	//WriteParametersToJson(DataSet, "parameters.json");
 	
-	PrintResultStructure(Model);
+	//PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);
 	//PrintInputStorageStructure(DataSet);
 	
@@ -56,5 +62,5 @@ int main()
 	//SetParameterValue(DataSet, "Timesteps", {}, (u64)100);
 	//SetParameterValue(DataSet, "Start date", {}, "1996-5-1"); //No water input in january, so difficult to see any effect of erosion or splash detachment
     
-	RunModel(DataSet);
+	//RunModel(DataSet);
 }

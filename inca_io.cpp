@@ -621,8 +621,8 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 				if(Token.Type == TokenType_QuotedString)
 				{
 					Token = Stream.ReadToken();
-					token_string InputName = Token.StringValue.Copy(); //TODO: Leaks, and there is no way to know if we should free it since it gets mixed with other input names that may be statically allocated. Need to make a better system.
-					RegisterInput(Model, InputName.Data);
+					token_string InputName = Token.StringValue.Copy(); //TODO: Leaks.
+					RegisterInput(Model, InputName.Data, true);
 				}
 				else break;
 			}

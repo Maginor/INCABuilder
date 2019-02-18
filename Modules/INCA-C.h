@@ -176,9 +176,10 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, SoilProcessRateModifier,
+		CURRENT_INDEX(Soils); //NOTE: Needed for compatibility with below when we don't use the soil moisture.
 		return 
-		pow(PARAMETER(SoilTemperatureRateMultiplier), RESULT(SoilTemperature) - PARAMETER(SoilTemperatureRateOffset)) *
-		SCurve(RESULT(WaterDepth), PARAMETER(ZeroRateDepth), PARAMETER(MaxRateDepth));
+		pow(PARAMETER(SoilTemperatureRateMultiplier), RESULT(SoilTemperature) - PARAMETER(SoilTemperatureRateOffset));
+		//* SCurve(RESULT(WaterDepth), PARAMETER(ZeroRateDepth), PARAMETER(MaxRateDepth));
 	)
 	
 	//NOTE: The following equations make a lot of assumptions about where you can and can not have percolation or infiltration excess!

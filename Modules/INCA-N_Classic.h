@@ -154,7 +154,7 @@ AddINCANClassicModel(inca_model *Model)
 		
 		if(INPUT(AirTemperature) > 0.0)
 		{
-			liquidPrecipitation = INPUT(ActualPrecipitation); // What?? This isn't even used!
+			liquidPrecipitation = INPUT(ActualPrecipitation); // NOTE: This isn't even used. Is there a mistake in the implementation here?
 		}
 		
 		double maxInfiltrationRate = PARAMETER(MaximumInfiltrationRate);
@@ -645,7 +645,7 @@ AddINCANClassicModel(inca_model *Model)
 	)
 
  
-	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru); //NOTE: What is the purpose of creating a new one??
+	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);
 
     auto ConvertMassToConcentration = RegisterEquation(Model, "Convert mass to concentration", Dimensionless);
 	SetSolver(Model, ConvertMassToConcentration, IncaSolver);
@@ -654,9 +654,8 @@ AddINCANClassicModel(inca_model *Model)
 	auto ReachFlowInput = RegisterEquation(Model, "Reach flow input", Cumecs);
 	auto InitialReachTimeConstant = RegisterEquationInitialValue(Model, "Initial reach time constant", Days);
 	auto ReachTimeConstant = RegisterEquation(Model, "Reach time constant", Days);
-	SetInitialValue(Model, ReachTimeConstant, InitialReachTimeConstant); //NOTE: Why initial value for a non-ode equation?
+	SetInitialValue(Model, ReachTimeConstant, InitialReachTimeConstant);
 	SetSolver(Model, ReachTimeConstant, IncaSolver);
-	//auto InitialStreamFlow = RegisterEquationInitialValue(Model, "Initial stream flow", Cumecs);
 	auto InitialReachFlow = RegisterEquationInitialValue(Model, "Initial reach flow", Cumecs);
 	auto ReachFlow = RegisterEquationODE(Model, "Reach flow", Cumecs);
 	SetInitialValue(Model, ReachFlow, InitialReachFlow);

@@ -187,6 +187,8 @@ struct input_spec
 	
 	unit_h Unit; //NOTE: Not currently used.
 	
+	bool IsAdditional;
+	
 	std::vector<index_set_h> IndexSetDependencies;
 };
 
@@ -743,12 +745,15 @@ SetParentGroup(inca_model *Model, parameter_group_h Child, parameter_group_h Par
 }
 
 inline input_h
-RegisterInput(inca_model *Model, const char *Name)
+RegisterInput(inca_model *Model, const char *Name, bool IsAdditional = false)
 {
 	REGISTRATION_BLOCK(Model)
 	
 	input_h Input = {};
 	REGISTER_MODEL_ENTITY(Model, Input, Input, Name)
+	
+	input_spec &Spec = Model->InputSpecs[Input.Handle];
+	Spec.IsAdditional = IsAdditional;
 	
 	return Input;
 }

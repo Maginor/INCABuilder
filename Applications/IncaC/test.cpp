@@ -12,10 +12,13 @@
 #include "../../Modules/INCA-C.h"
 
 
+#include "../../inca_json_io.cpp"
+
+
 int main()
 {
-    const char *InputFile     = "tarlandinputs.dat";
-	const char *ParameterFile = "tarlandparameters.dat";
+    const char *InputFile     = "langtjerninputs.dat";
+	const char *ParameterFile = "langtjernparameters.dat";
 	
 	
 	inca_model *Model = BeginModelDefinition("INCA-Sed", "0.0");
@@ -37,9 +40,12 @@ int main()
     
 	ReadParametersFromFile(DataSet, ParameterFile);
     
-	ReadInputsFromFile(DataSet, InputFile);
+	//ReadInputsFromFile(DataSet, InputFile);
+	ReadInputsFromJson(DataSet, "pretty.json");
 	
 	WriteParametersToFile(DataSet, "newparams.dat");
+	
+	WriteInputsToJson(DataSet, "pretty.json");
 	
 	PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);

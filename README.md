@@ -52,7 +52,7 @@ After understanding basic model building we also recommended you to learn the py
 
 
 
-The basic functionality of the INCABuilder system has no other library dependencies than the C++ standard library. However if you want to use more advanced solvers such as the boost odeint solvers, you have to download boost (and copy the header files to your compiler's .
+The basic functionality of the INCABuilder system has no other library dependencies than the C++ standard library. However if you want to use more advanced solvers such as the boost odeint solvers, you have to download boost (and copy the header files to your compiler's iclude directory).
 https://www.boost.org/
 You will not need to compile any of the boost libraries, we only use the header-only libraries.
 

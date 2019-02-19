@@ -52,6 +52,13 @@ struct token_stream
 		fseek(File, 0, SEEK_END);
 		FileDataLength = ftell(File);
 		fseek(File, 0, SEEK_SET);
+		
+		if(FileDataLength == 0)
+		{
+			fclose(File);
+			INCA_FATAL_ERROR("ERROR: File " << Filename << " has 0 length.");
+		}
+		
 		FileData = (char *)malloc(FileDataLength + 1);
 		if(FileData)
 		{
@@ -60,17 +67,15 @@ struct token_stream
 		}
 		fclose(File);
 		
-		AtChar = -1;
-		
-		StartLine = 0; StartColumn = 0; Line = 0; Column = 0; PreviousColumn = 0;
-		AtToken = -1;
-		
-		//std::cout << "length: " << FileDataLength << " end is " << (const char*)((FileData + (FileDataLength - 400))) << std::endl;
-		
 		if(!FileData)
 		{
 			INCA_FATAL_ERROR("Unable to allocate enough memory to read in file " << Filename << std::endl);
 		}
+		
+		AtChar = -1;
+		
+		StartLine = 0; StartColumn = 0; Line = 0; Column = 0; PreviousColumn = 0;
+		AtToken = -1;
 		
 		Tokens.reserve(500); //NOTE: This will usually speed things up.
 	}
@@ -295,7 +300,7 @@ token_stream::ReadTokenInternal_()
 		{
 			if(c == '"' && Token.StringValue.Length > 0)
 			{
-				Token.StringValue.Length--; //NOTE: Don't record this " in the string value.
+				Token.StringValue.Length--; //NOTE: Don't record the " in the string value.
 				
 				//std::cout << Token.StringValue << std::endl;
 				
@@ -459,6 +464,7 @@ token_stream::ReadTokenInternal_()
 		
 		Token.UIntValue = BeforeComma;
 		
+		//NOTE: Alternatively, we could also just use sscanf(Token.StringValue, "%f", &Token.DoubleValue), which may do a better job at this than us..
 		double BC = (double)BeforeComma;
 		double AC = (double)AfterComma;
 		for(size_t I = 0; I < DigitsAfterComma; ++I) AC *= 0.1;
@@ -633,7 +639,7 @@ token_stream::ReadParameterSeries(std::vector<parameter_value> &ListOut, paramet
 			ListOut.push_back(Value);
 		}
 	}
-	else assert(0);  //NOTE: This should be caught by the library implementer. Signifies that a new parameter type was added without being handled here
+	else assert(0);  //NOTE: This should be caught by the library implementer. Signifies that this was called with either a Type==ParameterType_Time or a possibly new type that is not handled yet?
 	
 	//NOTE: Date values have to be handled separately since we can't distinguish them from quoted strings...
 	// TODO: Make separate format for dates?

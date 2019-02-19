@@ -5,8 +5,8 @@ static int Dll_GlobalErrorCode = 0;
 std::stringstream Dll_GlobalErrstream;
 
 #define INCA_PARTIAL_ERROR(Msg) \
-	Dll_GlobalErrstream << Msg; \
-	Dll_GlobalErrorCode = 1;
+	{Dll_GlobalErrstream << Msg; \
+	Dll_GlobalErrorCode = 1;}
 	
 #define INCA_FATAL_ERROR(Msg) \
 	{INCA_PARTIAL_ERROR(Msg) \
@@ -30,11 +30,11 @@ DLLEXPORT int
 DllEncounteredError(char *ErrmsgOut)
 {
 	std::string ErrStr = Dll_GlobalErrstream.str();
-	strcpy(ErrmsgOut, ErrStr.data());
+	strcpy(ErrmsgOut, ErrStr.c_str());
 	
 	int Code = Dll_GlobalErrorCode;
 	
-	//NOTE: Since Jupyter does not seem to reload the dll when you restart it (normally), we have to clear this.
+	//NOTE: Since IPython does not seem to reload the dll when you restart it (normally), we have to clear this.
 	Dll_GlobalErrorCode = 0;
 	Dll_GlobalErrstream.clear();
 	

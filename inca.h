@@ -19,7 +19,8 @@ TODOs:
 	- Allow certain values to either be a parameter, input series or result, depending on model settings?
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
-*/
+	- Better convenience accessors for the DataSet so that io code does not have to understand the inner structure of the DataSet that much.
+	*/
 
 
 #ifndef INCA_H
@@ -64,7 +65,7 @@ typedef size_t index_t;
 //NOTE: We allow the error handling to be replaced by the application. This is for instance useful for the python wrapper.
 #if !defined(INCA_PARTIAL_ERROR)
 	#define INCA_PARTIAL_ERROR(Msg) \
-		std::cerr << Msg;
+		std::out << Msg;                  //Should probably be std::cerr, but right now INCAView does not listen to that channel, and will not pick it up.
 #endif
 
 #if !defined(INCA_FATAL_ERROR)	

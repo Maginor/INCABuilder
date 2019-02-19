@@ -12,7 +12,7 @@
 #include "../../Modules/INCA-C.h"
 
 
-#include "../../inca_json_io.cpp"
+//#include "../../inca_json_io.cpp"
 
 
 int main()
@@ -32,35 +32,31 @@ int main()
 	AddSoilTemperatureModel(Model);
 	AddINCACModel(Model);
 	
-	//ReadInputDependenciesFromFile(Model, InputFile);
+	ReadInputDependenciesFromFile(Model, InputFile);
 	//ReadInputDependenciesFromJson(Model, "pretty.json");
 	
 	EndModelDefinition(Model);
 	
 	inca_data_set *DataSet = GenerateDataSet(Model);
     
-	//ReadParametersFromFile(DataSet, ParameterFile);
-	ReadParametersFromJson(DataSet, "parameters.json");
+	ReadParametersFromFile(DataSet, ParameterFile);
+	//ReadParametersFromJson(DataSet, "parameters.json");
     
 	
-	PrintIndexes(DataSet, "Landscape units");
-	PrintIndexes(DataSet, "Soils");
-	PrintIndexes(DataSet, "Reaches");
-	//ReadInputsFromFile(DataSet, InputFile);
+	//PrintIndexes(DataSet, "Landscape units");
+	//PrintIndexes(DataSet, "Soils");
+	//PrintIndexes(DataSet, "Reaches");
+	ReadInputsFromFile(DataSet, InputFile);
 	//ReadInputsFromJson(DataSet, "pretty.json");
 	
 	//WriteParametersToFile(DataSet, "newparams.dat");
 	
 	//WriteInputsToJson(DataSet, "pretty.json");
-	WriteParametersToJson(DataSet, "parameters.json");
+	//WriteParametersToJson(DataSet, "parameters.json");
 	
-	//PrintResultStructure(Model);
+	PrintResultStructure(Model);
 	//PrintParameterStorageStructure(DataSet);
 	//PrintInputStorageStructure(DataSet);
-	
-	
-	//SetParameterValue(DataSet, "Timesteps", {}, (u64)100);
-	//SetParameterValue(DataSet, "Start date", {}, "1996-5-1"); //No water input in january, so difficult to see any effect of erosion or splash detachment
     
-	//RunModel(DataSet);
+	RunModel(DataSet);
 }

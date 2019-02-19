@@ -59,11 +59,14 @@ parameters:
 "Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
 20 20
 
-"Zero rate depth" :     #(mm) [0, 10000] The minimal water depth at which carbon processes in the soil occur
+"Min rate depth" :     #(mm) [0, 10000] The minimal water depth at which carbon processes in the soil occur
 20 20
 
 "Max rate depth" :     #(mm) [0, 10000] The water depth at which carbon processes in the soil are at their highest rate
-200 200
+400 400
+
+"Min moisture factor" :
+0.05 0.05
 
 "Litter fall rate" :     #(g/m^2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 58.5 6.6
@@ -72,13 +75,13 @@ parameters:
 1 1
 
 "Litter fall duration" :     #(day) [0, 365]
-366 366
+365 365
 
 "Root breakdown rate" :     #(g/m^2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0 0
 
 "Soil temperature rate multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
-1 1
+1.1 1.1
 
 "Soil temperature rate offset" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
 20 20
@@ -183,7 +186,7 @@ false false false false
 "Time constant" :     #(days) [0.1, 9999] The inverse of the rate at which water flows out of a box
 1 1
 1 1
-70 70
+65 65
 70 70
 
 "Evapotranspiration adjustment" :     #(dimensionless) [0, 10] A factor to slow the rate of evapotranspiration when the depth of water in a box is below the retained water depth. Special  values include 0 (no slowing of evapotranspiration, 1 (slowing is proportional to the depth of water remaining in the bucket) and values above 10 (all evapotranspiration effectively stops when the depth of water is below the retained water depth)

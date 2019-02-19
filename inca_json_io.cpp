@@ -88,18 +88,7 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 	
 	u64 Timesteps = DataSet->InputDataTimesteps;
 	
-	
-	s64 StartDateS;
-	if(DataSet->InputDataHasSeparateStartDate)
-	{
-		StartDateS = DataSet->InputDataStartDate;
-	}
-	else
-	{
-		StartDateS = GetStartDate(DataSet);
-	}
-	
-	std::string StartDate = TimeString(StartDateS);
+	std::string StartDate = TimeString(GetInputStartDate(DataSet));
     
 	json Json = {
 				{"creation_date", CreationDate},
@@ -389,7 +378,6 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 		}
 	}
 	
-	//TODO: Find crash bug here..
 	if(JData.find("parameters") != JData.end())
 	{
 		if(!DataSet->ParameterData) AllocateParameterStorage(DataSet);

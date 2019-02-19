@@ -422,6 +422,16 @@ GetStartDate(inca_data_set *DataSet)
 	return 0; //I.e. 1970-1-1
 }
 
+inline s64
+GetInputStartDate(inca_data_set *DataSet)
+{
+	if(DataSet->InputDataHasSeparateStartDate)
+	{
+		return DataSet->InputDataStartDate;
+	}
+	return GetStartDate(DataSet);
+}
+
 static u64
 GetTimesteps(inca_data_set *DataSet)
 {

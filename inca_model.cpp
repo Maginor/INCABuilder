@@ -1124,39 +1124,39 @@ INNER_LOOP_BODY(RunInnerLoop)
 				//NOTE: This lambda is the "equation function" of the solver. It solves the set of equations once given the values in the working sets x0 and wk. It can be run by the SolverFunction many times.
 				auto EquationFunction =
 				[ValueSet, Model, &Batch](double *x0, double* wk)
-					{	
-						size_t EquationIdx = 0;
-						//NOTE: Read in initial values of the ODE equations to the CurResults buffer to be accessible from within the batch equations using RESULT(H).
-						//NOTE: Values are not written to ResultData before the entire solution process is finished. So during the solver process one can ONLY read intermediary results from equations belonging to this solver using RESULT(H), never RESULT(H, Idx1,...) etc. However there is no reason one would want to do that any way.
-						for(equation_h Equation : Batch.EquationsODE)
-						{
+				{	
+					size_t EquationIdx = 0;
+					//NOTE: Read in initial values of the ODE equations to the CurResults buffer to be accessible from within the batch equations using RESULT(H).
+					//NOTE: Values are not written to ResultData before the entire solution process is finished. So during the solver process one can ONLY read intermediary results from equations belonging to this solver using RESULT(H), never RESULT(H, Idx1,...) etc. However there is no reason one would want to do that any way.
+					for(equation_h Equation : Batch.EquationsODE)
+					{
 #if INCA_TEST_FOR_NAN
-							NaNTest(Model, ValueSet, x0[EquationIdx], Equation);
+						NaNTest(Model, ValueSet, x0[EquationIdx], Equation);
 #endif
-							ValueSet->CurResults[Equation.Handle] = x0[EquationIdx];
-							++EquationIdx;
-						}
-						
-						//NOTE: Solving basic equations tied to the solver. Values should NOT be written to the working set. They can instead be accessed from inside other equations in the solver batch using RESULT(H)
-						for(equation_h Equation : Batch.Equations)
-						{
-							double ResultValue = CallEquation(Model, ValueSet, Equation);
+						ValueSet->CurResults[Equation.Handle] = x0[EquationIdx];
+						++EquationIdx;
+					}
+					
+					//NOTE: Solving basic equations tied to the solver. Values should NOT be written to the working set. They can instead be accessed from inside other equations in the solver batch using RESULT(H)
+					for(equation_h Equation : Batch.Equations)
+					{
+						double ResultValue = CallEquation(Model, ValueSet, Equation);
 #if INCA_TEST_FOR_NAN
-							NaNTest(Model, ValueSet, ResultValue, Equation);
+						NaNTest(Model, ValueSet, ResultValue, Equation);
 #endif
-							ValueSet->CurResults[Equation.Handle] = ResultValue;
-						}
+						ValueSet->CurResults[Equation.Handle] = ResultValue;
+					}
+					
+					//NOTE: Solving ODE equations tied to the solver. These values should be written to the working set.
+					EquationIdx = 0;
+					for(equation_h Equation : Batch.EquationsODE)
+					{
+						double ResultValue = CallEquation(Model, ValueSet, Equation);
+						wk[EquationIdx] = ResultValue;
 						
-						//NOTE: Solving ODE equations tied to the solver. These values should be written to the working set.
-						EquationIdx = 0;
-						for(equation_h Equation : Batch.EquationsODE)
-						{
-							double ResultValue = CallEquation(Model, ValueSet, Equation);
-							wk[EquationIdx] = ResultValue;
-							
-							++EquationIdx;
-						}
-					};
+						++EquationIdx;
+					}
+				};
 				
 				inca_solver_jacobi_function JacobiFunction = nullptr;
 				if(SolverSpec.UsesJacobian)
@@ -1347,14 +1347,10 @@ RunModel(inca_data_set *DataSet)
 		std::cout << "WARNING: No input values were specified, using input values of 0 only." << std::endl;
 	}
 	
-	s64 InputDataStartOffsetTimesteps = 0;
-	if(DataSet->InputDataHasSeparateStartDate)
+	s64 InputDataStartOffsetTimesteps = DayOffset(GetInputStartDate(DataSet), ModelStartTime); //NOTE: Only one-day timesteps currently supported.
+	if(InputDataStartOffsetTimesteps < 0)
 	{
-		InputDataStartOffsetTimesteps = DayOffset(DataSet->InputDataStartDate, ModelStartTime); //NOTE: Only one-day timesteps currently supported.
-		if(InputDataStartOffsetTimesteps < 0)
-		{
-			INCA_FATAL_ERROR("ERROR: The input data starts at a later date than the model run." << std::endl);
-		}
+		INCA_FATAL_ERROR("ERROR: The input data starts at a later date than the model run." << std::endl);
 	}
 	
 	if(((s64)DataSet->InputDataTimesteps - InputDataStartOffsetTimesteps) < (s64)Timesteps)
@@ -1402,7 +1398,7 @@ RunModel(inca_data_set *DataSet)
 		}
 	}
 	if(!DataSet->x0) DataSet->x0 = AllocClearedArray(double, MaxODECount);
-	if(!DataSet->wk) DataSet->wk = AllocClearedArray(double, 4*MaxODECount); //TODO: This size is specifically for IncaDascru. Other solvers may have other needs for storage, so this 4 should not be hard coded.
+	if(!DataSet->wk) DataSet->wk = AllocClearedArray(double, 4*MaxODECount); //TODO: This size is specifically for IncaDascru. Other solvers may have other needs for storage, so this 4 should not be hard coded. Note however that the Boost solvers use their own storage, so this is not an issue in that case.
 	
 	
 

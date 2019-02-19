@@ -21,7 +21,7 @@ int main()
 	const char *ParameterFile = "langtjernparameters.dat";
 	
 	
-	inca_model *Model = BeginModelDefinition("INCA-Sed", "0.0");
+	inca_model *Model = BeginModelDefinition("INCA-C", "0.0");
 	
 	auto Days   = RegisterUnit(Model, "days");
 	auto System = RegisterParameterGroup(Model, "System");

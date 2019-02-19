@@ -160,3 +160,5 @@ EstimateJacobian(double *X, inca_matrix_insertion_function & MatrixInserter, dou
 #endif
 	//printf("end matrix\n");
 }
+
+#undef USE_JACOBIAN_OPTIMIZATION

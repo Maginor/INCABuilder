@@ -326,16 +326,8 @@ DllGetInputStartDate(void *DataSetPtr, char *WriteTo)
 	//IMPORTANT: This is NOT thread safe since TimeString is not thread safe.
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	
-	if(DataSet->InputDataHasSeparateStartDate)
-	{
-		s64 SecondsSinceEpoch = DataSet->InputDataStartDate;
-		char *TimeStr = TimeString(SecondsSinceEpoch);
-		strcpy(WriteTo, TimeStr);
-	}
-	else
-	{
-		DllGetParameterTime(DataSetPtr, "Start date", 0, 0, WriteTo);
-	}
+	char *TimeStr = TimeString(GetInputStartDate(DataSet));
+	strcpy(WriteTo, TimeStr);
 	
 	CHECK_ERROR_END
 }

@@ -392,6 +392,8 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 	//TODO: Find crash bug here..
 	if(JData.find("parameters") != JData.end())
 	{
+		if(!DataSet->ParameterData) AllocateParameterStorage(DataSet);
+		
 		for (nlohmann::json::iterator It = JData["parameters"].begin(); It != JData["parameters"].end(); ++It)
 		{
 			std::string ParameterName = It.key();

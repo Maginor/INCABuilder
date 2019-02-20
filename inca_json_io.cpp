@@ -157,7 +157,6 @@ ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
  
 	if (JData.find("timesteps") != JData.end())
 	{
-		//data.timesteps = jData["timesteps"];
 		DataSet->InputDataTimesteps = (u64)JData["timesteps"].get<u64>();
 	}
 	else
@@ -174,6 +173,7 @@ ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
 		
 		if(!Success)
 		{
+			INCA_PARTIAL_ERROR("ERROR: In file " << Filename << ": ");
 			INCA_FATAL_ERROR("Unrecognized date format \"" << DateStr << "\". Supported format: Y-m-d" << std::endl);
 		}
 		

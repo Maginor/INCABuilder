@@ -16,7 +16,7 @@ INCABuilder is a reimplementation and extension of the functionality that was pr
 
 The implementations of PERSiST, INCA-N and INCA-N-Classic are translated from biogeochemistry/INCA/
 
-Documentation is still under development and will be added gradually. For a start, see the quick start guide below and the tutorials.
+Documentation can be found in the Documentation folder. This documentation is however still under development, and will be added gradually. For a start, see the quick start guide below and the tutorials.
 
 
 Developed by by Magnus Dahler Norling

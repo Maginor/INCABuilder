@@ -4,7 +4,7 @@ index_sets:
 "Reaches" : {"Mjaer1"}
 
 parameters:
-###################### (no indexers) ######################
+###################### (no index sets) ######################
 "Timesteps" :
 100
 

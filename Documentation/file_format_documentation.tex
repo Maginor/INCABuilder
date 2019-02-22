@@ -9,6 +9,11 @@
 
 \usepackage{amsthm}
 
+\usepackage{natbib}
+
+\setlength\parindent{0pt}
+\setlength\parskip{5pt}
+
 \usepackage{listings}
 \lstset{
 basicstyle=\small\ttfamily,
@@ -250,7 +255,7 @@ The parameter "Percolation matrix" indexes over the index sets "Landscape units"
 1.0 0.6 0.4
 0.0 0.0 1.0
 \end{lstlisting}
-The landscape unit signifies which block matrix you are in (the first block matrix is for "Forest", the second for "Agricultural"). The first soil index is the row, while the second is the column. In this case, the "Percolation matrix" of each landscape unit appears exactly as they are specified in the PERSiST model (\#TODO: CITE).
+The landscape unit signifies which block matrix you are in (the first block matrix is for "Forest", the second for "Agricultural"). The first soil index is the row, while the second is the column. In this case, the "Percolation matrix" of each landscape unit appears exactly as they are specified in the PERSiST model \cite{futter14}.
 \end{example}
 
 The general rule for the order values appear in is that you index over the rightmost index set first, then the next to the left, then the next to the left and so on.
@@ -457,6 +462,9 @@ Json (Javascript object notation)  is another text format that follows a standar
 Sqlite is a database format. This format is typically used to communicate with INCAView.
 
 \#TODO Complete the description!
+
+\bibliographystyle{plain}
+\bibliography{citations}
 
 \end{document}
 

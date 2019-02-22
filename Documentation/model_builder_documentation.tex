@@ -5,18 +5,42 @@
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{enumerate}
+\usepackage{gensymb}
 
-\usepackage{amsthm}
+\usepackage{amsthm, amsmath}
 
 \usepackage{array}
 
+\usepackage{natbib}
+
+\setlength\parindent{0pt}
+\setlength\parskip{5pt}
+
 \usepackage{listings}
-\lstset{
+
+\lstdefinestyle{textstyle}{
 basicstyle=\small\ttfamily,
 columns=flexible,
-breaklines=true,,
+breaklines=true,
 stepnumber=1,
 }
+
+\definecolor{bulgarianrose}{rgb}{0.28, 0.02, 0.03}
+\definecolor{bluepigment}{rgb}{0.2, 0.2, 0.6}
+\definecolor{burgundy}{rgb}{0.5, 0.0, 0.13}
+
+\lstdefinestyle{mycpp}{
+language=C++,
+style=textstyle,
+keywordstyle=\color{bluepigment},
+stringstyle=\color{burgundy},
+commentstyle=\color{bulgarianrose},
+%morecomment=[l][\color{bulgarianrose}]{\#},
+directivestyle=\color{burgundy},
+}
+
+
+
 
 \definecolor{silver}{gray}{0.9}
 
@@ -97,16 +121,26 @@ The dataset contains information about the specific setup of a model. This inclu
 
 \subsection{Index sets and indexes}
 
-Index sets is one of the fundamental concepts in the INCABuilder framework [Description!!].
+Index sets is one of the fundamental concepts in the INCABuilder framework. Examples of index sets can be "Reaches", or "Landscape units". Parameters, equation results and inputs can index over index sets, so that the same equation is evaluated for many indexes, and with different parameter values.
+
+\begin{example}
+The equation "Snow fall" depends on the input timeseries "Actual precipitation" and "Air temperature", and on the parameter "Canopy interception". Say that "Canopy interception" indexes over the index set "Landscape units". In this case, "Snow fall" will be evaluated once per index in the "Landscape units" index set, using the corresponding parameter value of "Canopy interception". If one of the inputs also index over "Reaches", then "Snow fall" will be evaluated once per reach-landscape unit pair, and so on.
+\end{example}
 
 Which index sets each model has is fixed, and determined by the model developer. However, which indexes each index set contains can usually be determined by the model user, for instance by configuring a parameter file. Some model do however require a fixed set of particular indexes for some of its index sets. For instance INCA-N only works with three soil boxes, while INCA-C works with four.
 
+There are two types of index sets
+\begin{enumerate}[i]
+\item Basic index sets. These have no additional structure.
+\item Branched index sets. These contain additional connectivity information, and are typically used to encode river structures. Each index in a branched index set has a list of incoming branches, which are other indexes in the same index set.
+\end{enumerate}
+
 \subsection{Parameter structure}
-Each parameter belongs to a parameter group, which again can belong to another parameter group and so on. Moreover, each parameter group can index over an index set. This means that each parameter can in practice be viewed as a multidimensional array of parameter values, where each dimension in the array is indexed by one of the model's index sets. It is possible for a parameter to index over the same index set multiple times. For instance, PERSiST has a "Percolation matrix" parameter where both the row and column in the matrix is indexed by the soil box.
+Each parameter belongs to a parameter group, which again can belong to another parameter group and so on. Moreover, each parameter group can index over an index set. This means that each parameter can in practice be viewed as a multidimensional array of parameter values, where each dimension in the array is indexed by one of the model's index sets. It is possible for a parameter to index over the same index set multiple times. For instance, the PERSiST hydrology model \cite{futter14} has a "Percolation matrix" parameter where both the row and column in the matrix is indexed by the soil box.
 
 \begin{example}
 A PERSiST "Percolation matrix", from a parameter file. (See separate documentation for detailed description of the parameter file format).
-\begin{lstlisting}
+\begin{lstlisting}[style=textstyle]
 "Percolation matrix" :
 0.2 0.8 0.0
 1.0 0.5 0.5
@@ -128,8 +162,8 @@ An input is a timeseries (usually of measured data or preprocessed based on meas
 During the main run of the model, the model will for each timestep evaluate all equations (sometimes called state variables) in a given order. Equations can also be evaluated for multiple indexes. For instance the equations having to do with flow or volume of the reach are evaluated for each reach index. Equations are sorted so that an equation is always evaluated after other equations that it uses the result values of. To facilitate this, the model builds an equation batch structure.
 
 \begin{example}\label{ex:persiststructure}
-The equation batch structure for PERSiST.
-\begin{lstlisting}
+The equation batch structure for the framework implementation of PERSiST.
+\begin{lstlisting}[style=textstyle]
 **** Result Structure ****
 [Reaches][Landscape units]
         -----
@@ -189,7 +223,7 @@ The only time a batch group can have more than one batch is if it contains both 
 
 \begin{example}
 Pseudocode for how the model evaluates the batch structure in Example \ref{ex:persiststructure}.
-\begin{lstlisting}
+\begin{lstlisting}[style=textstyle]
 for every timestep:
 	for every reach R:
 		for every landscape unit LU:
@@ -209,6 +243,285 @@ for every timestep:
 \end{example}
 
 At the end of a model run, one can extract a timeseries of each of these equations for any combination of indexes that they index over. For instance one can look at the timeseries for "Snow melt" in \{"Langtjern", "Forest"\}, or the timeseries for "Water depth" in \{"Langtjern", "Peatland", "Organic soil layer"\} (given that these were indexes provided for this particular dataset).
+
+Unlike parameters, equations can never index over one index set more than once. We will go through how the index sets of an equation is determined and how it is placed in a batch structure later.
+
+\section{Model building}
+
+\subsection{Setting up a project and creating a model object}
+
+We refer to the quick start guide on the front page of the github repository as well as the tutorials on how to quickly get a project started.
+
+Usually you will have one header (.h) file with the procedures you use to build your model, and one source file (.cpp) with the main functio of the C++ program, where you do all application-level operations such as creating and destroying model and dataset objects or reading in parameter values from files, running the model and so on.
+
+\begin{example}\label{ex:examplemain}
+Example of a main.cpp
+\begin{lstlisting}[style=mycpp]
+#define INCA_PRINT_TIMING_INFO 1
+
+#include "../inca.h"   //NOTE: This path is relative to the location of this file
+#include "mymodel.h"
+
+int main()
+{
+	const char *InputFile = "mytestinputs.dat";
+	const char *ParFile    = "mytestparameters.dat";
+
+	inca_model *Model = BeginModelDefinition();
+	
+	AddTestModel(Model);
+	
+	ReadInputDependenciesFromFile(Model, InputFile);
+
+	EndModelDefinition(Model);
+
+	PrintResultStrucuture(Model);
+
+	inca_data_set *DataSet = GenerateDataSet(Model);
+
+	ReadParametersFromFile(DataSet, ParFile);
+	ReadInputsFromFile(DataSet, InputFile);
+
+	RunModel(DataSet);
+
+	u64 Timesteps = GetTimesteps(DataSet);
+	PrintResultSeries(DataSet, "AX", {}, Timesteps);
+}
+
+\end{lstlisting}
+\end{example}
+
+\begin{example}
+mymodel.h
+\begin{lstlisting}[style=mycpp]
+static void
+AddTestModel(inca_model *Model)
+{
+	auto Days = RegisterUnit(Model, "days");
+	auto Dimensionless = RegisterUnit(Model);
+
+	auto System = RegisterParameterGroup(Model, "System");
+	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
+	RegisterParameterDate(Model, System, "Start date", "1980-1-1");
+
+	auto X = RegisterInput(Model, "X");
+	auto A = RegisterParameterDouble(Model, System, "A", Dimensionless, 1.0);
+
+	auto AX = RegisterEquation(Model, "AX", Dimensionless);
+
+	EQUATION(Model, AX,
+		return PARAMETER(A) * INPUT(X);
+	)
+}
+\end{lstlisting}
+\end{example}
+
+\begin{example}
+mytestparameters.dat
+\begin{lstlisting}[style=textstyle]
+parameters:
+"Timesteps":
+10
+
+"Start date":
+"2019-02-22"
+
+"A":
+5.0
+\end{lstlisting}
+\end{example}
+
+\begin{example}
+mytestinputs.dat
+\begin{lstlisting}[style=textstyle]
+timesteps:
+10
+
+inputs:
+"X":
+1 2 3 4 5 6 7 8 9 10
+\end{lstlisting}
+\end{example}
+
+Example \ref{ex:examplemain} shows a main function that you can usually keep unchanged throughout model development. The only thing you may want to change in it is the debug printout ({\tt PrintResultSeries}) at the end, to print out different debug result series. Your main model development will happen inside {\tt mymodel.h} (which you can name anything you like). You will also have to update your parameter and input files as the model requirements change. The parameter file can be autogenerated, something that is explained in the tutorials.
+
+\subsection{Entity registration, handles, and equation bodies}
+
+The {\tt inca\_model} object contains lists of various model entities (see Table \ref{tab:modelentity} for an explanaition) and information about these. It is the model developers job to register all the entities and provide the needed information for each one.
+
+\begin{example}\label{ex:registration}
+Example of entity registration.
+\begin{lstlisting}[style=mycpp]
+auto X = RegisterInput(Model, "X");
+auto A = RegisterParameterDouble(Model, System, "A", Dimensionless, 1.0);
+\end{lstlisting}
+The input "X" is tied to the model and is given the name "X". The parameter (of type double) is tied to the Model, the parameter group System, given the name "A", the unit Dimensionless, and the default value 1.0. A full model building API describing all the registration functions will be given later.
+\end{example}
+
+Each registration function returns a handle. In Example \ref{ex:registration }, the handles are {\tt X} and {\tt A} (declared with {\tt auto} to signify that we don't care about their exact type). Handles are "tickets" one can use to talk about an entity one has already registered. If you provide the handle {\tt A} in the context of extracting a parameter value, the model will know that you are talking about the parameter "A" that you registered earlier.
+
+Every equation in the model also receives an equation body, and inside the equation body one can reference the values of registered parameters, inputs and equations by referring to them by their handle.
+
+\begin{example}\label{ex:equation}
+The equation "AX" references the value of the parameter "A" and the input "X" by using the handles returned from the registration of those entities.
+\begin{lstlisting}[style=mycpp]
+auto AX = RegisterEquation(Model, "AX", Dimensionless);
+EQUATION(Model, AX,
+	return PARAMETER(A) * INPUT(X);
+)
+\end{lstlisting}
+\end{example}
+
+\begin{note}
+If you are confused by the syntax of declaring an equation body because it does not look like valid C++, don't worry. {\tt EQUATION} is a macro that expands to declaring a C++11 lambda that is then stored in the {\tt Model} object. The macro is needed to hide some of the underlying functionality, like what object the {\tt PARAMETER} and {\tt INPUT} accessors read their values from, so that the model builder does not have to type too much repetitive code all the time.
+\end{note}
+
+\subsection{Implementing a mathematical model in INCABuilder}
+
+The SimplyP model \cite{jackson-blake17} uses the following very simple snow model.
+
+\begin{table}[H]
+\centering
+\label{tab:simplypsnow}
+\begin{tabular}{|lllllll|}
+\hline
+Symbol & Type & Units & Description & Default & Min & Max \\
+\hline
+$D_{snow,0}$ & parameter & $mm$                                    & Initial snow depth & 0.0 & 0.0 & 10000.0\\
+$f_{DDSM}$    & parameter & $mm\, d^{-1}\, \degree C^{-1}$ & Degree-day factor for snowmelt & 2.74 &1.6 & 6\\
+\hline
+$Pptn$            & input         &  $mm\, d^{-1}$                     & Precipitation & & & \\
+$T_{air}$        & input         & $\degree C$                           & Air temperature & & & \\
+\hline
+$P_{snow}$   & state variable &  $mm\, d^{-1}$               & Precipitation falling as snow & & & \\
+$P_{rain}$     & state variable &   $mm\, d^{-1}$              & Precipitation falling as rain & & & \\
+$P_{melt}$   & state variable &  $mm\, d^{-1}$                & Snow melt & & & \\
+$D_{snow}$   & state variable & $mm$                                & Snow depth (water equivalents) & & & \\
+$P$               & state variable &  $mm\, d^{-1}$                & Hydrological input to soil & & &\\
+\hline
+\end{tabular}
+\caption{SimplyP snow parameters and state variables}
+\end{table}
+The state variables are given by the following equations
+\begin{align*}
+P_{snow} &= \begin{cases}
+0 & \mbox{ if }T_{air} > 0\\
+Pptn & \mbox{ otherwise.}
+\end{cases}\\
+P_{rain} &= \begin{cases}
+0 & \mbox{ if }T_{air} <= 0\\
+Pptn & \mbox{ otherwise.}
+\end{cases}\\
+P_{melt,t} &= \min(D_{snow,t-1},  \,\max(0, f_{DDSM}T_{air}))\\
+D_{snow,t} &= D_{snow,t-1}-P_{melt,t}\\
+P &= P_{rain} + P_{melt}
+\end{align*}
+Say that one also wants a different initial snow depth and degree-day factor for each reach (subcatchment). First one has to register all of the model entities.
+\begin{example}
+Declaration of model entities for the SimplyP snow module.
+\begin{lstlisting}[style=mycpp]
+auto Mm                = RegisterUnit(Model, "mm");
+auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
+auto MmPerDay          = RegisterUnit(Model, "mm/day");
+
+auto Reach = RegisterIndexSetBranched(Model, "Reaches");
+
+auto Snow = RegisterParameterGroup(Model, "Snow", Reach);
+
+auto InitialSnowDepth        = RegisterParameterDouble(Model, Snow, "Initial snow depth", Mm, 0.0, 0.0, 10000.0);
+auto DegreeDayFactorSnowmelt = RegisterParameterDouble(Model, Snow, "Degree-day factor for snowmelt", MmPerDegreePerDay, 2.74, 1.6, 6.0);
+
+auto Precipitation  = RegisterInput(Model, "Precipitation");
+auto AirTemperature = RegisterInput(Model, "Air temperature");
+
+auto PrecipitationFallingAsSnow = RegisterEquation(Model, "Precipitation falling as snow", MmPerDay);
+auto PrecipitationFallingAsRain = RegisterEquation(Model, "Precipitation falling as rain", MmPerDay);
+auto PotentialDailySnowmelt     = RegisterEquation(Model, "Potential daily snowmelt", MmPerDay);
+auto SnowMelt                   = RegisterEquation(Model, "Snow melt", MmPerDay);
+auto SnowDepth                  = RegisterEquation(Model, "Snow depth", Mm);
+auto HydrologicalInputToSoilBox = RegisterEquation(Model, "Hydrological input to soil box", MmPerDay);
+
+SetInitialValue(Model, SnowDepth, InitialSnowDepth);
+\end{lstlisting}
+\end{example}
+
+Note that we also use the {\tt SetInitialValue} procedure to tell the model that "Snow depth" should have initial value "Initial snow depth". The value of "Initial snow depth" is not yet determined, but it will be read from a parameter file before one runs the model. We have also added the state variable "Potential daily snowmelt" as a partial calculation used in "Snow melt", however that is not strictly necessary. Next one provides the equation bodies.
+
+\begin{example}\label{ex:simplypequations}
+Equation bodies for the SimplyP snow module.
+\begin{lstlisting}[style=mycpp]
+EQUATION(Model, PrecipitationFallingAsSnow,
+	double precip = INPUT(Precipitation);
+	return (INPUT(AirTemperature) < 0) ? precip : 0.0;
+)
+
+EQUATION(Model, PrecipitationFallingAsRain,
+	double precip = INPUT(Precipitation);
+	return (INPUT(AirTemperature) > 0) ? precip : 0.0;
+)
+
+EQUATION(Model, PotentialDailySnowmelt,
+	return Max(0.0, PARAMETER(DegreeDayFactorSnowmelt) * INPUT(AirTemperature));
+)
+
+EQUATION(Model, SnowMelt,
+	return Min(LAST_RESULT(SnowDepth), RESULT(PotentialDailySnowmelt));
+)
+
+EQUATION(Model, SnowDepth,
+	return LAST_RESULT(SnowDepth) + RESULT(PrecipitationFallingAsSnow) - RESULT(SnowMelt);
+)
+
+EQUATION(Model, HydrologicalInputToSoilBox,
+	return RESULT(SnowMelt) + RESULT(PrecipitationFallingAsRain);
+)
+\end{lstlisting}
+\end{example}
+
+In Example \ref{ex:simplypequations} we see that {\tt RESULT} refers to the value of that equation for the current timestep, while {\tt LAST\_RESULT} refers to the value from the previous timestep. Looking at the model result structure that is printed using the {\tt PrintModelResultStructure} procedure, we see the following.
+
+\begin{example}
+Model result structure for the SimplyP snow module.
+\begin{lstlisting}[style=textstyle]
+[]
+        -----
+        Precipitation falling as snow
+        Precipitation falling as rain
+        -----
+
+[Reaches]
+        -----
+        Potential daily snowmelt
+        Snow melt
+        Snow depth
+        Hydrological input to soil box
+        -----
+\end{lstlisting}
+\end{example}
+
+The framework automatically determined that "Potential daily snowmelt" has to index over "Reaches" since it references the parameter "Degree-day factor for snowmelt", which we declared to be part of the "Snow" group, which indexes over "Reaches". Next, "Snow melt" does not reference any parameters, but it does reference "Potential daily snowmelt", and so it too has to index over "Reaches". Note too that even if we had declared the equations in a different order, the framework would have been able to put them in an order that makes sense. Every equation will be evaluated after any other equation that it accesses the current-timestep result of (i.e. using the {\tt RESULT} accessor). Previous-timestep result accesses ({\tt LAST\_RESULT}) do not have any impact on evaluation order. In this case, the order of "Snow depth" and "Hydrological input to soil box" do not depend on (the current-day value of) each other, and so they could have been placed by the framework in any order respective to one another. In this example we used an input file that do not declare any index set dependencies for "Air temperature" or "Precipitation". If we instead had used an input file where these two timeseries are per reach, we would have got the following model structure.
+
+\begin{example}
+Model result structure for the SimplyP snow module if the user provided precipitation and air temperature timeseries per reach.
+\begin{lstlisting}[style=textstyle]
+[Reaches]
+        -----
+        Precipitation falling as snow
+        Precipitation falling as rain
+        Potential daily snowmelt
+        Snow melt
+        Snow depth
+        Hydrological input to soil box
+        -----
+\end{lstlisting}
+\end{example}
+
+\section{Model building API}
+
+\section{Application building API}
+
+\bibliographystyle{plain}
+\bibliography{citations}
 
 \end{document}
 

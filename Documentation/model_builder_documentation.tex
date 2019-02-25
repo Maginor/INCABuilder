@@ -72,18 +72,20 @@ directivestyle=\color{burgundy},
      \item[]\colorbox{silver}{\usebox\examplebox}
    \end{trivlist}}
 
-\title{Documentation for INCABuilder model builders - documentation is in development}
+\title{Documentation for INCABuilder model builders}
 \author{Magnus Dahler Norling}
 
 \begin{document}
 
 \maketitle
 
+\tableofcontents
+
 \section{Introduction}
 This is documentation for model developers. Documentation for model users and framework developers will be provided in separate documents (eventually).
 
 \begin{note}
-It is recommended for any model developers to take a look at the tutorials and experiment with making changes to them before reading all of the documentation. The tutorials will also provide the information about how to compile the models into finished exes.
+It is recommended for any model developers to take a look at the tutorials and experiment with making changes to them before reading all of the documentation. The tutorials will also provide the information about how to compile the models into finished exes. After you have some experience, it is also a good idea to look at existing models (in the Modules folder of the github repository) for more advanced examples.
 \end{note}
 
 \section{Basic concepts}
@@ -221,7 +223,7 @@ The model has an ordered list of batch groups, where each batch group has an ord
 The only time a batch group can have more than one batch is if it contains both a solver batch and one or more discrete batches (or possibly another solver batch using a different integrator). Two discrete batches next to each other that index over the same index sets would have been merged.
 \end{note}
 
-\begin{example}
+\begin{example}\label{ex:pseucocode}
 Pseudocode for how the model evaluates the batch structure in Example \ref{ex:persiststructure}.
 \begin{lstlisting}[style=textstyle]
 for every timestep:
@@ -362,7 +364,7 @@ auto A = RegisterParameterDouble(Model, System, "A", Dimensionless, 1.0);
 The input "X" is tied to the model and is given the name "X". The parameter (of type double) is tied to the Model, the parameter group System, given the name "A", the unit Dimensionless, and the default value 1.0. A full model building API describing all the registration functions will be given later.
 \end{example}
 
-Each registration function returns a handle. In Example \ref{ex:registration }, the handles are {\tt X} and {\tt A} (declared with {\tt auto} to signify that we don't care about their exact type). Handles are "tickets" one can use to talk about an entity one has already registered. If you provide the handle {\tt A} in the context of extracting a parameter value, the model will know that you are talking about the parameter "A" that you registered earlier.
+Each registration function returns a handle. In Example \ref{ex:registration}, the handles are {\tt X} and {\tt A} (declared with {\tt auto} to signify that we don't care about their exact type). Handles are "tickets" one can use to talk about an entity one has already registered. If you provide the handle {\tt A} in the context of extracting a parameter value, the model will know that you are talking about the parameter "A" that you registered earlier.
 
 Every equation in the model also receives an equation body, and inside the equation body one can reference the values of registered parameters, inputs and equations by referring to them by their handle.
 
@@ -406,26 +408,26 @@ $P$               & state variable &  $mm\, d^{-1}$                & Hydrologica
 \end{tabular}
 \caption{SimplyP snow parameters and state variables}
 \end{table}
-The state variables are given by the following equations
+The state variables at a given timestep $t$ are given by the following equations
 \begin{align*}
-P_{snow} &= \begin{cases}
-0 & \mbox{ if }T_{air} > 0\\
-Pptn & \mbox{ otherwise.}
+P_{snow,t} &= \begin{cases}
+0 & \mbox{ if }T_{air,t} > 0\\
+Pptn_t & \mbox{ otherwise.}
 \end{cases}\\
-P_{rain} &= \begin{cases}
-0 & \mbox{ if }T_{air} <= 0\\
-Pptn & \mbox{ otherwise.}
+P_{rain,t} &= \begin{cases}
+0 & \mbox{ if }T_{air,t} <= 0\\
+Pptn_t & \mbox{ otherwise.}
 \end{cases}\\
-P_{melt,t} &= \min(D_{snow,t-1},  \,\max(0, f_{DDSM}T_{air}))\\
-D_{snow,t} &= D_{snow,t-1}-P_{melt,t}\\
-P &= P_{rain} + P_{melt}
+P_{melt,t} &= \min(D_{snow,t-1},  \,\max(0, f_{DDSM}T_{air,t}))\\
+D_{snow,t} &= D_{snow,t-1}+P_{snow,t}-P_{melt,t}\\
+P_t &= P_{rain,t} + P_{melt,t}
 \end{align*}
 Say that one also wants a different initial snow depth and degree-day factor for each reach (subcatchment). First one has to register all of the model entities.
 \begin{example}
 Registration of model entities for the SimplyP snow module.
-\begin{lstlisting}[style=mycpp]
+\begin{lstlisting}[style=mycpp,mathescape]
 auto Mm                = RegisterUnit(Model, "mm");
-auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
+auto MmPerDegreePerDay = RegisterUnit(Model, "mm/$^\circ$C/day");
 auto MmPerDay          = RegisterUnit(Model, "mm/day");
 
 auto Reach = RegisterIndexSetBranched(Model, "Reaches");
@@ -484,7 +486,7 @@ EQUATION(Model, HydrologicalInputToSoilBox,
 \end{lstlisting}
 \end{example}
 
-In Example \ref{ex:simplypequations} we see that {\tt RESULT} refers to the value of that equation for the current timestep, while {\tt LAST\_RESULT} refers to the value from the previous timestep. Looking at the model result structure that is printed using the {\tt PrintModelResultStructure} procedure, we see the following.
+In Example \ref{ex:simplypequations} we see that {\tt RESULT} refers to the value of another equation from the current timestep, while {\tt LAST\_RESULT} refers to the value from the previous timestep. Looking at the model result structure that is printed using the {\tt PrintModelResultStructure} procedure, we see the following.
 
 \begin{example}
 Batch structure for the SimplyP snow module.
@@ -565,7 +567,7 @@ Generally you should try to limit what kind of expressions you use inside equati
 \item Simple control flow like {\tt for} or {\tt if} (but remember the warning about accesses inside conditionals above!!).
 \item Calling functions (that don't have side effects) that do mathematical computations on values, like std::exp (the exponential function).
 \item Always returning a value of type double (if you do not do this, you will get an error).
-\item You can refer to variables that are declared outside the equation body, but you should generally limit this to the entity handles you get from entity registration. Any variable you reference inside the equation body will be copied (by value) using the rule of C++11 lambda captures.
+\item You can refer to variables that are declared outside the equation body, but you should generally limit this to the entity handles you get from entity registration. Any variable you reference inside the equation body will be copied (by value) using the rules of C++11 lambda captures.
 \end{enumerate}
 
 Things to do outside equation bodies, in the registration code.
@@ -606,7 +608,7 @@ Where $x$ is the prey population and $y$ is the predator population. This can be
 \begin{example}\label{ex:lotkavolterra}
 Implementing the Lotka-Volterra system in INCABuilder. Parameter and unit registration is omitted.
 \begin{lstlisting}[style=mycpp]
-auto LVSolver = RegisterSolver(Model, "Lotka-Volterra solver", 0.1, IncaDascru);
+auto LVSolver = RegisterSolver(Model, "Lotka-Volterra solver", 0.1, IncaDascru); //It is not important what you name the solver.
 auto Predation = RegisterEquation(Model, "Predation", Individuals);
 SetSolver(Model, Predation, LVSolver);
 auto PredatorGrowth = RegisterEquation(Model, "Predator growth", Individuals);
@@ -636,28 +638,59 @@ EQUATION(Model, PredatorPopulation,
 \end{lstlisting}
 \end{example}
 
-There are a few things to note from Example \ref{ex:lotkavolterra}.
+There are a couple of things to note from Example \ref{ex:lotkavolterra}.
 \begin{enumerate}[i]
-\item You can put both regular and ODE equations on a solver. The regular equations will serve as partial computations that can be used by the ODE equations. In the example, it is a little excessive to factor out {\tt Predation} and {\tt PredatorGrowth} as their own equations, but one can easily imagine more complicated examples where a complicated computation can be reused by many ODE equations.
+\item You can put both regular and ODE equations on a solver. The regular equations will serve as partial computations that can be used by the ODE equations. In the example, it is a little excessive to factor out {\tt Predation} and {\tt PredatorGrowth} as their own equations, but one can easily imagine more complicated examples where a big computation can be reused by many ODE equations.
 \item Instead of returning the value of the state variable, an ODE equation has to return the time-derivative of its state variable. The integrator will then integrate the equation system to calculate the actual values of the ODE state variables.
+\item The integration of the ODE equations starts every timestep at the end-of-timestep value from the previous timestep, and then integrates the system over one timestep.
 \end{enumerate}
 
-For each time the solver evaluates its batch (i.e. for many sub-timesteps per timestep), the regular equations are evaluated in order before the ODE equations. Within an ODE-system, a reference to a {\tt RESULT} from the current solver batch will give you the intermediate sub-timestep value that the integrator is currently at. The {\tt RESULT} of an ODE equation will refer to the (integrated) value of the state variable, not the value returned by the ODE equation, which was the time-derivative of the state variable.
+For each time the solver evaluates its batch (i.e. typically many sub-timesteps per timestep), the regular equations are evaluated in order before the ODE equations. Within an ODE-system, a reference to a {\tt RESULT} from the current solver batch will give you the intermediate sub-timestep value that the integrator is currently at. The {\tt RESULT} of an ODE equation will refer to the (integrated) value of the state variable, not the value returned by the ODE equation, which was the time-derivative of the state variable.
 
-If you refer to the {\tt RESULT} value of a solver batch equation from an equation belonging to a different batch (i.e. it was not put on the same solver or any solver at all), you will get the end-of timestep value of that state variable.
+If you refer to the {\tt RESULT} value of a solver batch equation from an equation belonging to a different batch (i.e. it was not put on the same solver or any solver at all), you will get the end-of timestep value of that state variable. This is also the value that will be stored in the result timeseries that you can extract after a model run.
 
 \begin{note}
 While for regular equations the framework sorts them so that an equation is evaluated after another equation if it uses the value of the other equation, this is not the case if the other equation is an ODE equation. In that case the only requirement is that the referencing equation is put in the same batch (if it was registered with the same solver) or a batch later than the ODE equation. This is again because the ODE equation does not return a state value, but a derivative. All the state variables of the ODEs within a batch are advanced "simultaneously" during the integration step. See more about this in Section \ref{sec:advancedbatchstructure}.
 \end{note}
 
-Which integration methods are available is subject to change. It is better that you look for them yourself in the source code, such as in {\tt inca\_solver.h} or {\tt boost\_solvers.h}. Usually, {\tt IncaDascru} (an adaptive 4th order Runge-Kutta) performs pretty well unless the ODE system is stiff. In case of a stiff system, you could use an implicit solver like {\tt BoostRosenbrock4}, but it is significantly slower and should only be used if absolutely needed.
+Which integration methods are available is subject to expansion. It is better that you look for them yourself in the source code, such as in {\tt inca\_solver.h} or {\tt boost\_solvers.h}. Usually, {\tt IncaDascru} (an adaptive 4th order Runge-Kutta) performs pretty well unless the ODE system is stiff. In case of a stiff system, you could use an implicit solver like {\tt BoostRosenbrock4}, but it is significantly slower and should only be used if absolutely needed.
 
 \subsubsection{Initial value equations}
 
 Initial value equations are special equations that are not evaluated during the main model run. Instead they are evaluated once (sometimes over multiple indexes) at the start of the model run to determine the initial value of another state variable. This is useful, because sometimes you don't want the initial value of a state variable to be given by a parameter, but by a computation depending on several parameters or initial values of other state variables.
 
-\#TODO: Example
+\begin{example}\label{ex:initialvalue}
+An initial value equation referencing parameters.
+\begin{lstlisting}[style=mycpp]
+auto SoilVolume = RegisterEquation(Model, "Soil volume", M3);
+auto InitialSoilVolume = RegisterEquationInitialValue(Model, "Initial soil volume", M3);
+SetInitialValue(Model, SoilVolume, InitialSoilVolume);
 
+EQUATION(Model, InitialSoilVolume,
+	return PARAMETER(CatchmentArea) * 1e6 * PARAMETER(InitialSoilDepth);
+)
+//...
+\end{lstlisting}
+\end{example}
+
+Initial value equations can also reference the result of other equations. What this means in practice is that they access the initial value of the other equation, whether that is given by a parameter or another initial value equation. Every equation is always given the initial value of 0 unless an initial value is explicitly specified. When you reference the initial value of another equation, you reference the handle of the equation itself, not the handle of the initial value equation (The initial value equation does not have any storage of its own for the value it generates, it just generates a value that is stored for the equation it is computing the initial value for).
+
+\begin{example}
+Another initial value equation that references the initial value computed in Example \ref{ex:initialvalue}.
+\begin{lstlisting}[style=mycpp]
+auto InitialSoilPMass = RegisterEquation(Model, "Initial soil P mass", Kg);
+
+EQUATION(Model, InitialSoilPMass,
+	return PARAMETER(InitialSoilPConcentration) * RESULT(SoilVolume); //NOTE: we have to reference SoilVolume rather than InitialSoilVolume here.
+)
+\end{lstlisting}
+\end{example}
+
+There are a couple of things to be aware of when referencing {\tt RESULT}s inside an initial value equation.
+\begin{enumerate}[i]
+\item Initial value equations have their own evaluation order \emph{inside the solver batches of the equations they generate initial values for}. What this means is that if you have two initial value equations where their "parent" equations are in the same batch, you can let the initial value equations have a different dependency order than the parent equations.
+\item You can not reference the {\tt RESULT} of an equation that is in a later batch. You can also not reference the {\tt RESULT} of an equation that comes in a previous batch \emph{unless} you use explicit indexing. This is an implementation limitation. If this is something that causes big problems for users, this is something we could try to improve. Note that this is again something you just have to be aware of while building the model, since the batch structure may not be apparent until a large part of the model has come together. You will usually not get error messages if you reference results that are not "available", but you may get a 0 or a result that is misindexed.
+\end{enumerate}
 
 \subsection{Advanced value accesses}\label{sec:advancedaccess}
 
@@ -692,23 +725,23 @@ EQUATION(Model, PercolationOut,
 \end{lstlisting}
 \end{example}
 
-In Example \ref{ex:persistpercout} we are in one of PERSiST's soil layers, and we want to iterate over every soil layer below this one (in this case, the indexes have to be declared in order from top to bottom, so "below" is the same as "after in the list of indexes"), to see how much of the runoff from this soil layer is distributed to the other soil layers. To do this we iterate from {\tt CURRENT\_INDEX(SoilBoxes)+1} to {\tt INDEX\_COUNT(SoilBoxes)}. We then look up the maximum infiltration to the other soil box by calling {\tt double mpi = PARAMETER(Infiltration, OtherSoil)}. We are looking up the value of the parameter {\tt Infiltration}, but instead of looking up the value for the current box using {\tt PARAMETER(Infiltration)}, we provide an explicit index for the other soil box.
+In Example \ref{ex:persistpercout} we are in one of PERSiST's soil layers, and we want to iterate over every soil layer below this one (in this case, the indexes have been declared in order from top to bottom, so "below" is the same as after in the list of indexes), to see how much of the runoff from this soil layer is distributed to the other soil layers. To do this we iterate from {\tt CURRENT\_INDEX(SoilBoxes)+1} to {\tt INDEX\_COUNT(SoilBoxes)}. We then look up the maximum infiltration to the other soil box by calling {\tt PARAMETER(Infiltration, OtherSoil)}. We are looking up the value of the parameter {\tt Infiltration}, but instead of looking up the value for the current index of {\tt SoilBoxes} using {\tt PARAMETER(Infiltration)}, we provide an explicit index for the other soil box.
 
 There are a few prerequisites for allowing you to do this
 \begin{enumerate}[i]
 \item The parameter {\tt Infiltration} has to depend on the index set {\tt SoilBoxes}.
-\item Moreover, {\tt SoilBoxes} has to be the immediate index set dependency for {\tt Infiltration}. This means that {\tt Infiltration} is in a parameter group that depends on {\tt SoilBoxes} directly.
+\item Moreover, {\tt SoilBoxes} has to be the immediate index set dependency for {\tt Infiltration}. This means that {\tt Infiltration} is in a parameter group that indexes over {\tt SoilBoxes} directly (as opposed to only having a parent group that indexes over {\tt SoilBoxes}).
 \end{enumerate}
-The parameter can have other index set dependencies, i.e. its parameter group can be a member of another parameter group which itself has an index set dependency. The index of this higher level index set is inferred to be the current index of the execution state. Moreover, this call will make register a dependency for {\tt PercolationOut} on the higher level index set(s) that were automatically inferred, but not on {\tt SoilBoxes}. However, {\tt PercolationOut} does get a dependency on  {\tt SoilBoxes} any way from the call to {\tt CURRENT\_INDEX(SoilBoxes)}.
+Even if you explicitly index only one index set, the parameter can have more than one index set dependency. I.e. its parameter group can be a member of another parameter group which itself has an index set dependency. When you explicitly index only the immediate index set dependency, he index of the higher level index sets is as usual inferred to be the current index of these index sets in the execution state. Moreover, the call will register a dependency for {\tt PercolationOut} on the higher level index set(s) that were automatically inferred, but not on {\tt SoilBoxes}. (Though, {\tt PercolationOut} does get a dependency on  {\tt SoilBoxes} any way from the call to {\tt CURRENT\_INDEX(SoilBoxes)}).
 
 \begin{example}
-Equation {\tt A} refers to {\tt PARAMETER(B, IX)} in its equation body. Parameter {\tt B} has the dependencies \{"Reaches", "Landscape units"\}, where "Landscape units" is the immediate dependency, and "Reaches" is a dependency of the parent group of the immediate group. The index {\tt IX} will refer to an index of "Landscape units". The framework determines that {\tt A} has to be evaluated for each index in "Reaches".
+Equation {\tt A} refers to {\tt PARAMETER(B, IX)} in its equation body. Parameter {\tt B} has the dependencies \{"Reaches", "Landscape units"\}, where "Landscape units" is the immediate dependency, and "Reaches" is a dependency of the parent group of the immediate group. The index {\tt IX} will refer to an index of "Landscape units". The framework determines that {\tt A} has to index over "Reaches".
 \end{example}
 
 You can also provide more than one explicit index.
 
 \begin{example}\label{ex:multipleexplicitindexes}
-Equation {\tt A} refers to {\tt PARAMETER(B, IX, IY)} in its equation body. Parameter {\tt B} has the dependencies \{"Reaches", "Landscape units", "Soils"\}, where "Soils" is the immediate dependency, "Landscape units" is a dependency of the parent group of the immediate group, and "Reaches" is again a dependency of a parent of that group. The index {\tt IX} will refer to an index of "Landscape units", {\tt IY} of "Soils". The framework determines that {\tt A} has to be evaluated for each index in "Reaches".
+Equation {\tt A} refers to {\tt PARAMETER(B, IX, IY)} in its equation body. Parameter {\tt B} has the dependencies \{"Reaches", "Landscape units", "Soils"\}, where "Soils" is the immediate dependency, "Landscape units" is a dependency of the parent group of the immediate group, and "Reaches" is again a dependency of a parent of that group. The index {\tt IX} will refer to an index of "Landscape units", {\tt IY} of "Soils". The framework determines that {\tt A} has to index over "Reaches".
 \end{example}
 
 Example \ref{ex:multipleexplicitindexes} also generalizes to higher numbers of explicit indexes. If you only want to explicitly index one of the higher index sets and let the framework infer the index of the immediate one, you can do the following.
@@ -721,7 +754,7 @@ PARAMETER(PercolationMatrix, OtherSoil, CURRENT_INDEX(SoilBoxes))
 \end{example}
 
 \begin{note}
-The explicit index you provide always has to be an {\tt index\_t}, which is just a number, and so is indistinguishable between different index sets. This means that the framework will not be able to warn you if you use an index you got from a call to {\tt CURRENT\_INDEX(SoilBoxes)} when explicitly indexing a parameter that only depends on {\tt LandscapeUnits}. Errors like these could cause undefined behaviour that is hard to track down, and so you should always be careful with explicit indexing.
+The explicit index you provide always has to be an {\tt index\_t}, which is just a number. It is not possible to determine what index set it refers to by the number alone. This means that the framework will not be able to warn you if you use an index you got from a call to {\tt CURRENT\_INDEX(SoilBoxes)} when explicitly indexing a parameter that only depends on {\tt LandscapeUnits}. Errors like these could cause undefined behaviour that is hard to track down, and so you should always be careful with explicit indexing.
 \end{note}
 
 Explicit indexing of {\tt INPUT}s is currently not available.
@@ -739,24 +772,156 @@ EQUATION(Model, OrganicLayerToMineralLayerFraction,
 \end{example}
 
 \begin{note}
-You should generally try to avoid explicit accesses of {\tt RESULT}s inside equations that are in a solver batch. \#TODO: Explain why.
-Explicit accesses of parameters are ok, but see the notes on performance under Section \ref{sec:performance}.
+You should generally be careful with explicit indexing of {\tt RESULT}s inside equations that are in a solver batch. If you explicitly index a result from the same batch you will either get just the end-of-timestep value (if you indexed an already evaluated index) or a 0 (if you for some reason explicitly indexed the currently evaluated index). This is because the sub-timestep values of the ODE system are not stored out to the main result storage and are discarded after (or during) integration. To give an example, while an expression like {\tt RESULT(WaterDepth, CURRENT\_INDEX(Soils))} would give the same value as {\tt RESULT(WaterDepth)} outside a solver (albeit slower), it would give a 0 inside a solver (if {\tt WaterDepth} is also evaluated in the solver). Of course, there should not be any reason to use such an expression in the first place. Explicit indexing of parameters is ok, but see the notes on performance under Section \ref{sec:performance}.
 \end{note}
 
 \subsubsection{Predeclared indexes}
 
+In some cases you may not want the indexes of an index set to be user defined, instead you want the model to determine the indexes. In that case you can call {\tt RequireIndex} one or more times to tell the model what indexes you want in the index set. This call will also return to you an {\tt index\_t} value that you can use to explicitly refer to this index inside {\tt EQUATION}s.
+
+\begin{example}
+Explicit indexing using predeclared indexes for the index set with handle {\tt Soils}.
+\begin{lstlisting}[style=mycpp]
+index_t DirectRunoff = RequireIndex(Model, Soils, "Direct runoff");
+index_t Soilwater = RequireIndex(Model, Soils, "Soil water");
+index_t Groundwater = RequireIndex(Model, Soils, "Groundwater");
+
+EQUATION(Model, DirectRunoffVolume,
+	CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits); //NOTE: These are here to force index set dependencies. Remember that the framework can not determine index set dependencies from explicitly indexed RESULTs.
+	return RESULT(WaterDepth, DirectRunoff) * 1000.0;
+)
+\end{lstlisting}
+\end{example}
+
+The order of these indexes in the index set will be the order they were declared in using {\tt RequireIndex}.
+
 \subsubsection{Branch iteration}
 
+If you have a branched index set, you may want to use the special connectivity information that is carried by its indexes. You can do this using branch iteration, which iterates over all the branch inputs to the current index of this index set.
+
+\begin{example}
+Iterating over all the branch inputs to the current index of the branched index set with handle {\tt Reach}. Here we sum up the result of {\tt ReachFlow} coming in from each branch.
+\begin{lstlisting}[style=mycpp]
+EQUATION(Model, ReachUpstreamFlow,
+	double upstreamflow = 0.0;
+	FOREACH_INPUT(Reach,
+		upstreamflow += RESULT(ReachFlow, *Input);
+	)
+	return upstreamflow;
+)
+\end{lstlisting}
+\end{example}
+
+The {\tt FOREACH\_INPUT} expression is a macro that expands to an iteration over the branches. The {\tt index\_t} of each branch that is iterated over is given by {\tt *Input}.
+
+\subsection{Debugging features}
+
+Apart from using full C++ debugging techniques, there are a few framework features that may help you to better debug unexpected model behaviour. We have already covered using {\tt PrintResultStructure(Model)} to show you the equation batch structure, which is something you should have turned on at all times during model development. You can also use {\tt PrintParameterStorageStructure(DataSet)} and {\tt PrintInputStorageStructure(DataSet)} to show you the index set dependencies of each parameter and input timeseries.
+
+There are also four flags that you can turn on that will make the model store and print out additional debug information during the model run. These have to be declared above your {\tt \#include "inca.h"}
+
+\begin{example}
+Declaring the debug flags.
+\begin{lstlisting}[style=mycpp]
+#define INCA_TIMESTEP_VERBOSITY 1
+#define INCA_TEST_FOR_NAN 1
+#define INCA_PRINT_TIMING_INFO 1
+#define INCA_EQUATION_PROFILING 1
+
+#include "../../inca.h"
+\end{lstlisting}
+\end{example}
+
+You can turn the debug flags either on or off by setting them to 1 or 0 respectively (or turn them off by removing them entirely).
+
+\begin{enumerate}[i]
+\item {\tt INCA\_TIMESTEP\_VERBOSITY}. This has 3 levels. If it is set to 1 it will print out the number of the timestep for every timestep. If it is set to 2, it will also print out every time it changes the state of an index set during the iteration. If it is set to 3 it will also print out every time it finishes the evaluation of an equation (or an integration in the case of a solver), along with the value. This can give you a full sense of the model evaluation like it is described in Example \ref{ex:pseucocode} (You should probably turn down the number of timesteps if you want to test the model in this mode).
+\item {\tt INCA\_TEST\_FOR\_NAN}. If turned on, this will test every result value to see if it was an inf or nan. In the case of such a value, it will halt the model execution and print out the current timestep, the state of the index sets, and the state of all the parameter, input and result dependencies of the equation that produced the illegal value. This will make the model run a little slower even if it does not encounter an illegal value. The nan test will not work correctly if you compile with the -ffast-math flag. The -ffast-math flag may make the model run a little faster, but the underlying floating point architecture will no longer make nans detectable.
+\item {\tt INCA\_PRINT\_TIMING\_INFO}. If turned on, this will time how long it took to run the model (both in milliseconds and processor instructions). This only gives very coarse information, but can be useful to detect if something weird happened (does the model suddenly run much slower after you added a new equation?).
+\item {\tt INCA\_EQUATION\_PROFILING}. This will give you very fine-grained information about how many processor ticks every equation evaluation took on average, and how many times each equation was evaluated. Note that the time to evaluate an equation is not always the same as the time to produce a result value since a solver may evaluate an equation many times to produce a result value for it. See Section \ref{sec:performance} about tips on how to improve the speed of the model. Having this flag turned on will make the framework itself a little slower.
+\end{enumerate}
+
+\subsection{Tips on model performance (speed)}\label{sec:performance}
+
+This section will contain a few general tips on how to make the model run as fast as possible.
+
+One important thing you can do is to turn on the {\tt INCA\_EQUATION\_PROFILING} flag (see the previous section) to see which individual equations are slow. You should then weigh the importance of improving the speed of an equation by the number of times it is evaluated. Equations with many index set dependencies are evaluated more often than equations with few index set dependencies, and equations in solvers are evaluated \emph{many} more times than equations that are not on solvers.
+
+The following things are common causes of slow equations:
+\begin{enumerate}[i]
+\item Calling transcendent functions from the C++ (C) standard math library, like {\tt exp}, {\tt pow} or {\tt sin}. The standard implementation of these is often slow because it has to satisfy a large range of criteria. If you know that you only need implementations that are correct in a short value range (i.e. $[0, 2\pi)$) or need a smaller precisional correctness (say only 4 digits), then you may be able to find implementations that are much faster. You could also look into implementing that yourself, but this is a pretty topic on its own, and will not be covered here. Of course, it may often not be worth it going into the trouble of replacing the implementation of these.
+\item Explicit indexing (e.g. calling {\tt RESULT(Handle, Index)}) is always slower than implicit indexing (e.g. {\tt RESULT(Handle)}). This is because the model keeps all the values you need for implicitly indexed values in a quick buffer that it updates for you using a heavily optimized system. On the other hand, if you explicitly index a value, the model has to first determine where that value is stored using an index calculation, and then go back to main storage to retrieve it (risking cache misses).
+\end{enumerate}
+
+Since equations on solvers are much more expensive than equations outside solvers, you may sometimes want to see if you can factor a calculation made in a solver equation out to a separate equation that can be evaluated before the solver is run.
+
+\begin{example}
+Instead of doing the reach flow in one calculation,
+\begin{lstlisting}[style=mycpp]
+EQUATION(Model, ReachFlow,         //ReachFlow is an ODE equation
+	double reachflowinput = 0.0;
+	FOREACH_INPUT(Reach,
+		reachflowinput += RESULT(ReachFlow, *Input);
+	)
+	reachflowinput += RESULT(TotalDiffuseFlowOutput);	
+
+	return ( reachflowinput - RESULT(ReachFlow) ) / ( RESULT(ReachTimeConstant) * (1.0 - PARAMETER(B)));
+)
+\end{lstlisting}
+separate out the expensive bit that uses explicit indexing (and don't run the expensive bit on the solver).
+\begin{lstlisting}[style=mycpp]
+EQUATION(Model, ReachFlowInput,            //ReachFlowInput should not run on the solver
+	double upstreamflow = 0.0;
+	FOREACH_INPUT(Reach,
+		upstreamflow += RESULT(ReachFlow, *Input);
+	)
+	return upstreamflow + RESULT(TotalDiffuseFlowOutput);
+)
+
+EQUATION(Model, ReachFlow,               //ReachFlow should still run on the solver
+	return (RESULT(ReachFlowInput) - RESULT(ReachFlow) ) / ( RESULT(ReachTimeConstant) * (1.0 - PARAMETER(B)));
+)
+\end{lstlisting}
+\end{example}
+
+Cumulation equations are also always faster than explicit for loops, because the framework can use some tricks to determine how to look up the indexes of values accessed by a cumulation equation. Only use explicit for loops if you have to.
 
 \subsection{Determining the batch structure of advanced models}\label{sec:advancedbatchstructure}
 
-\subsection{Simple debugging features}
-
-\subsection{Tips on model performance}\label{sec:performance}
-
+\begin{note}
 This section is very technical, and so you could probably skip it until your model does something completely unexpected and you have to figure out why.
+\end{note}
 
-\#TODO: Write the section
+Every equation has three types of dependencies that are important to model structure.
+\begin{enumerate}[i]
+\item Index set dependencies are the index sets that the equation should index over (i.e. be evaluated for every combination of indexes of). Again, remember that unlike for parameters, index sets can only appear once in the dependency list of an equation.
+\item Direct result dependencies are other equations of which this equation references the {\tt RESULT} of (using implicit indexing: {\tt RESULT(Handle)}).
+\item Cross index result dependencies are other equations of which this equation references the {\tt RESULT} of using explicit indexing (e.g. {\tt RESULT(Handle, Index)}).
+\end{enumerate}
+
+When processing information about equation dependencies during model finalization (in the {\tt EndModelDefinition} procedure), every equation gets its index set dependencies and result dependencies using the following rules:
+\begin{enumerate}[i]
+\item A cumulation equation has the equation it cumulates as a direct result dependency (this is an exception to the description of direct result dependencies above). It also gets all the index set dependencies of the equation it cumulates \emph{minus} the index set it cumulates over.
+\item An equation gets all the index set dependencies of all the parameters and inputs it references. If the reference uses explicit indexing, it will not get a dependency for the index sets that are explicitly indexed. It will also get a dependency on index sets it calls {\tt CURRENT\_INDEX} or {\tt FOREACH\_INDEX} on.
+\item An equation gets all the index set dependencies of its initial value parameter or initial value equation if it has one.
+\item An equation gets all the index set dependencies of all the other equations it references the {\tt RESULT} or {\tt LAST\_RESULT} of, but only if it uses full implicit indexing. Note that this creates a large directed dependency graph between equations, where index set dependencies propagate down all the paths of the graph. Thus an equation can inherit an index set dependency not only from an equation it directly accesses the result of, but also one that was accessed by that equation and so on.
+\end{enumerate}
+
+The list of equations (excluding initial value equations) are processed into a batch structure obeying the following rules:
+\begin{enumerate}[i]
+\item All equations that were put on a solver has to belong to the same solver batch, and no other equations can belong to this batch. The index set dependencies of the batch is the union of the index set dependencies of all its equations. Similarly, the direct result (or cross-index) dependencies of a solver are the union of all the direct (or cross-index) result dependencies of its equations.
+\item Non-ode equations in a solver are sorted in order so that a given non-ode-equation comes after any other non-ode equations that it has a direct result dependency on. ODE equations are placed after that in any order (in practice the order they were declared in).
+\item Solver batches have to be placed after any equations (not belonging to itself) that it has a direct result dependency on, and in the same batch group as or after any it has a cross-index result dependency on.
+\item If two non-solver equations that have the same index set dependencies are placed next to each other, they are merged into a batch.
+\item A non-solver equation has to be placed after any other equation it has a direct result dependency on. It has to be placed in the same batch group as or after any equation it has a cross-index result dependency on.
+\item If a solver batch is next to one or more non-solver batches (or different solver batches) with the same index set dependencies, they form a batch group.
+\end{enumerate}
+
+The rules above do not determine a unique structure. To improve the run speed of the model, the framework will also try to move batches and equations around (without breaking the rules) so that there are as few batches and batch groups as possible in the structure. I.e. it will prefer to place equations with the same index set dependencies next to each other. The algorithm we use is not guaranteed to find the most optimal structure (indeed, we are not even sure if such an algorithm would be NP-hard or not), but it does produce pretty good results for the practical models we have built so far. The reason that such an minimalization of the amount of batch groups is a good idea is that there is some overhead associated with every time the model running code starts evaluating a new batch group.
+
+During model creation you may accidentally specify equations that have direct result dependencies on each other in a circular way. This means that there is no possible way for the framework to place them in an order where each equation has access to all the result values it needs. The framework will detect this and print an error. Here ODE equations are exceptional in that any equation in the same solver can have a direct dependency on the result of an ODE equation regardless of circular dependencies. This can sometimes be tricky if a solver is involved. Equation A can not depend on any equation in solver batch B if any equation at all in B (even those that A does not depend on) has a dependency on A. Just remember that the framework can never sort A into the middle of B as it has to evaluate all of B in one go.
+
+For each batch, the order of evaluating the initial value of each equation (either by reading it from a parameter, setting it to a constant, or evaluating an initial value equation) is given its own evaluation order based on the dependencies of the initial value equations.
 
 \begin{note}
 The description given here does not give all the implementation details. To get a complete understanding you probably have to look up the implementation of the {\tt EndModelDefinition} function in {\tt inca\_model.cpp}.
@@ -764,7 +929,11 @@ The description given here does not give all the implementation details. To get 
 
 \section{Model building API}
 
+\#TODO
+
 \section{Application building API}
+
+\#TODO
 
 \bibliographystyle{plain}
 \bibliography{citations}

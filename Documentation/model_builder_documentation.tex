@@ -2,10 +2,13 @@
 
 \usepackage[a4paper, margin=1in]{geometry}
 
+\usepackage{bold-extra}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{enumerate}
 \usepackage{gensymb}
+
+\usepackage{tabularx}
 
 \usepackage{amsthm, amsmath}
 
@@ -40,6 +43,38 @@ directivestyle=\color{burgundy},
 }
 
 
+%\newcolumntype{y}{>{\vsize=.5\textwidth}l} % Did not work as expected :(
+\newcolumntype{y}{p{0.4\textwidth}}
+\newcolumntype{z}{p{0.9\textwidth}}
+
+\newcommand{\apipar}[2]{
+{\tt #1} & #2 \\
+}
+
+\newcommand{\apidesc}[1]{
+\hline
+\multicolumn{2}{|z|}{\bf Description:}\\
+\multicolumn{2}{|z|}{#1}\\
+}
+
+\newcommand{\apiret}[1]{
+\hline
+\multicolumn{2}{|z|}{\bf Returns:}\\
+\multicolumn{2}{|z|}{#1}\\
+}
+
+\newcommand{\apientry}[3]{
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{|y X|}
+\hline
+\rule{0pt}{20pt}
+{\bf\tt\Large\color{bluepigment}#1} & \multicolumn{1}{r|}{#2} \\
+\hline
+\multicolumn{2}{|l|}{\bf Arguments:}\\
+#3
+\hline
+\end{tabularx}
+\end{table}}
 
 
 \definecolor{silver}{gray}{0.9}
@@ -927,13 +962,212 @@ For each batch, the order of evaluating the initial value of each equation (eith
 The description given here does not give all the implementation details. To get a complete understanding you probably have to look up the implementation of the {\tt EndModelDefinition} function in {\tt inca\_model.cpp}.
 \end{note}
 
-\section{Model building API}
-
-\#TODO
 
 \section{Application building API}
 
-\#TODO
+\subsection{Data types}
+
+\subsection{Procedures}
+
+\section{Model building API}
+
+\subsection{Registration procedures}
+
+The registration procedures can only be called on a {\tt inca\_model} object that has not been finalized using {\tt EndModelDefinition}.
+
+\apientry{RegisterUnit}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{(optional) The name of the unit.}
+\apiret{A {\tt unit\_h} handle to the newly registered unit.}
+\apidesc{Register a new unit with the model. If the name is omitted, it is assumed to be "dimensionless".}
+}
+
+\apientry{RegisterIndexSet}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the index set.}
+\apiret{An {\tt index\_set\_h} handle to the newly registered index set.}
+\apidesc{Register a new (basic) index set with the model.}
+}
+
+\apientry{RegisterIndexSetBranched}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the index set.}
+\apiret{An {\tt index\_set\_h} handle to the newly registered index set.}
+\apidesc{Register a new branched index set with the model.}
+}
+
+\apientry{RequireIndex}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{index\_set\_h IndexSet}{Handle to an index set.}
+\apipar{const char *Name}{The name of the index.}
+\apiret{An {\tt index\_t} giving the number of the new index in the index set.}
+\apidesc{Require the index set to have this index. If an index set has one or more required indexes, it can only have those indexes and not user-defined ones. Can only be called on basic index sets, not branched index sets.}
+}
+
+\apientry{RegisterParameterGroup}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the parameter group.}
+\apipar{index\_set\_h IndexSet}{(optional) Handle to an index set that the group should index over.}
+\apiret{An {\tt parameter\_group\_h} handle to the newly registered parameter group.}
+\apidesc{Register a new parameter group with the model.}
+}
+
+\apientry{SetParentGroup}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{parameter\_group\_h Child}{A handle to the child group.}
+\apipar{parameter\_group\_h Parent}{A handle to the parent group.}
+\apiret{{\tt void}}
+\apidesc{Set {\tt Parent} to be the parent group of {\tt Child}. Every parameter in {\tt Child} will index both over the index set of {\tt Child} and the index set of {\tt Parent}.}
+}
+
+\apientry{RegisterInput}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the input.}
+\apiret{An {\tt input\_h} handle to the newly registered input timeseries.}
+\apidesc{Register a new input timeseries with the model.}
+}
+
+\apientry{RegisterParameterDouble}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{parameter\_group\_h ParameterGroup}{Handle to the parameter group that the parameter should be put in.}
+\apipar{const char *Name}{The full name of the parameter.}
+\apipar{unit\_h Unit}{Handle to the unit of the parameter.}
+\apipar{double Default}{The default value of the parameter.}
+\apipar{double Min}{(optional) The minimum value of the parameter.}
+\apipar{double Max}{(optional) The maximum value of the parameter.}
+\apipar{const char *Description}{(optional) A long-form description of the parameter.}
+\apiret{A {\tt parameter\_double\_h} handle to the newly registered parameter.}
+\apidesc{Register a new parameter of type double with the model.}
+}
+
+\apientry{RegisterParameterUInt}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{parameter\_group\_h ParameterGroup}{Handle to the parameter group that the parameter should be put in.}
+\apipar{const char *Name}{The full name of the parameter.}
+\apipar{unit\_h Unit}{Handle to the unit of the parameter.}
+\apipar{u64 Default}{The default value of the parameter.}
+\apipar{u64 Min}{(optional) The minimum value of the parameter.}
+\apipar{u64 Max}{(optional) The maximum value of the parameter.}
+\apipar{const char *Description}{(optional) A long-form description of the parameter.}
+\apiret{A {\tt parameter\_uint\_h} handle to the newly registered parameter.}
+\apidesc{Register a new parameter of type uint with the model.}
+}
+
+\apientry{RegisterParameterBool}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object}
+\apipar{parameter\_group\_h ParameterGroup}{Handle to the parameter group that the parameter should be put in}
+\apipar{const char *Name}{The full name of the parameter}
+\apipar{bool Default}{The default value of the parameter}
+\apipar{const char *Description}{(optional) A long-form description of the parameter}
+\apiret{A {\tt parameter\_bool\_h} handle to the newly registered parameter.}
+\apidesc{Register a new parameter of type bool with the model}
+}
+
+\apientry{RegisterParameterDate}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{parameter\_group\_h ParameterGroup}{Handle to the parameter group that the parameter should be put in.}
+\apipar{const char *Name}{The full name of the parameter.}
+\apipar{const char *Default}{The default value of the parameter. Must be on the form "Y-m-d".}
+\apipar{const char *Min}{(optional) The minimum value of the parameter. Must be on the form "Y-m-d".}
+\apipar{const char *Max}{(optional) The maximum value of the parameter. Must be on the form "Y-m-d".}
+\apipar{const char *Description}{(optional) A long-form description of the parameter.}
+\apiret{A {\tt parameter\_uint\_h} handle to the newly registered parameter.}
+\apidesc{Register a new parameter of type date(time) with the model.}
+}
+
+\apientry{RegisterEquation}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the equation.}
+\apipar{unit\_h Unit}{Handle to the unit of the equation.}
+\apiret{A {\tt equation\_h} handle to the newly registered equation.}
+\apidesc{Register a new equation with the model. The is is a basic equation. The equation body has to be provided separately using the {\tt EQUATION} macro.}
+}
+
+\apientry{RegisterEquationODE}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the equation.}
+\apipar{unit\_h Unit}{Handle to the unit of the equation.}
+\apiret{A {\tt equation\_h} handle to the newly registered equation.}
+\apidesc{Register a new equation of type ODE with the model. The equation body has to be provided separately using the {\tt EQUATION} macro.}
+}
+
+\apientry{RegisterEquationInitialValue}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the equation.}
+\apipar{unit\_h Unit}{Handle to the unit of the equation.}
+\apiret{A {\tt equation\_h} handle to the newly registered equation.}
+\apidesc{Register a new initial value equation with the model. The equation body has to be provided separately using the {\tt EQUATION} macro.}
+}
+
+\apientry{RegisterEquationCumulative}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The full name of the equation.}
+\apipar{equation\_h Cumulates}{Handle to the equation that should be cumulated (can not be an initial value equation).}
+\apipar{index\_set\_h CumulatesOver}{Handle to the index set that should be cumulated over.}
+\apipar{parameter\_double\_h Weight}{(optional) A weight parameter for the cumulation.}
+\apiret{A {\tt equation\_h} handle to the newly registered equation.}
+\apidesc{Register a new initial value equation with the model. No equation body should be provided. If a weight is provided it has to index over the {\tt CumulatesOver} index set. For the purpose of the cumulation, the weight is scaled so that it sums to $1$. }
+}
+
+\apientry{SetInitialValue}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{equation\_h Equation}{The equation to set the initial value for.}
+\apipar{double Value}{A constant value to set as the initial value.}
+\apiret{{\tt void}.}
+\apidesc{Set the initial value of an equation to be a constant.}
+}
+
+\apientry{SetInitialValue}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{equation\_h Equation}{The equation to set the initial value for.}
+\apipar{parameter\_double\_h InitialValue}{A handle to a parameter of type double.}
+\apiret{{\tt void}.}
+\apidesc{Set the initial value of an equation to be determined by a parameter.}
+}
+
+\apientry{SetInitialValue}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{equation\_h Equation}{The equation to set the initial value for.}
+\apipar{equation\_h InitialValueEq}{A handle to an initial value equation.}
+\apiret{{\tt void}.}
+\apidesc{Set the initial value of an equation to be computed by an initial value equation.}
+}
+
+\apientry{ResetEveryTimestep}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{equation\_h Equation}{Handle to an ODE equation.}
+\apiret{{\tt void}.}
+\apidesc{Tell the model that instead of starting the ODE state variable at the end value from the previous timestep, it should start at 0 each timestep.}
+}
+
+\apientry{RegisterSolver}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{Name of the solver batch (for internal reference).}
+\apipar{double h}{The suggested sub-timestep length of the solver (in the range 0 to 1).}
+\apipar{inca\_solver\_setup\_function *SetupFunction}{One of the integrator setup functions provided by inca\_solvers.h or boost\_solvers.h, or others.}
+\apipar{double RelErr}{(only available for some choices of SetupFunction) The relative error tolerance of the solver.}
+\apipar{double AbsErr}{(only available for some choices of SetupFunction) The absolute error tolerance of the solver.}
+\apiret{A {\tt solver\_h} handle to the newly registered solver.}
+\apidesc{Register a new solver batch with the model. You may have to look at the source code to determine which solvers accept error tolerances.}
+}
+
+\apientry{SetSolver}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{equation\_h Equation}{Handle to the equation to put in the solver batch.}
+\apipar{solver\_h}{The solver batch to put the equation in.}
+\apiret{{\tt void}.}
+\apidesc{Put an equation in a solver batch. Can only be done with basic or ODE equations.}
+}
+
+\apientry{Get[X]Handle}{Registration procedure}{
+\apipar{inca\_model *Model}{Pointer to the model object.}
+\apipar{const char *Name}{The name of an already registered X.}
+\apiret{A {\tt x\_h} handle.}
+\apidesc{X is either Equation, Input, ParameterGroup, ParameterDouble, ParameterUInt, ParameterBool, ParameterTime, IndexSet, or Solver. Is useful if you want to modularize different parts of your model into several different registration procedures, but need one module to access some of the handles of previous one.}
+}
+
+
+\subsection{Equation body declaration}
 
 \bibliographystyle{plain}
 \bibliography{citations}

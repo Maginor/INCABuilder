@@ -7,10 +7,10 @@ index_sets:
 parameters:
 ###################### (no index sets) ######################
 "Timesteps" :     #(days) [0, 18446744073709551615]
-15706
+10957
 
 "Start date" :     # ["1000-01-01", "3000-12-31"]
-"1970-01-01"
+"1986-01-01"
 
 ###################### "Landscape units" ######################
 "Degree day factor" :     #(mm/°C/day) [1.5, 4] Degree day factor, rate at which the snow will melt water in snow will freeze
@@ -37,23 +37,14 @@ parameters:
 "Fraction of field capacity where evapotranspiration reaches its maximal" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.7
 
-"Field capacity in upper layer" :     #(mm) [10, 600] Maximum soil moisture storage in upper soil layer
-150
-
-"Field capacity in lower layer" :     #(mm) [10, 600] Maximum soil moisture storage in lower soil layer
+"Field capacity" :     #(mm) [10, 600] Maximum soil moisture storage in upper soil layer
 150
 
 "Beta recharge exponent" :     #(dimensionless) [1, 10] Power parameter that determines the relative contribution to groundwater recharge
 1
 
-"Initial soil moisture in upper soil layer" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Initial soil moisture" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
 100
-
-"Initial soil moisture in lower soil layer" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-100
-
-"Upper soil recharge fraction" :     #(mm) [0, 1] How large a proportion of the soil moisture recharge goes to the upper soil layer
-0.8
 
 ###################### "Reaches" ######################
 "Recession coefficient for groundwater slow flow (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]

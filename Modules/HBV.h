@@ -1,10 +1,8 @@
 
 
 //NOTE: This is an implementation of the HBV (Hydrologiska Byråns Vattenbalansavdeling) model (Bergström 1976)
-// It is modified to accommodate for potentially more than one soil box.
 //TODO: add proper reference.
 
-//NOTE: Implementation is not finished.
 
 #if !defined(HBV_H)
 
@@ -174,12 +172,9 @@ AddSoilMoistureRoutine(inca_model *Model)
 	
     //TODO: find good default (and min/max) values for these:
 	auto SoilMoistureEvapotranspirationMax  = RegisterParameterDouble(Model, Land, "Fraction of field capacity where evapotranspiration reaches its maximal", Dimensionless, 0.7);
-	auto UpperSoilFieldCapacity             = RegisterParameterDouble(Model, Land, "Field capacity in upper layer", Mm, 150.0, 10., 600., "Maximum soil moisture storage in upper soil layer");
-	auto LowerSoilFieldCapacity             = RegisterParameterDouble(Model, Land, "Field capacity in lower layer", Mm, 150.0, 10., 600., "Maximum soil moisture storage in lower soil layer");
+	auto FieldCapacity                      = RegisterParameterDouble(Model, Land, "Field capacity", Mm, 150.0, 10., 600., "Maximum soil moisture storage");
 	auto Beta                               = RegisterParameterDouble(Model, Land, "Beta recharge exponent", Dimensionless, 1., 1.0, 10., "Power parameter that determines the relative contribution to groundwater recharge");
-	auto InitialUpperSoilMoisture           = RegisterParameterDouble(Model, Land, "Initial soil moisture in upper soil layer", Mm, 100.0);
-	auto InitialLowerSoilMoisture           = RegisterParameterDouble(Model, Land, "Initial soil moisture in lower soil layer", Mm, 100.0);
-	auto UpperSoilRechargeFraction          = RegisterParameterDouble(Model, Land, "Upper soil recharge fraction", Mm, 0.5, 0.0, 1.0, "How large a proportion of the soil moisture recharge goes to the upper soil layer");
+	auto InitialSoilMoisture                = RegisterParameterDouble(Model, Land, "Initial soil moisture", Mm, 100.0);
 	
 	
     auto AirTemperature = RegisterInput(Model, "Air temperature");
@@ -188,91 +183,46 @@ AddSoilMoistureRoutine(inca_model *Model)
 	auto WaterToSoil                 = GetEquationHandle(Model, "Water to soil"); //NOTE: from the snow model.
 	auto PotentialEvapotranspiration = GetEquationHandle(Model, "Potential evapotranspiration"); //NOTE: from the potentialevapotranspiration module.
 
-	
-	
 	auto SoilSolver = RegisterSolver(Model, "Soil solver", 0.1, IncaDascru);
 	
-	auto UpperSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Upper soil groundwater recharge fraction", Dimensionless);
-	SetSolver(Model, UpperSoilGroundwaterRechargeFraction, SoilSolver);
-	auto UpperSoilEvapotranspiration = RegisterEquation(Model, "Upper soil layer evapotranspiration", MmPerDay);
-	SetSolver(Model, UpperSoilEvapotranspiration, SoilSolver);
-	auto UpperSoilGroundwaterRecharge = RegisterEquation(Model, "Upper soil layer groundwater recharge", MmPerDay);
-	SetSolver(Model, UpperSoilGroundwaterRecharge, SoilSolver);
-	auto UpperSoilMoistureRecharge   = RegisterEquation(Model, "Upper soil layer moisture recharge", MmPerDay);
-	SetSolver(Model, UpperSoilMoistureRecharge, SoilSolver);
-	auto UpperSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in upper soil layer", Mm);
-	SetSolver(Model, UpperSoilMoisture, SoilSolver);
-	SetInitialValue(Model, UpperSoilMoisture, InitialUpperSoilMoisture);
+	auto GroundwaterRechargeFraction = RegisterEquation(Model, "Groundwater recharge fraction", Dimensionless);
+	SetSolver(Model, GroundwaterRechargeFraction, SoilSolver);
+	auto Evapotranspiration = RegisterEquation(Model, "Evapotranspiration", MmPerDay);
+	SetSolver(Model, Evapotranspiration, SoilSolver);
+	auto GroundwaterRecharge = RegisterEquation(Model, "Groundwater recharge", MmPerDay);
+	SetSolver(Model, GroundwaterRecharge, SoilSolver);
+	auto SoilMoistureRecharge   = RegisterEquation(Model, "Soil moisture recharge", MmPerDay);
+	SetSolver(Model, SoilMoistureRecharge, SoilSolver);
+	auto SoilMoisture           = RegisterEquationODE(Model, "Soil moisture", Mm);
+	SetSolver(Model, SoilMoisture, SoilSolver);
+	SetInitialValue(Model, SoilMoisture, InitialSoilMoisture);
 	
-	auto LowerSoilGroundwaterRechargeFraction = RegisterEquation(Model, "Lower soil groundwater recharge fraction", Dimensionless);
-	SetSolver(Model, LowerSoilGroundwaterRechargeFraction, SoilSolver);
-	auto LowerSoilEvapotranspiration = RegisterEquation(Model, "Lower soil layer evapotranspiration", MmPerDay);
-	SetSolver(Model, LowerSoilEvapotranspiration, SoilSolver);
-	auto LowerSoilGroundwaterRecharge = RegisterEquation(Model, "Lower soil layer groundwater recharge", MmPerDay);
-	SetSolver(Model, LowerSoilGroundwaterRecharge, SoilSolver);
-	auto LowerSoilMoistureRecharge   = RegisterEquation(Model, "Lower soil layer moisture recharge", MmPerDay);
-	SetSolver(Model, LowerSoilMoistureRecharge, SoilSolver);
-	auto LowerSoilMoisture           = RegisterEquationODE(Model, "Soil moisture in lower soil layer", Mm);
-	SetSolver(Model, LowerSoilMoisture, SoilSolver);
-	SetInitialValue(Model, LowerSoilMoisture, InitialLowerSoilMoisture);
+	auto TotalInputToGroundwater  = RegisterEquationCumulative(Model, "Total input to groundwater", GroundwaterRecharge, LandscapeUnits, Percent);           
 	
-	auto FromLandscapeUnitToGroundwater = RegisterEquation(Model, "Groundwater input from landscape unit", MmPerDay);
-	auto TotalInputToGroundwater  = RegisterEquationCumulative(Model, "Total input to groundwater", FromLandscapeUnitToGroundwater, LandscapeUnits, Percent);           
-	
-	EQUATION(Model, UpperSoilGroundwaterRechargeFraction,
-		double fraction = std::pow(RESULT(UpperSoilMoisture) / PARAMETER(UpperSoilFieldCapacity), PARAMETER(Beta));  
+	EQUATION(Model, GroundwaterRechargeFraction,
+		double fraction = std::pow(RESULT(SoilMoisture) / PARAMETER(FieldCapacity), PARAMETER(Beta));  
 		if (fraction > 1.0) fraction = 1.0;
 		return fraction; 
 	)      
 	
-	EQUATION(Model, UpperSoilEvapotranspiration,
-		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(UpperSoilFieldCapacity);
-		double potentialetpfraction = Min(RESULT(UpperSoilMoisture) / smmax, 1.0);
+	EQUATION(Model, Evapotranspiration,
+		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(FieldCapacity);
+		double potentialetpfraction = Min(RESULT(SoilMoisture) / smmax, 1.0);
 		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
 	)
 	
-	EQUATION(Model, UpperSoilGroundwaterRecharge,
-		return PARAMETER(UpperSoilRechargeFraction) * RESULT(UpperSoilGroundwaterRechargeFraction) * RESULT(WaterToSoil);
+	EQUATION(Model, GroundwaterRecharge,
+		return RESULT(GroundwaterRechargeFraction) * RESULT(WaterToSoil);
 	)
 	
-	EQUATION(Model, UpperSoilMoistureRecharge,
-		return PARAMETER(UpperSoilRechargeFraction) * (1.0 - RESULT(UpperSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil);
+	EQUATION(Model, SoilMoistureRecharge,
+		return (1.0 - RESULT(GroundwaterRechargeFraction)) * RESULT(WaterToSoil);
 	)
 	
-	EQUATION(Model, UpperSoilMoisture,
+	EQUATION(Model, SoilMoisture,
 		return
-			  RESULT(UpperSoilMoistureRecharge)
-			- RESULT(UpperSoilEvapotranspiration);
-	)
-	
-	EQUATION(Model, LowerSoilGroundwaterRechargeFraction,
-		double fraction = std::pow(RESULT(LowerSoilMoisture) / PARAMETER(LowerSoilFieldCapacity), PARAMETER(Beta));  
-		if (fraction > 1.0) fraction = 1.0;
-		return fraction; 
-	)
-	
-	EQUATION(Model, LowerSoilEvapotranspiration,
-		double smmax = PARAMETER(SoilMoistureEvapotranspirationMax) * PARAMETER(LowerSoilFieldCapacity);
-		double potentialetpfraction = Min(RESULT(LowerSoilMoisture) / smmax, 1.0);
-		return RESULT(PotentialEvapotranspiration) * potentialetpfraction;
-	)
-	
-	EQUATION(Model, LowerSoilGroundwaterRecharge,
-		return (1.0 - PARAMETER(UpperSoilRechargeFraction)) * RESULT(LowerSoilGroundwaterRechargeFraction) * RESULT(WaterToSoil);
-	)
-	
-	EQUATION(Model, LowerSoilMoistureRecharge,
-		return (1.0 - PARAMETER(UpperSoilRechargeFraction)) * (1.0 - RESULT(LowerSoilGroundwaterRechargeFraction)) * RESULT(WaterToSoil);
-	)
-	
-	EQUATION(Model, LowerSoilMoisture,
-		return
-			  RESULT(LowerSoilMoistureRecharge)
-			- RESULT(LowerSoilEvapotranspiration);
-	)
-	
-	EQUATION(Model, FromLandscapeUnitToGroundwater,
-		return RESULT(UpperSoilGroundwaterRecharge) + RESULT(LowerSoilGroundwaterRecharge);
+			  RESULT(SoilMoistureRecharge)
+			- RESULT(Evapotranspiration);
 	)
 }
 

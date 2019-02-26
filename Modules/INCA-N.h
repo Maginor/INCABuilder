@@ -82,7 +82,9 @@ AddIncaNModel(inca_model *Model)
 	auto Groundwater  = RequireIndex(Model, Soils, "Groundwater");
 	
 	//NOTE: These are from PERSiST:
-	auto WaterDepth            = GetEquationHandle(Model, "Water depth");
+	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation is subtracted.
+	auto WaterDepth4           = GetEquationHandle(Model, "Water depth 4"); //NOTE: This is right before runoff is subtracted.
+	auto WaterDepth            = GetEquationHandle(Model, "Water depth");   //NOTE: This is after everything is subtracted.
 	auto RunoffToReach         = GetEquationHandle(Model, "Runoff to reach");
 	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
 	auto SoilTemperature       = GetEquationHandle(Model, "Soil temperature");
@@ -188,32 +190,32 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth, DirectRunoff));
+		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, DirectRunoffToSoilFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(PercolationInput, Soilwater), RESULT(WaterDepth, DirectRunoff));
+		return SafeDivide(RESULT(PercolationInput, Soilwater), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, SoilToDirectRunoffFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth, Soilwater));
+		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth3, Soilwater));
 	)
 	
 	EQUATION(Model, SoilToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, Soilwater), RESULT(WaterDepth, Soilwater));
+		return SafeDivide(RESULT(RunoffToReach, Soilwater), RESULT(WaterDepth3, Soilwater));
 	)
 	
 	EQUATION(Model, SoilToGroundwaterFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth, Soilwater));
+		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth3, Soilwater));
 	)
 
 	EQUATION(Model, GroundwaterToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth, Groundwater));
+		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth3, Groundwater));
 	)
 	
 	

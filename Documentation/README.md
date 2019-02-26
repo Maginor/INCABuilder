@@ -1,11 +1,10 @@
 # Documentation
 
-The documentation is under development
+The documentation is being written. 
+We welcome feedback on the documentation in order to make it more useful.
 
 ### Mostly finished:
 **file_format_documentation** - The parameter and input file formats.
-
-### Started:
 **model_builder_documentation** - For people who want to build new models using the framework.
 
 ### Planned:

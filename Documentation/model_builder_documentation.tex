@@ -176,7 +176,7 @@ There are two types of index sets
 Each parameter belongs to a parameter group, which again can belong to another parameter group and so on. Moreover, each parameter group can index over an index set. This means that each parameter can in practice be viewed as a multidimensional array of parameter values, where each dimension in the array is indexed by one of the model's index sets. It is possible for a parameter to index over the same index set multiple times. For instance, the PERSiST hydrology model \cite{futter14} has a "Percolation matrix" parameter where both the row and column in the matrix is indexed by the soil box.
 
 \begin{example}
-A PERSiST "Percolation matrix", from a parameter file. (See separate documentation for detailed description of the parameter file format).
+A PERSiST "Percolation matrix", from a parameter file. (See separate documentation for a detailed description of the parameter file format).
 \begin{lstlisting}[style=textstyle]
 "Percolation matrix" :
 0.2 0.8 0.0
@@ -187,16 +187,16 @@ A PERSiST "Percolation matrix", from a parameter file. (See separate documentati
 1.0 0.6 0.4
 0.0 0.0 1.0
 \end{lstlisting}
-Here the parameter indexes over "Landscape units" (signifying what matrix you are looking at) and "Soils" twice (signifying which row and column). The percolation matrix is used says something about what proportion of the water will flow between each soil box, but we will not go into detail about that here.
+Here the parameter indexes over "Landscape units" (signifying what matrix you are looking at) and "Soils" twice (signifying which row and column). The percolation matrix is used to say something about what proportion of the water will flow between each soil box, but we will not go into detail about that here.
 \end{example}
 
 The parameter group and index set structure of the parameters are entirely fixed by the model (developer), and can not be configured in the parameter file (though one can usually configure which indexes each index set has).
 
 \subsection{Input structure}
-An input is a timeseries (usually of measured data or preprocessed based on measured data). Inputs are used as forcings in many models. For instance, hydrological models often use precipitation timeseries to determine how much water enters the system at each day. Inputs can either be global for the system, or like parameters can index over one or more index sets. For instance, one may want to have a separate precipitation timeseries for each subcatchment (reach). Unlike with parameters, which index set each input indexes over is determined in the input file. This can sometimes change the equation structure of the model. For instance, if precipitation and air temperature does not depend on which subcatchment one are in, the framework may decide for some models that equations like "Precipitation falling as snow" should only be evaluated once globally instead of per subcatchment. This does however also depend on which parameters these equations reference. If "Precipitation falling as snow" references a parameter that indexes over the "Reaches" index set, that equation will still evaluate once per reach.
+An input is a timeseries (usually of measured data or preprocessed data based on measured data). Inputs are used as forcings in many models. For instance, hydrological models often use precipitation timeseries to determine how much water enters the system at each day. Inputs can either be global for the system, or like parameters can index over one or more index sets. For instance, one may want to have a separate precipitation timeseries for each subcatchment (reach). Unlike with parameters, which index set each input indexes over is determined in the input file. This can sometimes change the equation structure of the model. For instance, if precipitation and air temperature does not depend on which subcatchment one are in, the framework may decide for some models that equations like "Precipitation falling as snow" should only be evaluated once globally instead of per subcatchment. This does however also depend on which parameters these equations reference. If "Precipitation falling as snow" references a parameter that indexes over the "Reaches" index set, that equation will still evaluate once per reach.
 
 \subsection{Equation  batch structure}
-During the main run of the model, the model will for each timestep evaluate all equations (sometimes called state variables) in a given order. Equations can also be evaluated for multiple indexes. For instance the equations having to do with flow or volume of the reach are evaluated for each reach index. Equations are sorted so that an equation is always evaluated after other equations that it uses the result values of. To facilitate this, the model builds an equation batch structure.
+During the main run of the model, the model will for each timestep evaluate all equations (sometimes called state variables) in a given order. Equations can also be evaluated for multiple indexes. For instance any equations having to do with flow or volume of a reach are typically evaluated for each index in a "Reaches" index set. Equations are sorted so that an equation is always evaluated after other equations that it uses the result values of. To facilitate this, the model builds an equation batch structure.
 
 \begin{example}\label{ex:persiststructure}
 The equation batch structure for the framework implementation of PERSiST.
@@ -255,7 +255,7 @@ The equation batch structure for the framework implementation of PERSiST.
 The model has an ordered list of batch groups, where each batch group has an ordered list of batches. Each batch group also has an ordered list of index sets that it indexes over. Each batch can either be a discrete batch or a solver batch. The model will evaluate each batch group at a time. Then for each combination of indexes in the index sets it evaluates each batch in the batch group in order. In discrete batches, each equation is evaluated in order. In solver batches, the ODE system will be integrated possibly evaluating each equation many times. In Example \ref{ex:persiststructure}, the first three batch groups contain one batch each, while the last batch group contains three batches. 
 
 \begin{note}
-The only time a batch group can have more than one batch is if it contains both a solver batch and one or more discrete batches (or possibly another solver batch using a different integrator). Two discrete batches next to each other that index over the same index sets would have been merged.
+The only time a batch group can have more than one batch is if it contains both a solver batch and one or more discrete batches (or possibly another solver batch using a different integrator). Two discrete batches next to each other that index over the same index sets will always be merged.
 \end{note}
 
 \begin{example}\label{ex:pseucocode}
@@ -289,7 +289,7 @@ Unlike parameters, equations can never index over one index set more than once. 
 
 We refer to the quick start guide on the front page of the github repository as well as the tutorials on how to quickly get a project started.
 
-Usually you will have one header (.h) file with the procedures you use to build your model, and one source file (.cpp) with the main functio of the C++ program, where you do all application-level operations such as creating and destroying model and dataset objects or reading in parameter values from files, running the model and so on.
+Usually you will have one header (.h) file with the procedures you use to build your model, and one source file (.cpp) with the main function of the C++ program, where you do all application-level operations such as creating and destroying model and dataset objects or reading in parameter values from files, running the model and so on.
 
 \begin{example}\label{ex:examplemain}
 Example of a main.cpp
@@ -380,7 +380,7 @@ inputs:
 \end{lstlisting}
 \end{example}
 
-Example \ref{ex:examplemain} shows a main function that you can usually keep unchanged throughout model development. The only thing you may want to change in it is the debug printout ({\tt PrintResultSeries}) at the end, to print out different debug result series. Your main model development will happen inside {\tt mymodel.h} (which you can name anything you like). You will also have to update your parameter and input files as the model requirements change. The parameter file can be autogenerated, something that is explained in the tutorials.
+Example \ref{ex:examplemain} shows a main function that you can usually keep unchanged throughout model development. The only thing you may want to change in it is the debug printout ({\tt PrintResultSeries}) at the end, to print out different result series. Your main model development will happen inside {\tt mymodel.h} (which you can name anything you like). You will also have to update your parameter and input files as the model requirements change. The parameter file can be autogenerated, something that is explained in the tutorials.
 
 \subsubsection{A note on visualisation of model results}
 
@@ -388,7 +388,7 @@ During model development it can be pretty unsatisfactory to just look at the num
 
 \subsection{Entity registration, handles, and equation bodies}\label{sec:registrationandhandles}
 
-The {\tt inca\_model} object contains lists of various model entities (see Table \ref{tab:modelentity} for an explanaition) and information about these. It is the model developers job to register all the entities and provide the needed information for each one.
+The {\tt inca\_model} object contains lists of various model entities (see Table \ref{tab:modelentity} for an explanaition) and information about these. It is the model developers' job to register all the entities and provide the needed information for each one.
 
 \begin{example}\label{ex:registration}
 Example of entity registration.
@@ -396,12 +396,12 @@ Example of entity registration.
 auto X = RegisterInput(Model, "X");
 auto A = RegisterParameterDouble(Model, System, "A", Dimensionless, 1.0);
 \end{lstlisting}
-The input "X" is tied to the model and is given the name "X". The parameter (of type double) is tied to the Model, the parameter group System, given the name "A", the unit Dimensionless, and the default value 1.0. A full model building API describing all the registration functions will be given later.
+The input "X" is tied to the model and is given the name "X". The parameter (of type double) is tied to the Model, the parameter group System, given the name "A", the unit Dimensionless, and the default value 1.0. A full model building API describing all the registration functions is given in Section \ref{sec:registrationproc}.
 \end{example}
 
 Each registration function returns a handle. In Example \ref{ex:registration}, the handles are {\tt X} and {\tt A} (declared with {\tt auto} to signify that we don't care about their exact type). Handles are "tickets" one can use to talk about an entity one has already registered. If you provide the handle {\tt A} in the context of extracting a parameter value, the model will know that you are talking about the parameter "A" that you registered earlier.
 
-Every equation in the model also receives an equation body, and inside the equation body one can reference the values of registered parameters, inputs and equations by referring to them by their handle.
+Every equation in the model also receives an equation body, and inside the equation body one can extract the values of registered parameters, inputs and equations by referring to them by their handle.
 
 \begin{example}\label{ex:equation}
 The equation "AX" references the value of the parameter "A" and the input "X" by using the handles returned from the registration of those entities.
@@ -486,7 +486,7 @@ SetInitialValue(Model, SnowDepth, InitialSnowDepth);
 \end{lstlisting}
 \end{example}
 
-Note that we also use the {\tt SetInitialValue} procedure to tell the model that "Snow depth" should have initial value "Initial snow depth". The value of "Initial snow depth" is not determined at this point, but it will be read from a parameter file before one runs the model, and the model will remember that it should set this value as the initial value of "Snow depth" before the run starts. We have also added the state variable "Potential daily snowmelt" as a partial calculation used in "Snow melt", however that is not strictly necessary. Next one provides the equation bodies.
+Note that we also use the {\tt SetInitialValue} procedure to tell the model that "Snow depth" should have initial value "Initial snow depth". The value of "Initial snow depth" is not determined at this point, but it will be determined before one runs the model (typically by reading a parameter file), and the framework will remember that it should set this value as the initial value of "Snow depth" before the run starts. We have also added the state variable "Potential daily snowmelt" as a partial calculation used in "Snow melt", however that is not strictly necessary. Next one provides the equation bodies.
 
 \begin{example}\label{ex:simplypequations}
 Equation bodies for the SimplyP snow module.
@@ -546,7 +546,7 @@ The framework automatically determined that "Potential daily snowmelt" has to in
 
 Even if we had declared the equations in a different order, the framework would have been able to put them in an order that makes sense. Every equation will be evaluated after any other equation that it accesses the current-timestep result of (i.e. using the {\tt RESULT} accessor). Previous-timestep result accesses ({\tt LAST\_RESULT}) do not have any impact on evaluation order. In this case, the order of "Snow depth" and "Hydrological input to soil box" do not depend on (the current-day value of) each other, and so they could have been placed by the framework in any order respective to one another.
 
-In this example we used an input file that does not declare any index set dependencies for "Air temperature" or "Precipitation". If we had instead used an input file where these two timeseries are given per reach, we would have got the following batch structure.
+In this example we used an input file that does not declare any index set dependencies for "Air temperature" or "Precipitation". If we had instead used an input file where these two timeseries are given per index in "Reaches", we would get the following batch structure.
 
 \begin{example}
 Batch structure for the SimplyP snow module if the user provided precipitation and air temperature timeseries per reach.
@@ -580,7 +580,7 @@ EQUATION(Model, PrecipitationFallingAsSnow,
 \end{lstlisting}
 \end{example}
 
-This has to do with a limiting factor of the implementation of the framework. It has to do with how it registers what equations depend on what other entities. Right before the main model run, the framework evaluates each equation once in a certain state to determine what entities it referenced. Since the equation may go down either branch (but not both) of the conditional {\tt if} during this registration phase, it may miss value accesses that happened in the other branch. You can however access a value inside a conditional if you access it inside both branches.
+This has to do with a limiting factor of the implementation of the framework. It is related to how it registers what equations depend on what other entities. When the model is finalized, the framework evaluates each equation once in a certain state to determine what entities it referenced. Since the equation may go down either branch (but not both) of the conditional {\tt if} during this registration phase, it may miss value accesses that happened in the other branch. You can however access a value inside a conditional if you access it inside both branches.
 
 \begin{example}\label{ex:simplypequations}
 WRONG. DO NOT DO THIS! Extracting values inside conditionals.
@@ -600,7 +600,7 @@ Generally you should try to limit what kind of expressions you use inside equati
 \begin{enumerate}[i]
 \item Access values using {\tt PARAMETER}, {\tt INPUT}, {\tt RESULT}, {\tt LAST\_RESULT}, or any of the more advanced accesses described in Section \ref{sec:advancedaccess}.
 \item Simple control flow like {\tt for} or {\tt if} (but remember the warning about accesses inside conditionals above!!).
-\item Calling functions (that don't have side effects) that do mathematical computations on values, like std::exp (the exponential function).
+\item Calling functions (that don't have side effects) that do mathematical computations on values, like {\tt exp} (the exponential function).
 \item Always returning a value of type double (if you do not do this, you will get an error).
 \item You can refer to variables that are declared outside the equation body, but you should generally limit this to the entity handles you get from entity registration. Any variable you reference inside the equation body will be copied (by value) using the rules of C++11 lambda captures.
 \end{enumerate}
@@ -627,18 +627,18 @@ auto TotalDiffuseFlowOutput = RegisterEquationCumulative(Model, "Total diffuse f
 \end{lstlisting}
 \end{example}
 
-A cumulative equation will get the same unit as the equation it cumulates. It will also get the same index set dependencies \emph{except} for the index set it cumulates over. In Example \ref{ex:cumulation}, if "Diffuse flow output" indexes over "Reaches" and "Landscape units", then "Total diffuse flow output" indexes over "Reaches".
+A cumulative equation will get the same unit as the equation it cumulates. It will also get the same index set dependencies \emph{except} for the index set it cumulates over. In Example \ref{ex:cumulation}, if "Diffuse flow output" indexes over "Reaches" and "Landscape units", then "Total diffuse flow output" indexes over "Reaches" only.
 
 \subsubsection{ODE equations and solvers}
 
-A solver is a model entity of its own. A solver is registered with an integration method and some configuration values to the integration method. One can then add an equation to the solver group using {\tt SetSolver} (see example below). All equations with the same solver will be treated as one batch. This means that the solver inherits all the index set dependencies of all the equations in the solver. All the equations will then be evaluated for all of these indexes regardless of whether they had all the index sets as dependencies individually. The solver can (and usually will) evaluate the entire set of equations more than one time per timestep (and index combination). For instance it is not uncommon that a solver evaluates all the equations for 10 or more sub-timesteps per timestep. Moreover, some integration methods (like higher-order Runge-Kutta methods) require multiple evaluations per sub-timestep.
+A solver is a model entity of its own. A solver is registered with an integration method and some configuration values to the integration method. One can then add an equation to the solver batch using {\tt SetSolver} (see example below). All equations with the same solver will be treated as one batch. This means that the solver inherits all the index set dependencies of all the equations in the solver. All the equations will then be evaluated for all of these indexes regardless of whether they had all the index sets as dependencies individually. The solver can (and usually will) evaluate the entire set of equations more than one time per timestep (and index combination). For instance it is not uncommon that a solver evaluates all the equations for 10 or more sub-timesteps per timestep. Moreover, some integration methods (like higher-order Runge-Kutta methods) require multiple evaluations per sub-timestep.
 
 In the next example we have a predator-prey system subject to the Lotka-Volterra equations
 \begin{align*}
 \dot{x} &= \alpha x - \beta xy\\
 \dot{y} &= \delta xy - \gamma y
 \end{align*}
-Where $x$ is the prey population and $y$ is the predator population. This can be implemented as follows
+Where $x$ is the prey population, $y$ is the predator population and $\alpha$, $\beta$, $\gamma$ and $\delta$ are parameters. This can be implemented as follows
 
 \begin{example}\label{ex:lotkavolterra}
 Implementing the Lotka-Volterra system in INCABuilder. Parameter and unit registration is omitted.
@@ -660,7 +660,7 @@ EQUATION(Model, Predation,
 )
 
 EQUATION(Model, PredatorGrowth,
-	return PARAMETER(PredatorBaseGrowhtRate) * RESULT(PreyPopulation) * RESULT(PredatorPopulation); //PredatirBaseGrowthRate is delta
+	return PARAMETER(PredatorBaseGrowhtRate) * RESULT(PreyPopulation) * RESULT(PredatorPopulation); //PredatorBaseGrowthRate is delta
 )
 
 EQUATION(Model, PreyPopulation,
@@ -676,11 +676,11 @@ EQUATION(Model, PredatorPopulation,
 There are a couple of things to note from Example \ref{ex:lotkavolterra}.
 \begin{enumerate}[i]
 \item You can put both regular and ODE equations on a solver. The regular equations will serve as partial computations that can be used by the ODE equations. In the example, it is a little excessive to factor out {\tt Predation} and {\tt PredatorGrowth} as their own equations, but one can easily imagine more complicated examples where a big computation can be reused by many ODE equations.
-\item Instead of returning the value of the state variable, an ODE equation has to return the time-derivative of its state variable. The integrator will then integrate the equation system to calculate the actual values of the ODE state variables.
+\item Instead of returning the value of its state variable, an ODE equation has to return the time-derivative of its state variable. The integrator will then integrate the equation system to calculate the actual values of the ODE state variables.
 \item The integration of the ODE equations starts every timestep at the end-of-timestep value from the previous timestep, and then integrates the system over one timestep.
 \end{enumerate}
 
-For each time the solver evaluates its batch (i.e. typically many sub-timesteps per timestep), the regular equations are evaluated in order before the ODE equations. Within an ODE-system, a reference to a {\tt RESULT} from the current solver batch will give you the intermediate sub-timestep value that the integrator is currently at. The {\tt RESULT} of an ODE equation will refer to the (integrated) value of the state variable, not the value returned by the ODE equation, which was the time-derivative of the state variable.
+For each time the solver evaluates its batch (i.e. typically many times per timestep), the regular equations are evaluated in order before the ODE equations. Within an ODE-system, a reference to a {\tt RESULT} from the current solver batch will give you the intermediate sub-timestep value that the integrator is currently at. The {\tt RESULT} of an ODE equation will refer to the (integrated) value of the state variable, not the value returned by the ODE equation, which was the time-derivative of the state variable.
 
 If you refer to the {\tt RESULT} value of a solver batch equation from an equation belonging to a different batch (i.e. it was not put on the same solver or any solver at all), you will get the end-of timestep value of that state variable. This is also the value that will be stored in the result timeseries that you can extract after a model run.
 

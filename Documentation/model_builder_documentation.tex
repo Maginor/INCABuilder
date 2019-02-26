@@ -1007,7 +1007,7 @@ We logically separate application building from model building. By application b
 }
 
 \apientry{RunModel}{Appication building procedure}{
-\apipar{inca\_data\_set *DataSet}{The dataset you wish to run the model with.}
+\apipar{inca\_data\_set *DataSet}{Pointer to the dataset object.}
 \apidesc{Attempts to run the model (that the dataset was generated from) with the parameter and input values given in this dataset. The start date is read from the "Start date" parameter if it exists, and the number of timesteps is read from the "Timesteps" parameter if it exists. All result timeseries are stored in the dataset.}
 }
 

@@ -19,7 +19,9 @@ calibration = [
 	('Beta recharge exponent',                                                  ['Forest']),
 	('Recession coefficient for groundwater slow flow (K1)',                    ['R1']),
 	('Recession coefficient for groundwater fast flow (K0)',                    ['R1']),
-	#('Threshold for second runoff in groundwater storage (UZL)',                ['R1']),
+	('Threshold for second runoff in groundwater storage (UZL)',                ['R1']),
+	('a',                                                                       ['R1']),
+	('b',                                                                       ['R1']),
 	]
 
 
@@ -33,7 +35,7 @@ constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min an
 
 skiptimesteps = 100   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (log_likelyhood, 'Flow from routing routine to reach', ['R1'], 'Discharge', [], skiptimesteps)
+objective = (log_likelyhood, 'Reach flow', ['R1'], 'Discharge', [], skiptimesteps)
 
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)

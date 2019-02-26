@@ -48,7 +48,7 @@ parameters:
 
 ###################### "Reaches" ######################
 "Recession coefficient for groundwater slow flow (K1)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-0.01
+0.1
 
 "Recession coefficient for groundwater fast flow (K0)" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0.2

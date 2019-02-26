@@ -165,6 +165,7 @@ AddINCACModel(inca_model *Model)
 	
 	auto SoilTemperature       = GetEquationHandle(Model, "Soil temperature");
 	auto WaterDepth            = GetEquationHandle(Model, "Water depth");
+	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation and runoff is subtracted.
 	auto RunoffToReach         = GetEquationHandle(Model, "Runoff to reach");
 	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
 	auto PercolationInput      = GetEquationHandle(Model, "Percolation input");
@@ -200,42 +201,42 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth, DirectRunoff));
+		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, DirectRunoffToOrganicLayerFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(PercolationInput, OrganicLayer), RESULT(WaterDepth, DirectRunoff));
+		return SafeDivide(RESULT(PercolationInput, OrganicLayer), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, OrganicLayerToDirectRunoffFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth, OrganicLayer));
+		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth3, OrganicLayer));
 	)
 	
 	EQUATION(Model, OrganicLayerToMineralLayerFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(PercolationInput, MineralLayer), RESULT(WaterDepth, OrganicLayer));
+		return SafeDivide(RESULT(PercolationInput, MineralLayer), RESULT(WaterDepth3, OrganicLayer));
 	)
 	
 	EQUATION(Model, OrganicLayerToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, OrganicLayer), RESULT(WaterDepth, OrganicLayer));
+		return SafeDivide(RESULT(RunoffToReach, OrganicLayer), RESULT(WaterDepth3, OrganicLayer));
 	)
 	
 	EQUATION(Model, MineralLayerToGroundwaterFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth, MineralLayer));
+		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth3, MineralLayer));
 	)
 	
 	EQUATION(Model, MineralLayerToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, MineralLayer), RESULT(WaterDepth, MineralLayer));
+		return SafeDivide(RESULT(RunoffToReach, MineralLayer), RESULT(WaterDepth3, MineralLayer));
 	)
 
 	EQUATION(Model, GroundwaterToReachFraction,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
-		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth, Groundwater));
+		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth3, Groundwater));
 	)
 	
 	

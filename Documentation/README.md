@@ -1,11 +1,9 @@
 # Documentation
 
-The documentation is under development
+The documentation is being written.
 
 ### Mostly finished:
 **file_format_documentation** - The parameter and input file formats.
-
-### Started:
 **model_builder_documentation** - For people who want to build new models using the framework.
 
 ### Planned:
@@ -14,3 +12,6 @@ The documentation is under development
 
 ### Maybe:
 Documentation of individual models. However this is time consuming. Many of these models are published in articles, and you can combine reading those with reading the model source code (under the Modules folder). The source code is often very readable and self-documenting in the choice of variable names.
+
+
+We welcome feedback on the documentation in order to make it more useful.

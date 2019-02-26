@@ -78,7 +78,7 @@ If you find this section too technical, just skip to the examples.
 \begin{enumerate}[i]
 \item You can put a comment in one of these files using the \# symbol. This will treat the rest of the line as a comment that is ignored when parsing the file.
 \item Quoted strings are sequences of characters enclosed in a pair of quotation marks " ". These can contain contain utf-8 encoded strings, but not newlines.
-\item Outside quoted strings, everything is ascii.
+\item Outside quoted strings, everything has to be ascii.
 \item Except for inside quoted strings and except for newlines after a \#, all consecutive sequences of whitespace (space characters, tabulars, newlines) are treated as one single space.
 \item Each .dat file is treated as a series of tokens. A token is a sequence of characters that encode one value or symbol. An overview of the types of tokens are given in Table \ref{tab:tokens}.
 \end{enumerate}
@@ -153,14 +153,14 @@ false true
 Every parameter file, like the file in Example \ref{ex:parameterfile}, needs to have two sections (in that order)
 \begin{enumerate}[i]
 \item {\tt index\_sets :} This section describes the indexes of each index set that is present in the model. Here you can for instance configure the number of landscape units or reaches in your dataset.
-\item {\tt parameters :} This section lets you fill in values for individual parameters. If a parameter indexes over one or more index sets, you need to provide a number of values corresponding to the number of indexes.
+\item {\tt parameters :} This section lets you fill in values for individual parameters. If a parameter indexes over one or more index set, you need to provide a number of values corresponding to the number of (tuples of) indexes.
 \end{enumerate}
 
 \subsubsection{Index sets}
 Which index sets that are present are determined by the model you want to run. Most often you are free to determine which indexes  they have, but sometimes, the indexes of an index set are also specified by the model. For instance, INCA-N requires you to have the indexes \{"Direct runoff" "Soilwater" "Groundwater"\} for soils. In any case, you have to provide a set of indexes for each index set in the parameter file. There are two types of index sets, basic and branched.
 \begin{enumerate}[i]
-\item Basic index sets are index sets with no additional structure, such as "Landscape units". To provide the indexes of a basic index set, type the quoted name of the index set followed by a colon and a brace-enclosed space-separated (no commas) list of the quoted names of the indexes. See "Landscape units" in Example \ref{ex:parameterfile}
-\item In a branched index set, each index can have zero or more inputs, where each input is another index. In INCA type models, this is used to encode a river network of reaches that can be inputs to other reaches. The indexes of a branched index set are provided as a brace-enclosed list of items, where each item is either a quoted name of an index or a brace-enclosed list of quoted names of indexes. If the item is a name appearing alone, it signifies an index that does not have any inputs. If an item is a list, the first string of the list is a new index, and the rest of the strings are names of previously declared indexes that are inputs to this one.
+\item Basic index sets are index sets with no additional structure except for the order of the indexes. One example is "Landscape units" in Example \ref{ex:parameterfile}. To provide the indexes of a basic index set, type the quoted name of the index set followed by a colon and a brace-enclosed space-separated (no commas) list of the quoted names of the indexes.
+\item In a branched index set, each index can have zero or more branch inputs, where each input is another index. In INCA type models, this is used to encode a river network of reaches, where each reach can be an input to other reaches. The indexes of a branched index set are provided as a brace-enclosed list of items, where each item is either a quoted name of an index or a brace-enclosed list of quoted names of indexes. If the item is a name appearing alone, it signifies an index that does not have any inputs. If an item is a list, the first string of the list is a new index, and the rest of the strings are names of previously declared indexes that are inputs to this one.
 \end{enumerate}
 
 \begin{example}
@@ -214,7 +214,7 @@ The parameter section consists of a series of quoted names of parameters followe
 \item Values of {\bf time} type are provided as a date on the format "Y-m-d".
 \end{enumerate}
 
-Every parameter indexes over a list of index sets determined by the model. Note that an index set can appear more than one time in this list. If a parameter indexes over no index sets, it has only one value. If it indexes over one index set it has one value for each index in that index set. If it indexes over more than one index sets, it has one value for each element in the cartesian product of these index sets, i.e. the number of values is equal to the product of the number of indexes.
+Every parameter indexes over a list of index sets determined by the model. Note that an index set can appear more than one time in this list. If a parameter indexes over no index sets, it has only one value. If it indexes over one index set it has one value for each index in that index set. If it indexes over more than one index set, it has one value for each element in the cartesian product\footnote{Remember that the Cartesian product of sets $X$ and $Y$ is the set of tuples $(x, y)$, with $x\in X$ and $y\in Y$.} of these index sets, i.e. the number of values is equal to the product of the number of indexes.
 
 In the following examples, the index sets are as in Example \ref{ex:parameterfile}. These examples will also describe the order that the values should appear in.
 
@@ -393,7 +393,7 @@ In many cases, your input data will a priori exist in a .csv format or an .xlsx 
 
 \begin{enumerate}[i]
 \item If your data are opened in excel (or open office calc) your can click the letter of a column in the top bar to select the entire column, then ctrl-c to copy it. You can now paste it in a text editor.
-\item You need all values to have a '.' decimal separator rather than a ','. You can either do a search-replace in a text editor after copying the values, or in excel go to File->Options, On the Advanced tab, under Editing options, uncheck the Use system separators box, then type in the right Decimal separator in its box.
+\item You need all values to have a '.' decimal separator rather than a ','. You can either do a search-replace in a text editor after copying the values, or in excel go to File$\rightarrow$Options, On the Advanced tab, under Editing options, uncheck the Use system separators box, then type in the right Decimal separator in its box.
 \item To format a column of dates to the Y-m-d format, select the colum, then right click it and select Format Cells. Under Date select the right format.
 \item If you have one date column and many data columns and you want to copy just the date column together with one data column, you can temporarily copy the data column next to the date column and ctrl-select and copy the two together.
 \item You may still need to enclose all dates in quotation marks " ". This can be tedious to do manually. It is pretty easy to do it using macros. We may include a tutorial on how to do it using Notepad++ macros later. Or if you know of a more efficient way to do it that does not involve scripting, please let us know!

@@ -127,11 +127,10 @@ It is recommended for any model developers to take a look at the tutorials and e
 
 \subsection{The model}
 
-The model object contains all immutable information about the model that will not change with each particular usage of the model. The model object contains lists of various model entities and information about these that are provided by the model developer in the model registration routine. The different model entities are presented in Table \ref{tab:modelentity}
+The model object contains all immutable information about the model that will not change with each particular usage of the model. The model object contains lists of various model entities and information about these that are provided by the model developer in the model registration routine. The different model entities are presented in Table \ref{tab:modelentity}.
 
 \begin{table}[H]
 \centering
-\label{tab:modelentity}
 \begin{tabular}{|>{\bf}l|p{10cm} |}
 \hline
 Index sets & Parameters, inputs and equation results can index over one or more index sets. For instance, you may want to evalute the same equations in multiple contexts, such as once per reach in a river, and in that case you want an index set for these reaches. \\
@@ -148,6 +147,7 @@ Solvers & Each solver contains a list ODE equations that it will solve over one 
 \hline
 \end{tabular}
 \caption{The model entities}
+\label{tab:modelentity}
 \end{table}
 
 \subsection{The dataset}
@@ -158,18 +158,18 @@ The dataset contains information about the specific setup of a model. This inclu
 
 \subsection{Index sets and indexes}
 
-Index sets is one of the fundamental concepts in the INCABuilder framework. Examples of index sets can be "Reaches", or "Landscape units". Parameters, equation results and inputs can index over index sets, so that the same equation is evaluated for many indexes, and with different parameter values.
+Index sets is one of the fundamental concepts in the INCABuilder framework. Examples of index sets can for instance be "Reaches", or "Landscape units". Parameters, equation results and inputs can index over index sets, so that the same equation is evaluated for many indexes, and with different parameter values for each (combination of) indexes.
 
 \begin{example}
-The equation "Snow fall" depends on the input timeseries "Actual precipitation" and "Air temperature", and on the parameter "Canopy interception". Say that "Canopy interception" indexes over the index set "Landscape units". In this case, "Snow fall" will be evaluated once per index in the "Landscape units" index set, using the corresponding parameter value of "Canopy interception". If one of the inputs also index over "Reaches", then "Snow fall" will be evaluated once per reach-landscape unit pair, and so on.
+The equation "Snow fall" depends on the input timeseries "Actual precipitation" and "Air temperature", and on the parameter "Canopy interception". Say that "Canopy interception" indexes over the index set "Landscape units". In this case, "Snow fall" will be evaluated once per index in the "Landscape units" index set, using the corresponding parameter value of "Canopy interception" for each index. If one of the inputs also index over "Reaches", then "Snow fall" will be evaluated once per reach-landscape unit pair. This generalizes to higher number of index sets.
 \end{example}
 
-Which index sets each model has is fixed, and determined by the model developer. However, which indexes each index set contains can usually be determined by the model user, for instance by configuring a parameter file. Some model do however require a fixed set of particular indexes for some of its index sets. For instance INCA-N only works with three soil boxes, while INCA-C works with four.
+Which index sets each model has is fixed, and determined by the model developer. However, which indexes each index set contains can usually be determined by the model user, for instance by configuring a parameter file. Some models do however require a fixed set of particular indexes for some of its index sets. For instance INCA-N only works with three particular soil boxes.
 
 There are two types of index sets
 \begin{enumerate}[i]
-\item Basic index sets. These have no additional structure.
-\item Branched index sets. These contain additional connectivity information, and are typically used to encode river structures. Each index in a branched index set has a list of incoming branches, which are other indexes in the same index set.
+\item Basic index sets. These have no additional structure except for the order of the indexes.
+\item Branched index sets. These contain additional connectivity information, and are typically used to encode river structures. Each index in a branched index set has a list of incoming branches, the branches being other indexes in the same index set.
 \end{enumerate}
 
 \subsection{Parameter structure}
@@ -187,13 +187,13 @@ A PERSiST "Percolation matrix", from a parameter file. (See separate documentati
 1.0 0.6 0.4
 0.0 0.0 1.0
 \end{lstlisting}
-Here the parameter indexes over "Landscape units" (signifying what matrix you are looking at) and "Soils" twice (signifying which row and column). The percolation matrix is used to say something about what proportion of the water will flow between each soil box, but we will not go into detail about that here.
+The parameter indexes over "Landscape units" once (signifying what matrix you are looking at) and "Soils" twice (signifying which row and column). The percolation matrix is used to say something about what proportion of the water will flow between each soil box, but we will not go into detail about that here.
 \end{example}
 
-The parameter group and index set structure of the parameters are entirely fixed by the model (developer), and can not be configured in the parameter file (though one can usually configure which indexes each index set has).
+The parameter group and index set structure of the parameters are entirely fixed by the model (developer), and can not be configured in the parameter file. But one can usually configure which indexes each index set has and which values the parameter has for each (tuple of) index(es). 
 
 \subsection{Input structure}
-An input is a timeseries (usually of measured data or preprocessed data based on measured data). Inputs are used as forcings in many models. For instance, hydrological models often use precipitation timeseries to determine how much water enters the system at each day. Inputs can either be global for the system, or like parameters can index over one or more index sets. For instance, one may want to have a separate precipitation timeseries for each subcatchment (reach). Unlike with parameters, which index set each input indexes over is determined in the input file. This can sometimes change the equation structure of the model. For instance, if precipitation and air temperature does not depend on which subcatchment one are in, the framework may decide for some models that equations like "Precipitation falling as snow" should only be evaluated once globally instead of per subcatchment. This does however also depend on which parameters these equations reference. If "Precipitation falling as snow" references a parameter that indexes over the "Reaches" index set, that equation will still evaluate once per reach.
+An input is a timeseries (usually of measured data or preprocessed data that is based on measured data). Inputs are used as forcings in many models. For instance, hydrological models often use precipitation timeseries to determine how much water enters the system at each day. Inputs can either be global for the system, or like parameters can index over one or more index sets. For instance, one may want to have a separate precipitation timeseries for each subcatchment (reach). Unlike with parameters, which index set each input indexes over is determined in the input file. This can sometimes change the equation structure of the model. For instance, if precipitation and air temperature does not depend on which subcatchment one are in, the framework may decide for some models that equations like "Precipitation falling as snow" should only be evaluated once globally instead of per subcatchment. This does however also depend on which parameters these equations reference. If "Precipitation falling as snow" references a parameter that indexes over the "Reaches" index set, that equation will still evaluate once per reach.
 
 \subsection{Equation  batch structure}
 During the main run of the model, the model will for each timestep evaluate all equations (sometimes called state variables) in a given order. Equations can also be evaluated for multiple indexes. For instance any equations having to do with flow or volume of a reach are typically evaluated for each index in a "Reaches" index set. Equations are sorted so that an equation is always evaluated after other equations that it uses the result values of. To facilitate this, the model builds an equation batch structure.

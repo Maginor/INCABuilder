@@ -1,6 +1,7 @@
 # Documentation
 
-The documentation is being written.
+The documentation is being written. 
+We welcome feedback on the documentation in order to make it more useful.
 
 ### Mostly finished:
 **file_format_documentation** - The parameter and input file formats.
@@ -12,6 +13,3 @@ The documentation is being written.
 
 ### Maybe:
 Documentation of individual models. However this is time consuming. Many of these models are published in articles, and you can combine reading those with reading the model source code (under the Modules folder). The source code is often very readable and self-documenting in the choice of variable names.
-
-
-We welcome feedback on the documentation in order to make it more useful.

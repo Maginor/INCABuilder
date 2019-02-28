@@ -4,4 +4,4 @@ COMPILE:
 gcc -c sqlite3.c -O2
 
 WINDOWS: g++ IncaN.cpp -O2 -fno-exceptions -o IncaN.exe sqlite3.o
-LINUX:   g++ IncaN.cpp -O2 -fno-exceptions -o IncaN.exe sqlite3.o -lpthread -ldl
+LINUX:   g++ IncaN.cpp -O2 -fno-exceptions -o IncaN sqlite3.o -lpthread -ldl

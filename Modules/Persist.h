@@ -170,11 +170,11 @@ AddPersistModel(inca_model *Model)
 		CURRENT_INDEX(Reach); //NOTE: To force a dependency.
 		double sumSaturationExcessInput = 0.0;
 		double relativeareaindex = PARAMETER(RelativeAreaIndex);
-		for(index_t LocalIndex = 0; LocalIndex < INDEX_COUNT(SoilBoxes); ++LocalIndex)
+		for(index_t OtherSoil = 0; OtherSoil < INDEX_COUNT(SoilBoxes); ++OtherSoil)
 		{
-			sumSaturationExcessInput += LAST_RESULT(SaturationExcess, LocalIndex)
-							* PARAMETER(PercolationMatrix, LocalIndex, CURRENT_INDEX(SoilBoxes))
-							* PARAMETER(RelativeAreaIndex, LocalIndex, CURRENT_INDEX(LandscapeUnits))
+			sumSaturationExcessInput += LAST_RESULT(SaturationExcess, OtherSoil)
+							* PARAMETER(PercolationMatrix, OtherSoil, CURRENT_INDEX(SoilBoxes))
+							* PARAMETER(RelativeAreaIndex, OtherSoil, CURRENT_INDEX(LandscapeUnits))
 							/ relativeareaindex;
 		}
 		if(!PARAMETER(ThisIsAQuickBox)) sumSaturationExcessInput = 0.0;

@@ -175,7 +175,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		{
 			//TODO: This should be a command line option instead maybe.
 #if INCAVIEW_INCLUDE_JSON
-			std::cout << "Model run finished. Writing result data to " << ResultJsonFileName << std::endl
+			std::cout << "Model run finished. Writing result data to " << ResultJsonFileName << std::endl;
 			WriteResultsToJson(DataSet, ResultJsonFileName);
 #endif
 		}

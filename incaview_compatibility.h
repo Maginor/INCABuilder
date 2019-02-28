@@ -10,6 +10,15 @@
 #include "Calibration/Optimizer/optimizer.h"
 #endif
 
+
+#if !defined INCAVIEW_INCLUDE_JSON
+#define INCAVIEW_INCLUDE_JSON 0
+#endif
+
+#if INCAVIEW_INCLUDE_JSON
+#include "inca_json_io.cpp"
+#endif
+
 enum incaview_run_mode
 {
 	IncaviewRunMode_Run,
@@ -143,6 +152,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		//TODO: would it be better to provide these as arguments too?
 		const char *ResultDbFileName    = "results.db";
 		const char *InputDbFileName     = "inputs.db"; //NOTE: This is only for writing inputs TO so that they can be read by INCAView. Inputs are always read in from the provided .dat file.
+		const char *ResultJsonFileName  = "results.json";
 		
 		int Type = IncaviewParseFileType(Args->ParameterInFileName);
 		
@@ -154,11 +164,21 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		
 		RunModel(DataSet);
 		
-		std::cout << "Model run finished. Writing result data to database." << std::endl;
-		
 		//TODO: Delete existing databases if they exist? (right now it is handled by incaview, but it could be confusing if somebody runs the exe manually)
-		WriteResultsToDatabase(DataSet, ResultDbFileName);
-		WriteInputsToDatabase(DataSet, InputDbFileName);
+		if(Type==0)
+		{
+			std::cout << "Model run finished. Writing result data to " << ResultDbFileName << std::endl;
+			WriteResultsToDatabase(DataSet, ResultDbFileName);
+			WriteInputsToDatabase(DataSet, InputDbFileName);
+		}
+		else
+		{
+			//TODO: This should be a command line option instead maybe.
+#if INCAVIEW_INCLUDE_JSON
+			std::cout << "Model run finished. Writing result data to " << ResultJsonFileName << std::endl
+			WriteResultsToJson(DataSet, ResultJsonFileName);
+#endif
+		}
 	}
 #if INCAVIEW_INCLUDE_OPTIMIZER
 	else if(Args->Mode == IncaviewRunMode_RunOptimization)

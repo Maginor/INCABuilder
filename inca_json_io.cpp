@@ -3,30 +3,63 @@
 
 
 static void
-WriteInputToJsonRecursive(inca_data_set *DataSet, nlohmann::json &Json, input_h Input, index_t *CurrentIndexes, u64 Timesteps, s32 Level = -1)
+WriteTimeseriesToJsonRecursive(inca_data_set *DataSet, nlohmann::json &Json, entity_handle Handle, int Type, index_t *CurrentIndexes, u64 Timesteps, s32 Level = -1)
 {
+	//NOTE: Type==0: Result, Type==1: Input.
+	
 	using nlohmann::json;
 	
 	const inca_model *Model = DataSet->Model;
 	
-	const input_spec &Spec = Model->InputSpecs[Input.Handle];
+	std::string Name;
+	std::vector<index_set_h> IndexSetDependencies;
 	
-	std::string Name = Spec.Name;
+	if(Type == 0)
+	{
+		const equation_spec &Spec = Model->EquationSpecs[Handle];
+		
+		//NOTE: It is horribly inefficient to do this for each recursion, we should just pass through the dependency list.
+		size_t UnitIdx = DataSet->ResultStorageStructure.UnitForHandle[Handle];
+		storage_unit_specifier &Unit = DataSet->ResultStorageStructure.Units[UnitIdx];
+		IndexSetDependencies = Unit.IndexSets;
+		Name = std::string(Spec.Name);
+		
+		//std::cout << "Name : " << Name << std::endl;
+		//std::cout << "Handle : " << Handle << std::endl;
+		//std::cout << "Size: " << IndexSetDependencies.size() << std::endl;
+	}
+	else
+	{
+		const input_spec &Spec = Model->InputSpecs[Handle];
+		IndexSetDependencies = Spec.IndexSetDependencies;
+		Name = Spec.Name;
+	}
 	
-	size_t Count = Spec.IndexSetDependencies.size();
+	size_t Count = IndexSetDependencies.size();
 	if(Level + 1 == (s32)Count)
 	{
+		//std::cout << Name << std::endl;
+		
 		std::vector<double> Values((size_t)Timesteps);
 		
 		std::vector<const char *> Indices(Count);
 		
 		for(size_t IdxIdx = 0; IdxIdx < Count; ++IdxIdx)
 		{
-			Indices[IdxIdx] = DataSet->IndexNames[Spec.IndexSetDependencies[IdxIdx].Handle][CurrentIndexes[IdxIdx]];
+			Indices[IdxIdx] = DataSet->IndexNames[IndexSetDependencies[IdxIdx].Handle][CurrentIndexes[IdxIdx]];
 		}
 		
-	   
-		GetInputSeries(DataSet, Name.c_str(), Indices, Values.data(), Values.size());
+		//for(const char *Index : Indices) std::cout << Index << " ";
+		//std::cout << std::endl;
+		
+		if(Type == 0)
+		{
+			GetResultSeries(DataSet, Name.c_str(), Indices, Values.data(), Values.size());
+		}
+		else
+		{
+			GetInputSeries(DataSet, Name.c_str(), Indices, Values.data(), Values.size());
+		}
 	   
 		json JObj
 		{
@@ -38,12 +71,14 @@ WriteInputToJsonRecursive(inca_data_set *DataSet, nlohmann::json &Json, input_h 
 	}
 	else
 	{
-		index_set_h IndexSetAtLevel = Spec.IndexSetDependencies[Level + 1];
+		index_set_h IndexSetAtLevel = IndexSetDependencies[Level + 1];
+		
+		//std::cout << "index set at level: " << GetName(DataSet->Model, IndexSetAtLevel) << std::endl;
 		
 		for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetAtLevel.Handle]; ++Index)
 		{
 			CurrentIndexes[Level + 1] = Index;
-			WriteInputToJsonRecursive(DataSet, Json, Input, CurrentIndexes, Level + 1);
+			WriteTimeseriesToJsonRecursive(DataSet, Json, Handle, Type, CurrentIndexes, Timesteps, Level + 1);
 		}
 		
 	}
@@ -98,17 +133,73 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 				{"additional_timeseries", AdditionalTimeseries},
 				{"data", nullptr},
 			};
-   
+	
 	index_t CurrentIndexes[256];
 	for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
 	{
-		WriteInputToJsonRecursive(DataSet, Json, input_h {InputHandle}, CurrentIndexes, Timesteps);
+		WriteTimeseriesToJsonRecursive(DataSet, Json, InputHandle, 1, CurrentIndexes, Timesteps);
 	}
   
 	std::ofstream Out(Filename);
 	Out << Json.dump(1,'\t') << std::endl;
 }
 
+static void
+WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
+{
+	using nlohmann::json;
+	
+	const inca_model *Model = DataSet->Model;
+	
+	std::map<std::string, std::vector<std::string>> IndexSetDependencies;
+	
+	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+	{
+		const equation_spec &Spec = Model->EquationSpecs[EquationHandle];
+		
+		std::vector<std::string> Dep;
+		for(index_set_h IndexSet : Spec.IndexSetDependencies)
+		{
+			Dep.push_back(GetName(Model, IndexSet));
+		}
+		
+		IndexSetDependencies[Spec.Name] = Dep;	
+	}
+	
+	
+	auto T = std::time(nullptr);
+	auto TM = *std::localtime(&T);
+	std::stringstream Oss;
+	Oss << std::put_time(&TM, "%Y-%m-%d %H:%M:%S");
+	
+	std::string CreationDate = Oss.str();
+	
+	u64 Timesteps = GetTimesteps(DataSet);
+	
+	std::string StartDate = TimeString(GetStartDate(DataSet));
+    
+	json Json = {
+				{"creation_date", CreationDate},
+				{"start_date", StartDate},
+				{"timesteps", Timesteps},
+				{"index_set_dependencies", IndexSetDependencies},
+				{"data", nullptr},
+			};
+   
+	index_t CurrentIndexes[256];
+	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
+	{
+		WriteTimeseriesToJsonRecursive(DataSet, Json, EquationHandle, 0, CurrentIndexes, Timesteps);
+	}
+  
+	std::ofstream Out(Filename);
+	Out << Json.dump(1,'\t') << std::endl;
+	Out.close();
+	if(!Out)
+	{
+		INCA_PARTIAL_ERROR("ERROR: Could not write to file " << Filename << std::endl);
+	}
+}
 
 static void
 ReadInputDependenciesFromJson(inca_model *Model, const char *Filename)

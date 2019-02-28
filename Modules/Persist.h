@@ -36,15 +36,15 @@ AddPersistModel(inca_model *Model)
 
     auto InitialWaterDepth = RegisterParameterDouble(Model, SoilsLand, "Initial water depth", Mm, 200.0, 0.0, 9999.0, "The initial depth of water in a box at the start of a simulation");
 	auto RelativeAreaIndex = RegisterParameterDouble(Model, SoilsLand, "Relative area index", Dimensionless, 1.0, 0.0, 1.0, "The areal fraction of the simulation covered by a box, typical INCA-type simulations will use a value of 1.0");
-	auto Infiltration      = RegisterParameterDouble(Model, SoilsLand, "Infiltration", MmPerDay, 100.0, 0.0, 200.0, "The maximum rate at which water can infiltrate into a box from overlying boxes");
-	auto RetainedWaterDepth = RegisterParameterDouble(Model, SoilsLand, "Retained water depth", Mm, 100.0, 0.0, 9999.0, "The depth of water in a box which does not contribute to runoff generation but can still contribute to evapotranspiration");
+	auto Infiltration      = RegisterParameterDouble(Model, SoilsLand, "Infiltration", MmPerDay, 100.0, 0.0, 500.0, "The maximum rate at which water can infiltrate into a box from overlying boxes");
+	auto RetainedWaterDepth = RegisterParameterDouble(Model, SoilsLand, "Retained water depth", Mm, 100.0, 0.0, 9999.0, "The depth of water in a box which does not contribute to runoff generation but can still contribute to evapotranspiration. For the soil water box, this is similar to the field capacity");
     auto DroughtRunoffFraction = RegisterParameterDouble(Model, SoilsLand, "Drought runoff fraction", Dimensionless, 0.0, 0.0, 0.5, "The fraction of water entering a box which contributes to runoff generation when the depth of water is below the retained water depth");
-    auto TimeConstant = RegisterParameterDouble(Model, SoilsLand, "Time constant", Days, 5.0, 0.1, 9999.0, "The inverse of the rate at which water flows out of a box");
+    auto TimeConstant = RegisterParameterDouble(Model, SoilsLand, "Time constant", Days, 5.0, 1.0, 9999.0, "The inverse of the rate at which water flows out of a box");
 	auto EvapotranspirationAdjustment = RegisterParameterDouble(Model, SoilsLand, "Evapotranspiration adjustment", Dimensionless, 1.0, 0.0, 10.0, "A factor to slow the rate of evapotranspiration when the depth of water in a box is below the retained water depth. Special  values include 0 (no slowing of evapotranspiration, 1 (slowing is proportional to the depth of water remaining in the bucket) and values above 10 (all evapotranspiration effectively stops when the depth of water is below the retained water depth)");
 	auto RelativeEvapotranspirationIndex = RegisterParameterDouble(Model, SoilsLand, "Relative evapotranspiration index", Dimensionless, 1.0, 0.0, 1.0, "The fraction of the total evapotranspiration in a landscape unit which is to be generated from the current bucket");
-	auto MaximumCapacity = RegisterParameterDouble(Model, SoilsLand, "Maximum capacity", Mm, 1000.0, 0.0, 9999.0, "The maximum depth of water which can be held in a bucket");
+	auto MaximumCapacity = RegisterParameterDouble(Model, SoilsLand, "Maximum capacity", Mm, 1000.0, 0.0, 9999.0, "The maximum depth of water which can be held in a bucket. For soil water, this is similar to the saturation capacity");
 	auto InundationThreshold = RegisterParameterDouble(Model, SoilsLand, "Inundation threshold", Mm, 1000.0, 0.0, 9999.0, "The depth of water in a bucket below which inundation from the stream can occur");
-	auto Porosity = RegisterParameterDouble(Model, SoilsLand, "Porosity", Dimensionless,  0.2,    0.1, 0.9, "The void fraction of a box which is able to hold water");
+	auto Porosity = RegisterParameterDouble(Model, SoilsLand, "Porosity", Dimensionless,  0.2,    0.1, 1.0, "The void fraction of a box which is able to hold water");
 	auto InundationOffset = RegisterParameterDouble(Model, SoilsLand,"Inundation offset", Mm, 0.0) ;
     
 	
@@ -67,14 +67,14 @@ AddPersistModel(inca_model *Model)
 	auto InverseMetersSquared = RegisterUnit(Model, "1/m2");
 	auto MilligramsPerLiter = RegisterUnit(Model, "mg/l");
 
-	auto TerrestrialCatchmentArea = RegisterParameterDouble(Model, Reaches, "Terrestrial catchment area", SquareKm, 500.0, 0.1, 999999.0, "The terrestrial area of a subcatchment, excluding open water");
-	auto ReachLenght              = RegisterParameterDouble(Model, Reaches, "Reach length", Meters, 1000.0, 0.1, 999999.0, "The length of the main stem of the stream / reach in a subcatchment");
+	auto TerrestrialCatchmentArea = RegisterParameterDouble(Model, Reaches, "Terrestrial catchment area", SquareKm, 500.0, 0.01, 999999.0, "The terrestrial area of a subcatchment, excluding open water");
+	auto ReachLenght              = RegisterParameterDouble(Model, Reaches, "Reach length", Meters, 1000.0, 1.0, 999999.0, "The length of the main stem of the stream / reach in a subcatchment");
 	auto ReachWidth               = RegisterParameterDouble(Model, Reaches, "Reach width", Meters, 10.0, 0.1, 9999.0, "The average width of the main stem of the stream / reach in a subcatchment");
-	auto A                        = RegisterParameterDouble(Model, Reaches, "a", InverseMetersSquared, 0.04, 0.00001, 0.99, "The flow velocity 'a' parameter V=aQ^b");
-	auto B                        = RegisterParameterDouble(Model, Reaches, "b", Dimensionless, 0.67, 0.1, 0.99, "The flow velocity 'b' parameter V=aQ^b");
+	auto A                        = RegisterParameterDouble(Model, Reaches, "a", InverseMetersSquared, 0.4, 0.001, 1.0, "The flow velocity 'a' parameter V=aQ^b");
+	auto B                        = RegisterParameterDouble(Model, Reaches, "b", Dimensionless, 0.43, 0.001, 1.0, "The flow velocity 'b' parameter V=aQ^b");
 	auto SnowThresholdTemperature = RegisterParameterDouble(Model, Reaches, "Snow threshold temperature", DegreesCelsius, 0.0, -4.0, 4.0, "The temperature at or below which precipitation will fall as snow in a subcatchment");
-	auto ReachSnowMultiplier = RegisterParameterDouble(Model, Reaches, "Reach snow multiplier", Dimensionless, 1.0, 0.5, 1.5, "The subcatchment-specific snow multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
-	auto ReachRainMultiplier = RegisterParameterDouble(Model, Reaches, "Reach rain multiplier", Dimensionless, 1.0, 0.5, 1.5, "The subcatchment specific rain multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
+	auto ReachSnowMultiplier = RegisterParameterDouble(Model, Reaches, "Reach snow multiplier", Dimensionless, 1.0, 0.5, 2.0, "The subcatchment-specific snow multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
+	auto ReachRainMultiplier = RegisterParameterDouble(Model, Reaches, "Reach rain multiplier", Dimensionless, 1.0, 0.5, 2.0, "The subcatchment specific rain multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
 	auto AbstractionFlow = RegisterParameterDouble(Model, Reaches, "Abstraction flow", CubicMetersPerSecond, 0.0, 0.0, 9999.0, "The rate at which water is removed from a reach by human activities");
 	auto EffluentFlow = RegisterParameterDouble(Model, Reaches, "Effluent flow", CubicMetersPerSecond, 0.0, 0.0, 9999.0, "The rate of liquid inputs to a reach from e.g. sewage treatment works");
 	auto ReachHasAbstraction = RegisterParameterBool(Model, Reaches, "Reach has abstraction", false);

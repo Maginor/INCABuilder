@@ -241,7 +241,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Unrecognized section type: " << Section << std::endl);
+			INCA_FATAL_ERROR("Parameter file parser does not regognize section type: " << Section << std::endl);
 		}
 		
 		if(Mode == 0)
@@ -425,7 +425,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Unrecognized section name " << Section << "." << std::endl);
+			INCA_FATAL_ERROR("Input file parser does not recognize section type: " << Section << "." << std::endl);
 		}
 	}
 	
@@ -639,6 +639,9 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 			while(true)
 			{
 				Token = Stream.PeekToken();
+				
+				if(Token.Type == TokenType_EOF) return;
+				
 				if(Token.Type == TokenType_UnquotedString) break; //We hit a new section;
 				Stream.ReadToken(); //Otherwise consume the token and ignore it.
 			}

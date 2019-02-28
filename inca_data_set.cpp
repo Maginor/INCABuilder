@@ -256,6 +256,10 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 	return OffsetForUnit + InstanceOffset * NumHandlesInUnitInstance + LocationOfHandleInUnit;
 }
 
+#if !defined(INCA_INDEX_BOUNDS_TESTS)
+#define INCA_INDEX_BOUNDS_TESTS 0
+#endif
+
 // NOTE: Returns the storage index of a value corresponding to this Handle with the given index set indexes.
 // Indexes must be set up so that Indexes[I] is the index of the I'th index set that the entity one wishes to look up depends on.
 // IndexesCount is the number of index sets the entity depends on (and so the length of the array Indexes).
@@ -280,6 +284,13 @@ OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t Ind
 	{
 		size_t Count = IndexCounts[IndexSet.Handle];
 		index_t Index = Indexes[Level];
+		
+#if INCA_INDEX_BOUNDS_TESTS
+		if(Index >= Count)
+		{
+			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
+		}
+#endif
 		
 		InstanceOffset = InstanceOffset * Count + Index;
 		
@@ -330,6 +341,13 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 			Index = OverrideIndexes[IndexSetLevel + (OverrideCount - IndexSetCount)];
 		}
 		
+#if INCA_INDEX_BOUNDS_TESTS
+		if(Index >= Count)
+		{
+			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
+		}
+#endif
+		
 		InstanceOffset = InstanceOffset * Count + Index;
 		++IndexSetLevel;
 	}
@@ -377,6 +395,13 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 			Index = 0;
 			Skipped = true;
 		}
+
+#if INCA_INDEX_BOUNDS_TESTS
+		if(Index >= Count)
+		{
+			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
+		}
+#endif
 		
 		InstanceOffset = InstanceOffset * Count + Index;
 	}

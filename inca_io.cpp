@@ -241,7 +241,7 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 		else
 		{
 			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Parameter file parser does not regognize section type: " << Section << std::endl);
+			INCA_FATAL_ERROR("Parameter file parser does not recognize section type: " << Section << std::endl);
 		}
 		
 		if(Mode == 0)

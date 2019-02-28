@@ -4,6 +4,8 @@
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 0
 
+#define INCA_INDEX_BOUNDS_TESTS 0
+
 #include "../../inca.h"
 
 #include "../../Modules/Persist.h"

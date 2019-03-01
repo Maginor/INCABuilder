@@ -1036,9 +1036,9 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 }
 
 inline void
-SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char *> &IndexNames, const double *InputSeries, size_t InputSeriesSize)
+SetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char *> &IndexNames, const double *InputSeries, size_t InputSeriesSize, bool AlignWithResults = false)
 {
-	SetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), InputSeries, InputSeriesSize);
+	SetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), InputSeries, InputSeriesSize, AlignWithResults);
 }
 
 // NOTE: The caller of this function has to allocate the space that the result series should be written to and pass a pointer to it as WriteTo.

@@ -585,7 +585,7 @@ AddIncaNModel(inca_model *Model)
 		return SafeDivide(RESULT(ReachNitrate), RESULT(ReachVolume)) * 1000.0;
 	)
 	
-	EQUATION(Model, ReachNitrateConcentration,
+	EQUATION(Model, ReachAmmoniumConcentration,
 		return SafeDivide(RESULT(ReachAmmonium), RESULT(ReachVolume)) * 1000.0;
 	)
 }

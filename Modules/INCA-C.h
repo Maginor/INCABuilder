@@ -314,7 +314,7 @@ AddINCACModel(inca_model *Model)
 	
 	EQUATION(Model, DOCMassInOrganicLayer,
 		return
-			  RESULT(SOCDesorptionRateInOrganicLayer) * (RESULT(SOCMassInOrganicLayerFastPool) + PARAMETER(SlowPoolRateModifier) * RESULT(SOCMassInOrganicLayerSlowPool));
+			  RESULT(SOCDesorptionRateInOrganicLayer) * (RESULT(SOCMassInOrganicLayerFastPool) + PARAMETER(SlowPoolRateModifier) * RESULT(SOCMassInOrganicLayerSlowPool))
 			- RESULT(DOCSorptionInOrganicLayer)
 			- RESULT(DOCMineralisationInOrganicLayer)
 			

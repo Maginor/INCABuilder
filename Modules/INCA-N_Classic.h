@@ -1,4 +1,8 @@
 
+
+//NOTE: This model is currently not fully supported. There are a few errors in how it is coded, that may make it perform incorrectly.
+
+
 #if !defined(INCAN_CLASSIC_MODEL_H)
 
 static void

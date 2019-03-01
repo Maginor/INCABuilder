@@ -227,6 +227,10 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 	else if(Args->Mode == IncaviewRunMode_FillParameterFile)
 	{
 		ReadParametersFromFile(DataSet, Args->ParameterInFileName);
+		if(!DataSet->ParameterData)
+		{
+			AllocateParameterStorage(DataSet);
+		}
 		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
 	}
 }

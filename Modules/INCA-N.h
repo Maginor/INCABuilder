@@ -332,7 +332,7 @@ AddIncaNModel(inca_model *Model)
 			+ RESULT(Fixation)
 			
 			- RESULT(SoilwaterNitrate) * (RESULT(SoilToDirectRunoffFraction) + RESULT(SoilToGroundwaterFraction) + RESULT(SoilToReachFraction))
-			- RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffToSoilFraction);
+			+ RESULT(DirectRunoffNitrate) * RESULT(DirectRunoffToSoilFraction);
 	)
 	
 	EQUATION(Model, AmmoniumUptake,
@@ -386,7 +386,7 @@ AddIncaNModel(inca_model *Model)
 			+ RESULT(Mineralisation)
 			
 			- RESULT(SoilwaterAmmonium) * (RESULT(SoilToDirectRunoffFraction) + RESULT(SoilToGroundwaterFraction) + RESULT(SoilToReachFraction))
-			- RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffToSoilFraction);
+			+ RESULT(DirectRunoffAmmonium) * RESULT(DirectRunoffToSoilFraction);
 	)
 	
 	EQUATION(Model, GroundwaterDenitrification,

@@ -1286,6 +1286,14 @@ The following macros are only available inside the {\tt Decl} of an {\tt EQUATIO
 \apidesc{Returns the value of the previous timestep result of the equation, depending on the current state of the index sets. This is a macro that expands to an expression which either extracts a value from the {\tt value\_set\_accessor} or registers a (last-result) dependency of the surrounding {\tt Equation} on this equation, depending on the context of the evaluation.}
 }
 
+\apientry{EARLIER\_RESULT}{Equation macro}{
+\apipar{equation\_h EquationHandle}{Handle to an equation that you wish to extract an earlier-timestep value of.}
+\apipar{u64 StepBack}{How many timesteps back you want to go.}
+\apipar{index\_t Indexes\ldots}{(optional, varargs) One or more indexes to explicitly index.}
+\apiret{A {\tt double}.}
+\apidesc{Looks up the result of the equation value for the current timestep minus {\tt StepBack} number of timesteps. So if {\tt StepBack=0} you get the current result, if {\tt StepBack=1} you get the last result and so on. This registers the same dependencies as a {\tt LAST\_RESULT} lookup.}
+}
+
 \apientry{CURRENT\_DAY\_OF\_YEAR}{Equation macro}{
 \apipar{}{None.}
 \apiret{A {\tt u64}.}
@@ -1315,7 +1323,7 @@ The following macros are only available inside the {\tt Decl} of an {\tt EQUATIO
 \apipar{Def}{The code to put inside of the for loop.}
 \apidesc{Expands to something that looks like}
 \multicolumn{2}{|z|}{\BUseVerbatim{ForCode}}\\
-\multicolumn{2}{|z|}{Note that it calls {\tt CURRENT\_INDEX(IndexSet)}, and thus registers an index set dependency.}\\
+\multicolumn{2}{|z|}{Inside {\tt Def} you can refer to the index of the iterated branch by {\tt *Input}. Note that {\tt FOREACH\_INPUT} calls {\tt CURRENT\_INDEX(IndexSet)}, and thus registers an index set dependency.}\\
 }
 
 \apientry{INPUT\_COUNT}{Equation macro}{

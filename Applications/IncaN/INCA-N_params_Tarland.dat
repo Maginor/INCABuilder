@@ -1,0 +1,300 @@
+# Parameter file generated for INCA-N V0.1
+
+index_sets:
+"Landscape units" : {"SemiNatural" "Agricultural"}
+"Soils" : {"Direct runoff" "Soil water" "Groundwater"}
+"Reaches" : {"Coull"}
+
+parameters:
+###################### (no index sets) ######################
+"Timesteps" :     #(days) [0, 18446744073709551615]
+731
+
+"Start date" :     # ["1000-1-1", "3000-12-31"]
+"2004-1-1"
+
+###################### "Landscape units" ######################
+"Snow multiplier" :     #(dimensionless) [0.5, 1.5] Adjustment factor used to account for bias in the relationship between snow measured in the gauge and effective snowfall amounts falling
+1 1
+
+"Snow melt temperature" :     #(°C) [-4, 4] The temperature at or above which snow can melt
+0 0
+
+"Degree day melt factor" :     #(mm/°C/day) [1, 4] Describes the dependency of snow melt rates on temperature. The parameter represents the number of millimetres water melted per degree celcius above the snow melt temperature
+3 3
+
+"Water equivalent factor" :     #(dimensionless) [0.01, 1] 1mm of snow would produce this amount of water when melted
+0.3 0.3
+
+"Rain multiplier" :     #(dimensionless) [0.5, 1.5] Adjustment factor used to account for bias in the relationship between rain measured in the gauge and effective rainfall amounts falling
+1 1
+
+"Initial snow depth" :     #(mm SWE) [0, 9999] The depth of snow, expressed as water equivalents, at the start of the simulation
+0 0
+
+"Degree day evapotranspiration" :     #(mm/°C/day) [0.05, 0.2] Describes the baseline dependency of evapotranspiration on air temperature. The parameter represents the number of millimetres water evapotranspired per degree celcius above the growing degree threshold when evapotranspiration rates are not soil moisture limited
+0.2 0.2
+
+"Growing degree threshold" :     #(°C) [-4, 4] The temperature at or above which plant growth and hence evapotranspiration are assumed to occur
+-1 -1
+
+"Canopy interception" :     #(mm/day) [0, 0.3] The depth of precipitation which does not make it to the soil surface but is instead intercepted by the vegetative canopy and returned to the atmosphere either through evaporation or sublimation
+0 0
+
+"Thermal conductivity of soil" :     #(W/m/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.7 0.7
+
+"Specific heat capacity due to freeze/thaw" :     #(MJ/m3/°C) [1, 200] Controls the energy released when water is frozen and energy consumed under melting
+6.6 6.6
+
+"Snow depth / soil temperature factor" :     #(/cm) [-0.03, -0.02] Defines an empirical relationship between snow pack depth and its insulating effect on soils
+-0.025 -0.025
+
+"Specific heat capacity of soil" :     #(MJ/m3/°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+6.6 6.6
+
+"Soil depth" :     #(m) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.2 0.2
+
+"Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+5 5
+
+"Direct runoff initial nitrate concentration" :     #(mg/l) [0, 10]
+0 0
+
+"Direct runoff initial ammonium concentration" :     #(mg/l) [0, 2]
+0 0
+
+"Soil water initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.05 6.5
+
+"Soil water initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.0 0.0
+
+"Growth curve offset" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.6 0.6
+
+"Growth curve amplitude" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.5 0.5
+
+"Plant growth start day" :     #(Julian day) [1, 365] Day of year when plant growth begins
+50 50
+
+"Plant growth period" :     #(Julian day) [0, 365] Length of plant growth period in days
+365 365
+
+"Nitrate plant uptake rate" :     #(m/day) [0, 162] Rate at which NO3 is taken up by plants.
+0.04 0.04
+
+"Soil water denitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Ammonium nitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Nitrogen fixation rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Maximum nitrogen uptake" :     #(kg/Ha) [-1.79769313486232e+308, 1.79769313486232e+308]
+30 140
+
+"Fertilizer addition start day" :     #(Julian day) [1, 365] Day of year when fertiliser application begins.
+1 1
+
+"Fertilizer addition period" :     #(Julian day) [0, 365] Length of fertiliser addition period in days.
+365 365
+
+"Fertilizer nitrate addition rate" :     #(kg/Ha/day) [0, 100] Amount of nitrate added as fertiliser on each day of fertiliser addition period.
+0 0.4
+
+"Fertilizer ammonium addition rate" :     #(kg/Ha/day) [0, 100] Amount of ammonium added as fertiliser on each day of fertiliser addition period.
+0 0
+
+"Ammonium plant uptake rate" :     #(m/day) [0, 162] Rate at which NH4 is taken up by plants.
+0 0
+
+"Ammonium immobilisation rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Ammonium mineralisation rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Zero rate depth" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Max rate depth" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+###################### "Landscape units" "Soils" "Soils" ######################
+"Percolation matrix" :     #(dimensionless) [0, 1]
+0 1 0
+1 0.35 0.65
+1 0 1
+
+0 1 0
+1 0.35 0.65
+1 0 1
+
+###################### "Soils" ######################
+"This is a quick box" :
+true false false
+
+"Allow inundation" :
+false false false
+
+"Allow infiltration" :
+false false false
+
+###################### "Soils" "Landscape units" ######################
+"Initial water depth" :     #(mm) [0, 9999] The initial depth of water in a box at the start of a simulation
+0 0
+300 300
+15 15
+
+"Relative area index" :     #(dimensionless) [0, 1] The areal fraction of the simulation covered by a box, typical INCA-type simulations will use a value of 1.0
+1 1
+1 1
+1 1
+
+"Infiltration" :     #(mm/day) [0, 200] The maximum rate at which water can infiltrate into a box from overlying boxes
+1000 1000
+100 100
+20 20
+
+"Retained water depth" :     #(mm) [0, 9999] The depth of water in a box which does not contribute to runoff generation but can still contribute to evapotranspiration
+0 0
+300 300
+0 0
+
+"Drought runoff fraction" :     #(dimensionless) [0, 0.5] The fraction of water entering a box which contributes to runoff generation when the depth of water is below the retained water depth
+0 0
+0.1 0.1
+0 0
+
+"Time constant" :     #(days) [0.1, 9999] The inverse of the rate at which water flows out of a box
+1 1
+3 3
+40 40
+
+"Evapotranspiration adjustment" :     #(dimensionless) [0, 10] A factor to slow the rate of evapotranspiration when the depth of water in a box is below the retained water depth. Special  values include 0 (no slowing of evapotranspiration, 1 (slowing is proportional to the depth of water remaining in the bucket) and values above 10 (all evapotranspiration effectively stops when the depth of water is below the retained water depth)
+0 0
+3.5 3.5
+0 0
+
+"Relative evapotranspiration index" :     #(dimensionless) [0, 1] The fraction of the total evapotranspiration in a landscape unit which is to be generated from the current bucket
+0 0
+1 1
+0 0
+
+"Maximum capacity" :     #(mm) [0, 9999] The maximum depth of water which can be held in a bucket
+1000 1000
+430 430
+300 300
+
+"Inundation threshold" :     #(mm) [0, 9999] The depth of water in a bucket below which inundation from the stream can occur
+1000 1000
+1000 1000
+1000 1000
+
+"Porosity" :     #(dimensionless) [0.1, 0.9] The void fraction of a box which is able to hold water
+0.2 0.2
+0.3 0.3
+0.2 0.2
+
+"Inundation offset" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+0 0
+0 0
+
+###################### "Reaches" ######################
+"Terrestrial catchment area" :     #(km2) [0.1, 999999] The terrestrial area of a subcatchment, excluding open water
+51.7
+
+"Reach length" :     #(m) [0.1, 999999] The length of the main stem of the stream / reach in a subcatchment
+9300
+
+"Reach width" :     #(m) [0.1, 9999] The average width of the main stem of the stream / reach in a subcatchment
+2
+
+"a" :     #(1/m2) [1e-005, 0.99] The flow velocity 'a' parameter V=aQ^b
+0.1
+
+"b" :     #(dimensionless) [0.1, 0.99] The flow velocity 'b' parameter V=aQ^b
+0.3
+
+"Snow threshold temperature" :     #(°C) [-4, 4] The temperature at or below which precipitation will fall as snow in a subcatchment
+0
+
+"Reach snow multiplier" :     #(dimensionless) [0.5, 1.5] The subcatchment-specific snow multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment
+1
+
+"Reach rain multiplier" :     #(dimensionless) [0.5, 1.5] The subcatchment specific rain multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment
+1
+
+"Abstraction flow" :     #(m3/s) [0, 9999] The rate at which water is removed from a reach by human activities
+0
+
+"Effluent flow" :     #(m3/s) [0, 9999] The rate of liquid inputs to a reach from e.g. sewage treatment works
+0.000075
+
+"Reach has abstraction" :
+false
+
+"Reach has effluent input" :
+true
+
+"Initial stream flow" :     #(m3/s) [0.0001, 9999] The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.
+0.87
+
+"Initial water temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+5
+
+"Minimum water temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Water temperature lag factor" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+3
+
+"Groundwater initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+3
+
+"Groundwater initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Groundwater denitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Nitrate dry deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Nitrate wet deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+6.61
+
+"Ammonium dry deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Ammonium wet deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach denitrification rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach nitrification rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+2
+
+"Reach effluent nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach effluent ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+62
+
+"Initial stream nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+4.5
+
+"Initial stream ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0.01
+
+###################### "Reaches" "Landscape units" ######################
+"%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
+50 50
+

@@ -578,9 +578,15 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	//NOTE: Added this for easier calibration - MDN
-	auto ReachNitrateConcentration = RegisterEquation(Model, "Reach nitrate concentration", KgPerM3);
+	auto ReachNitrateConcentration = RegisterEquation(Model, "Reach nitrate concentration", MgPerL);
+	auto ReachAmmoniumConcentration = RegisterEquation(Model, "Reach ammonium concentration", MgPerL);
+	
 	EQUATION(Model, ReachNitrateConcentration,
-		return SafeDivide(RESULT(ReachNitrate), RESULT(ReachVolume));
+		return SafeDivide(RESULT(ReachNitrate), RESULT(ReachVolume)) * 1000.0;
+	)
+	
+	EQUATION(Model, ReachNitrateConcentration,
+		return SafeDivide(RESULT(ReachAmmonium), RESULT(ReachVolume)) * 1000.0;
 	)
 }
 

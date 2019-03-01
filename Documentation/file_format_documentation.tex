@@ -3,6 +3,8 @@
 %\usepackage[utf8]{inputenc}
 \usepackage[a4paper, margin=1in]{geometry}
 
+
+\usepackage{graphicx}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{enumerate}
@@ -398,7 +400,36 @@ In many cases, your input data will a priori exist in a .csv format or an .xlsx 
 \item You need all values to have a '.' decimal separator rather than a ','. You can either do a search-replace in a text editor after copying the values, or in excel go to File$\rightarrow$Options, On the Advanced tab, under Editing options, uncheck the Use system separators box, then type in the right Decimal separator in its box.
 \item To format a column of dates to the Y-m-d format, select the colum, then right click it and select Format Cells. Under Date select the right format.
 \item If you have one date column and many data columns and you want to copy just the date column together with one data column, you can temporarily copy the data column next to the date column and ctrl-select and copy the two together.
-\item You may still need to enclose all dates in quotation marks " ". This can be tedious to do manually. It is pretty easy to do it using macros. We may include a tutorial on how to do it using Notepad++ macros later. Or if you know of a more efficient way to do it that does not involve scripting, please let us know!
+\item You may still need to enclose all dates in quotation marks " ". This can be tedious to do manually. It is pretty easy to do it using macros.
+\end{enumerate}
+
+To use macros in notepad++, look for the buttons in Figure \ref{fig:macro}.
+\begin{figure}[H]
+\centering
+\includegraphics{notepadmacro}
+\caption{Notepad++ macro buttons}\label{fig:macro}
+\end{figure}
+
+Say that you have a file that looks like this
+\begin{example}
+\begin{lstlisting}
+1999-01-01	0.001982
+1999-01-02	0.001982
+1999-01-04	0.001428
+1999-01-05	0.00404
+\end{lstlisting}
+\end{example}
+and you want to put quotation marks around the dates. You can use notepad++ macros to record your keyboard strokes in order to repeat the same operation many times.
+\begin{enumerate}[i]
+\item Move your cursor to the left of the first date.
+\item Click the red circle to start recording.
+\item Type in a " symbol.
+\item Press the right arrow on the keyboard until the cursor is at the right of the date.
+\item Type another " symbol.
+\item Press the left arrow until the cursor is at the beginning of the line again.
+\item Press the down arrow once to move the cursor to the beginning of the next line.
+\item Click the black square symbol to stop the recording.
+\item You can now click the triangle symbol to repeat these keystrokes for one line at a time, or the double triangle to do it for multiple lines.
 \end{enumerate}
 
 \subsection{Error messages}

@@ -152,6 +152,9 @@ AddIncaNModel(inca_model *Model)
 	SetSolver(Model, GroundwaterAmmonium, IncaSolver);
 	SetInitialValue(Model, GroundwaterAmmonium, GroundwaterInitialAmmonium);
 	
+	auto SoilwaterNitrateConcentration = RegisterEquation(Model, "Soil water nitrate concentration", MgPerL);
+	auto GroundwaterNitrateConcentration = RegisterEquation(Model, "Groundwater nitrate concentration", MgPerL);
+	
 	
 	EQUATION(Model, DirectRunoffInitialNitrate,
 		return PARAMETER(DirectRunoffInitialNitrateConcentration) * RESULT(WaterDepth, DirectRunoff);
@@ -187,6 +190,14 @@ AddIncaNModel(inca_model *Model)
 	EQUATION(Model, GroundwaterVolume,
 		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Groundwater) * 1000.0;
+	)
+	
+	EQUATION(Model, SoilwaterNitrateConcentration,
+		return SafeDivide(RESULT(SoilwaterNitrate), RESULT(SoilwaterVolume)) * 1000.0;
+	)
+	
+	EQUATION(Model, GroundwaterNitrateConcentration,
+		return SafeDivide(RESULT(GroundwaterNitrate), RESULT(GroundwaterVolume)) * 1000.0;
 	)
 	
 	
@@ -239,7 +250,10 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SeasonalGrowthFactor,
-		return PARAMETER(GrowthCurveOffset) + PARAMETER(GrowthCurveAmplitude) * sin(2.0 * Pi * ((double)CURRENT_DAY_OF_YEAR() - (double)PARAMETER(PlantGrowthStartDay) ) / (double) DAYS_THIS_YEAR() );
+		double currentday = (double)CURRENT_DAY_OF_YEAR();
+		double startday = (double)PARAMETER(PlantGrowthStartDay);
+		double daysthisyear = (double)DAYS_THIS_YEAR();
+		return PARAMETER(GrowthCurveOffset) + PARAMETER(GrowthCurveAmplitude) * sin(2.0 * Pi * (currentday - startday) / daysthisyear );
 	)
 	
 	EQUATION(Model, TemperatureFactor,

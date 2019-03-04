@@ -114,7 +114,6 @@ AddIncaNModel(inca_model *Model)
 	auto SeasonalGrowthFactor = RegisterEquation(Model, "Seasonal growth factor", Dimensionless);
 	auto TemperatureFactor    = RegisterEquation(Model, "Temperature factor", Dimensionless);
 	auto YearlyAccumulatedNitrogenUptake = RegisterEquation(Model, "Yearly accumulated nitrogen uptake", KgPerHectare);
-	//SetSolver(Model, MaximumNitrogenUptake, IncaSolver);
 	auto NitrateUptake = RegisterEquation(Model, "Nitrate uptake", KgPerKm2PerDay);
 	SetSolver(Model, NitrateUptake, IncaSolver);
 	auto Denitrification = RegisterEquation(Model, "Denitrification", KgPerKm2PerDay);
@@ -449,10 +448,6 @@ AddIncaNModel(inca_model *Model)
 	auto ReachFlow   = GetEquationHandle(Model, "Reach flow");
 	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
 	
-	auto ConvertMassToConcentration = RegisterEquation(Model, "Convert mass to concentration", Dimensionless);
-	SetSolver(Model, ConvertMassToConcentration, ReachSolver);
-	auto ConvertConcentrationToMass = RegisterEquation(Model, "Convert concentration to mass", Dimensionless);
-	SetSolver(Model, ConvertConcentrationToMass, ReachSolver);
 	auto ReachNitrateOutput = RegisterEquation(Model, "Reach nitrate output", KgPerDay);
 	SetSolver(Model, ReachNitrateOutput, ReachSolver);
 	auto WaterTemperatureFactor = RegisterEquation(Model, "Water temperature factor", Dimensionless);
@@ -477,14 +472,6 @@ AddIncaNModel(inca_model *Model)
 	SetSolver(Model, ReachAmmonium, ReachSolver);
 	SetInitialValue(Model, ReachAmmonium, ReachAmmoniumInitialValue);
 	
-	EQUATION(Model, ConvertMassToConcentration,
-		return 1000.0 / RESULT(ReachVolume);
-	)
-	
-	EQUATION(Model, ConvertConcentrationToMass,
-		return RESULT(ReachVolume) / 1000.0;
-	)
-	
 	EQUATION(Model, ReachNitrateOutput,
 		return RESULT(ReachNitrate) * SafeDivide(RESULT(ReachFlow) * 86400.0, RESULT(ReachVolume));
 	)
@@ -498,19 +485,15 @@ AddIncaNModel(inca_model *Model)
 	EQUATION(Model, ReachDenitrification,
 		return
 			  PARAMETER(ReachDenitrificationRate)
-			* RESULT(ReachNitrate) * RESULT(ConvertMassToConcentration)
-			* RESULT(WaterTemperatureFactor)
-			* RESULT(ReachVolume)
-			/ 1000.0;
+			* RESULT(ReachNitrate)
+			* RESULT(WaterTemperatureFactor);
 	)
 	
 	EQUATION(Model, ReachNitrification,
 		return
 			  PARAMETER(ReachNitrificationRate)
-			* RESULT(ReachAmmonium) * RESULT(ConvertMassToConcentration)
-			* RESULT(WaterTemperatureFactor)
-			* RESULT(ReachVolume)
-			/ 1000.0;
+			* RESULT(ReachAmmonium)
+			* RESULT(WaterTemperatureFactor);
 	)
 	
 	EQUATION(Model, ReachUpstreamNitrate,
@@ -535,7 +518,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachNitrateInitialValue,
-		return PARAMETER(InitialStreamNitrateConcentration) * RESULT(ConvertConcentrationToMass);
+		return PARAMETER(InitialStreamNitrateConcentration) * RESULT(ReachVolume) / 1000.0;
 	)
 	
 	EQUATION(Model, ReachNitrate,
@@ -570,7 +553,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachAmmoniumInitialValue,
-		return PARAMETER(InitialStreamAmmoniumConcentration) * RESULT(ConvertConcentrationToMass);
+		return PARAMETER(InitialStreamAmmoniumConcentration) * RESULT(ReachVolume) / 1000.0;
 	)
 	
 	EQUATION(Model, ReachAmmonium,

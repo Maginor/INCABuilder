@@ -2,6 +2,9 @@
 //TODO: This file needs more documentation and error handling.
 //NOTE: Is adaptation of https://github.com/LeahJB/SimplyP/blob/Hydrology_Model/Current_Release/v0-2A/simplyP/inputs.py
 
+
+#if !defined(THORNTHWAITE_PET_H)
+
 static void
 AnnualThornthwaite(const std::vector<double> &MonthlyMeanT, const std::vector<double> &MonthlyMeanDLH, s32 Year, std::vector<double> &PETOut)
 {
@@ -52,6 +55,10 @@ MonthlyMeanDLH(double Latitude, s32 Year, std::vector<double> &DLHOut)
 static void
 ComputeThornthwaitePET(inca_data_set *DataSet)
 {
+	//NOTE: This should only be added as a preprocessing step if you have registered the inputs "Air temperature" and "Potential evapotranspiration" and the parameter "Latitude".
+	
+	
+	
 	//This looks for a timeseries called "Air temperature" and computes a corresponding "Potential evapotranspiration" timeseries IF it was not provided externally from an input file.
 	auto PETHandle = GetInputHandle(DataSet->Model, "Potential evapotranspiration");
 	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, PETHandle.Handle); //TODO: This is just the first instance. Should iterate over multiple instances if they exist.
@@ -159,3 +166,7 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 	
 	SetInputSeries(DataSet, "Potential evapotranspiration", {}, PET.data(), PET.size());
 }
+
+
+#define THORNTHWAITE_PET_H
+#endif

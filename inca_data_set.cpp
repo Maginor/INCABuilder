@@ -34,6 +34,7 @@ inca_data_set::~inca_data_set()
 	if(ParameterData) free(ParameterData);
 	if(InputData) free(InputData);
 	if(ResultData) free(ResultData);
+	if(InputTimeseriesWasProvided) free(InputTimeseriesWasProvided);
 	
 	if(IndexCounts)
 	{
@@ -109,6 +110,8 @@ CopyDataSet(inca_data_set *DataSet)
 	Copy->InputDataStartDate = DataSet->InputDataStartDate;
 	Copy->InputDataHasSeparateStartDate = DataSet->InputDataHasSeparateStartDate;
 	Copy->InputDataTimesteps = DataSet->InputDataTimesteps;
+	
+	if(DataSet->InputTimeseriesWasProvided) Copy->InputTimeseriesWasProvided = CopyArray(bool, DataSet->InputStorageStructure.TotalCount, DataSet->InputTimeseriesWasProvided);
 	
 	//NOTE: We probably don't want to copy result data. This is copy function is meant to be used for copying a index/parameter/input set.
 	//if(DataSet->ResultData) Copy->ResultData = CopyArray(double, DataSet->ResultStorageStructure.TotalCount * (DataSet->TimestepsLastRun + 1), DataSet->ResultData);

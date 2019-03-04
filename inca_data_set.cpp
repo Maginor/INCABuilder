@@ -727,6 +727,8 @@ AllocateInputStorage(inca_data_set *DataSet, u64 Timesteps)
 	
 	DataSet->InputData = AllocClearedArray(double, DataSet->InputStorageStructure.TotalCount * Timesteps);
 	DataSet->InputDataTimesteps = Timesteps;
+	
+	DataSet->InputTimeseriesWasProvided = AllocClearedArray(bool, DataSet->InputStorageStructure.TotalCount);
 }
 
 static void
@@ -1033,6 +1035,8 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 		}
 		At += DataSet->InputStorageStructure.TotalCount;
 	}
+	
+	DataSet->InputTimeseriesWasProvided[Offset] = true;
 }
 
 inline void

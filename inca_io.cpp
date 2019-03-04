@@ -490,6 +490,8 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		double *WriteTo = DataSet->InputData + Offset;
 		
+		DataSet->InputTimeseriesWasProvided[Offset] = true;
+		
 		//NOTE: For the first timestep, try to figure out what format the data was provided in.
 		int FormatType = -1;
 		Token = Stream.PeekToken();

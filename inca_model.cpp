@@ -1376,6 +1376,12 @@ RunModel(inca_data_set *DataSet)
 	AllocateResultStorage(DataSet, Timesteps);
 	
 	
+	for(const inca_preprocessing_step &PreprocessingStep : Model->PreprocessingSteps)
+	{
+		PreprocessingStep(DataSet);
+	}
+	
+	
 	value_set_accessor ValueSet(DataSet);
 	
 	///////////// Setting up fast lookup ////////////////////

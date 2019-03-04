@@ -9,7 +9,6 @@ TODOs:
 	- PrintPartialDependencyTrace gives incorrect information sometimes when a solver is involved twice.
 	- Better encapsulation of the ValueSet subsystem. Unify lookup systems for parameters, inputs, results, last_results
 	- Have to figure out if the initial value equation system we have currently is good.
-	- Implement stream index set specific functionality. (or not??)
 	- Give warning if not all input series received values?
 	- Clean up the input tokenizer. Maybe just use fscanf for reading numbers, but it is actually a little complicated since we have to figure out the type in any case.
 	- Register units with inputs too? They are after all expected to be in a certain unit.

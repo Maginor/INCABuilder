@@ -333,6 +333,8 @@ struct hash_function
 
 typedef std::unordered_map<token_string, entity_handle, hash_function> string_map;
 
+struct inca_data_set;
+typedef std::function<void(inca_data_set *)> inca_preprocessing_step;
 
 struct inca_model
 {
@@ -371,6 +373,8 @@ struct inca_model
 	std::vector<equation_batch> EquationBatches;
 	std::vector<equation_batch_group> BatchGroups;
 	
+	std::vector<inca_preprocessing_step> PreprocessingSteps;
+	
 	timer DefinitionTimer;
 	bool Finalized;
 };
@@ -399,6 +403,7 @@ struct inca_data_set
 	storage_structure ParameterStorageStructure;
 	
 	double *InputData;
+	bool   *InputTimeseriesWasProvided;
 	storage_structure InputStorageStructure;
 	s64 InputDataStartDate;
 	bool InputDataHasSeparateStartDate = false; //NOTE: Whether or not a start date was provided for the input data, which is potentially different from the start date of the model run.
@@ -656,6 +661,13 @@ if(Model->Typename##Specs.size() <= Handlename.Handle) \
 	Model->Typename##Specs.resize(Handlename.Handle + 1, {}); \
 } \
 Model->Typename##Specs[Handlename.Handle].Name = Name;
+
+void AddPreprocessingStep(inca_model *Model, inca_preprocessing_step PreprocessingStep)
+{
+	REGISTRATION_BLOCK(Model);
+	
+	Model->PreprocessingSteps.push_back(PreprocessingStep);
+}
 
 inline unit_h
 RegisterUnit(inca_model *Model, const char *Name = "dimensionless")

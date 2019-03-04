@@ -10,6 +10,7 @@
 //#include "../boost_solvers.h"
 //#include "../mtl_solvers.h"
 
+#include "Preprocessing/ThornthwaitePET.h"
 
 inline double
 ConvertMmPerDayToM3PerDay(double MmPerDay, double CatchmentArea)
@@ -77,6 +78,12 @@ LinInterp(double X, double X0, double X1, double Y0, double Y1)
 static void
 AddSimplyPHydrologyModule(inca_model *Model)
 {
+	auto Degrees = RegisterUnit(Model, "°");
+	auto DynamicOptions = GetParameterGroupHandle(Model, "Dynamic options");
+	RegisterParameterDouble(Model, DynamicOptions, "Latitude", Degrees, 60.0, -90.0, 90.0, "Used in PET calculation if no PET timeseries was provided in the input data");
+	
+	AddPreprocessingStep(Model, ComputeThornthwaitePET); //NOTE: The preprocessing step is called at the start of each model run.
+	
 	auto Dimensionless     = RegisterUnit(Model);
 	auto Mm                = RegisterUnit(Model, "mm");
 	auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");

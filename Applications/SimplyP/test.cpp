@@ -8,6 +8,8 @@
 
 #include "../../Modules/SimplyP.h"
 
+#include "../../Modules/Preprocessing/ThornthwaitePET.cpp"
+
 #define READ_PARAMETER_FILE 1
 
 int main()
@@ -51,8 +53,8 @@ int main()
 	RunModel(DataSet);
 #endif
 
-	PrintResultSeries(DataSet, "Agricultural soil water volume", {"Tarland1"}, 10);
-	PrintResultSeries(DataSet, "Agricultural soil water flow", {"Tarland1"}, 10);
+	//PrintResultSeries(DataSet, "Agricultural soil water volume", {"Tarland1"}, 10);
+	//PrintResultSeries(DataSet, "Agricultural soil water flow", {"Tarland1"}, 10);
 
 	
 	//PrintResultSeries(DataSet, "Agricultural soil water EPC0", {"Tarland1"}, 1000);

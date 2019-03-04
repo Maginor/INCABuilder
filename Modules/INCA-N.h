@@ -27,6 +27,7 @@ AddIncaNModel(inca_model *Model)
 	auto KgPerDay           = RegisterUnit(Model, "kg/day");
 	auto KgPerKm2           = RegisterUnit(Model, "kg/km2");
 	auto KgPerM3            = RegisterUnit(Model, "kg/m3");
+	auto DegreesCelsius     = RegisterUnit(Model, "°C");
 	
 	auto Land = GetParameterGroupHandle(Model, "Landscape units");
 	
@@ -53,6 +54,8 @@ AddIncaNModel(inca_model *Model)
 	auto AmmoniumMineralisationRate     = RegisterParameterDouble(Model, Land, "Ammonium mineralisation rate", KgPerHectarePerDay, 20.0);
 	auto ZeroRateDepth                  = RegisterParameterDouble(Model, Land, "Zero rate depth", MilliMetres, 20.0);
 	auto MaxRateDepth                   = RegisterParameterDouble(Model, Land, "Max rate depth", MilliMetres, 100.0);
+	auto ResponseToA10DegreeChange      = RegisterParameterDouble(Model, Land, "Response to a 10° soil temperature change", Dimensionless, 2.0, 0.0, 10.0, "Response to a 10° soil temperature change for each process.");
+	auto BaseTemperature                = RegisterParameterDouble(Model, Land, "Base temperature at which response is 1", DegreesCelsius, 20.0, 0.0, 50.0, "Base temperature for each process at which the response is 1.");
     
 
 	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
@@ -240,7 +243,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, TemperatureFactor,
-		return pow(1.047, (RESULT(SoilTemperature) - 20.0));
+		return pow(PARAMETER(ResponseToA10DegreeChange), (RESULT(SoilTemperature) - PARAMETER(BaseTemperature)) * 0.1);
 	)
 	
 	

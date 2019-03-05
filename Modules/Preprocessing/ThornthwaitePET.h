@@ -55,22 +55,25 @@ MonthlyMeanDLH(double Latitude, s32 Year, std::vector<double> &DLHOut)
 static void
 ComputeThornthwaitePET(inca_data_set *DataSet)
 {
-	//NOTE: This should only be added as a preprocessing step if you have registered the inputs "Air temperature" and "Potential evapotranspiration" and the parameter "Latitude".
+	//NOTE: This should only be added as a preprocessing step if you have registered the inputs "Air temperature" and "Potential evapotranspiration" and the parameter "Latitude". Moreover, the "Air temperature" and "Potential evapotranspiration" has to index over the same index sets.
 	
+	bool AnyNeedProcessing = false;
+	ForeachInputInstance(DataSet, "Potential evapotranspiration", 
+		[DataSet, &AnyNeedProcessing](const char * const *IndexNames, size_t IndexesCount)
+		{
+			if(!InputSeriesWasProvided(DataSet, "Potential evapotranspiration", IndexNames, IndexesCount))
+			{
+				AnyNeedProcessing = true;
+			}
+		}
+	);
 	
-	
-	//This looks for a timeseries called "Air temperature" and computes a corresponding "Potential evapotranspiration" timeseries IF it was not provided externally from an input file.
-	auto PETHandle = GetInputHandle(DataSet->Model, "Potential evapotranspiration");
-	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, PETHandle.Handle); //TODO: This is just the first instance. Should iterate over multiple instances if they exist.
-	if(DataSet->InputTimeseriesWasProvided[Offset]) return; //NOTE: A PET timeseries was provided, so we don't have to compute it.
-	
-	double Latitude = GetParameterDouble(DataSet, "Latitude", {});
-	Latitude = Latitude * Pi / 180.0; //Convert degrees to radians
-	
-	u64 Timesteps = DataSet->InputDataTimesteps;
+	if(!AnyNeedProcessing) return;
 	
 	s32 Year, Month, Day;
 	s64 Date = GetInputStartDate(DataSet);
+	
+	u64 Timesteps = DataSet->InputDataTimesteps;
 	
 	YearMonthDay(Date, &Year, &Month, &Day);
 	if(Month != 1 && Day != 1)
@@ -87,84 +90,91 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 	}
 	s32 EndYear = Year;
 	
-	std::vector<double> AirTemperature(Timesteps);
-	
-	GetInputSeries(DataSet, "Air temperature", {}, AirTemperature.data(), AirTemperature.size()); //TODO Should instead of being hard coded to a global value, iterate over all instances
-	
-	
-	std::vector<double> MonthlyPET;
-	
-	size_t Timestep = 0;
-	for(s32 Year = StartYear; Year <= EndYear; ++Year)
-	{
-		std::vector<double> MonthlyMeanT(12);
-		for(int M = 0; M < 12; ++M)
+	ForeachInputInstance(DataSet, "Potential evapotranspiration",
+		[DataSet, Timesteps, StartYear, EndYear](const char * const *IndexNames, size_t IndexesCount)
 		{
-			double AirTSum = 0.0;
-			int MonthLen = MonthLength(Year, M);
-			for(int Day = 0; Day < MonthLen; ++Day)
-			{
-				AirTSum += AirTemperature[Timestep];
-				++Timestep;
-			}
-			MonthlyMeanT[M] = AirTSum / (double)MonthLen;
-		}
-		
-		std::vector<double> DLH;
-		MonthlyMeanDLH(Latitude, Year, DLH);
-		
-		std::vector<double> PET;
-		AnnualThornthwaite(MonthlyMeanT, DLH, Year, PET);
-		
-		for(int M = 0; M < 12; ++M)
-		{
-			int MonthLen = MonthLength(Year, M);
-			PET[M] /= (double)MonthLen;         //Turn average monthly into average daily.
-		}
-		
-		MonthlyPET.insert(MonthlyPET.begin(), PET.begin(), PET.end());
-	}
-	
-	std::vector<double> PET(Timesteps);
-	
-	int MonthIndex = 0;
-	Timestep = 0;
-	for(s32 Year = StartYear; Year <= EndYear; ++Year)
-	{
-		std::vector<double> MonthlyMeanT(12);
-		for(int M = 0; M < 12; ++M)
-		{
-			double PrevMonthValue = MonthlyPET[MonthIndex];
-			if(Year >= StartYear || M > 0) PrevMonthValue = MonthlyPET[MonthIndex - 1];
-			double MonthValue = MonthlyPET[MonthIndex];
-			double NextMonthValue = MonthlyPET[MonthIndex];
-			if(Year <= EndYear || M < 11) NextMonthValue = MonthlyPET[MonthIndex + 1];
+			double Latitude = GetParameterDouble(DataSet, "Latitude", {});
+			Latitude = Latitude * Pi / 180.0; //Convert degrees to radians
 			
-			int MonthLen = MonthLength(Year, M);
-			for(int Day = 0; Day < MonthLen; ++Day)
+			std::vector<double> AirTemperature(Timesteps);
+	
+			GetInputSeries(DataSet, "Air temperature", IndexNames, IndexesCount, AirTemperature.data(), AirTemperature.size());
+			
+			std::vector<double> MonthlyPET;
+	
+			size_t Timestep = 0;
+			for(s32 Year = StartYear; Year <= EndYear; ++Year)
 			{
-				double Value;
-				int Midpoint = MonthLen / 2;
-				if(Day < Midpoint)
+				std::vector<double> MonthlyMeanT(12);
+				for(int M = 0; M < 12; ++M)
 				{
-					double t = (double)(Midpoint - Day) / (double)Midpoint;
-					Value = 0.5*t*(PrevMonthValue + MonthValue) + (1.0 - t)*MonthValue;
+					double AirTSum = 0.0;
+					int MonthLen = MonthLength(Year, M);
+					for(int Day = 0; Day < MonthLen; ++Day)
+					{
+						AirTSum += AirTemperature[Timestep];
+						++Timestep;
+					}
+					MonthlyMeanT[M] = AirTSum / (double)MonthLen;
 				}
-				else
-				{
-					double t = (double)(MonthLen - 1 - Day) / (double)(MonthLen - Midpoint - 1);
-					Value = t * MonthValue + 0.5*(1.0 - t)*(NextMonthValue + MonthValue);
-				}
-				PET[Timestep] = Value;
 				
-				++Timestep;
+				std::vector<double> DLH;
+				MonthlyMeanDLH(Latitude, Year, DLH);
+				
+				std::vector<double> PET;
+				AnnualThornthwaite(MonthlyMeanT, DLH, Year, PET);
+				
+				for(int M = 0; M < 12; ++M)
+				{
+					int MonthLen = MonthLength(Year, M);
+					PET[M] /= (double)MonthLen;         //Turn average monthly into average daily.
+				}
+				
+				MonthlyPET.insert(MonthlyPET.begin(), PET.begin(), PET.end());
 			}
 			
-			++MonthIndex;
+			std::vector<double> PET(Timesteps);
+			
+			int MonthIndex = 0;
+			Timestep = 0;
+			for(s32 Year = StartYear; Year <= EndYear; ++Year)
+			{
+				std::vector<double> MonthlyMeanT(12);
+				for(int M = 0; M < 12; ++M)
+				{
+					double PrevMonthValue = MonthlyPET[MonthIndex];
+					if(Year >= StartYear || M > 0) PrevMonthValue = MonthlyPET[MonthIndex - 1];
+					double MonthValue = MonthlyPET[MonthIndex];
+					double NextMonthValue = MonthlyPET[MonthIndex];
+					if(Year <= EndYear || M < 11) NextMonthValue = MonthlyPET[MonthIndex + 1];
+					
+					int MonthLen = MonthLength(Year, M);
+					for(int Day = 0; Day < MonthLen; ++Day)
+					{
+						double Value;
+						int Midpoint = MonthLen / 2;
+						if(Day < Midpoint)
+						{
+							double t = (double)(Midpoint - Day) / (double)Midpoint;
+							Value = 0.5*t*(PrevMonthValue + MonthValue) + (1.0 - t)*MonthValue;
+						}
+						else
+						{
+							double t = (double)(MonthLen - 1 - Day) / (double)(MonthLen - Midpoint - 1);
+							Value = t * MonthValue + 0.5*(1.0 - t)*(NextMonthValue + MonthValue);
+						}
+						PET[Timestep] = Value;
+						
+						++Timestep;
+					}
+					
+					++MonthIndex;
+				}
+			}
+			
+			SetInputSeries(DataSet, "Potential evapotranspiration", IndexNames, IndexesCount, PET.data(), PET.size());
 		}
-	}
-	
-	SetInputSeries(DataSet, "Potential evapotranspiration", {}, PET.data(), PET.size());
+	);
 }
 
 

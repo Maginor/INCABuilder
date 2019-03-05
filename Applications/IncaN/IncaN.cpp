@@ -44,5 +44,4 @@ int main(int argc, char **argv)
 	inca_data_set *DataSet = GenerateDataSet(Model);
 	
 	RunDatasetAsSpecifiedByIncaviewCommandline(DataSet, &Args);
-	
 }

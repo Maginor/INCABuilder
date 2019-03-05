@@ -1152,6 +1152,42 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const std::vector<const
 	GetInputSeries(DataSet, Name, IndexNames.data(), IndexNames.size(), WriteTo, WriteSize, AlignWithResults);
 }
 
+static bool
+InputSeriesWasProvided(inca_data_set *DataSet, const char *Name, const char * const *IndexNames, size_t IndexCount)
+{
+	if(!DataSet->InputData)
+	{
+		INCA_FATAL_ERROR("ERROR: Tried to see if an input series was provided before input data was even allocated." << std::endl);
+	}
+	
+	const inca_model *Model = DataSet->Model;
+	
+	input_h Input = GetInputHandle(Model, Name);
+	
+	size_t StorageUnitIndex = DataSet->InputStorageStructure.UnitForHandle[Input.Handle];
+	std::vector<storage_unit_specifier> &Units = DataSet->InputStorageStructure.Units;
+	std::vector<index_set_h> &IndexSets = Units[StorageUnitIndex].IndexSets;
+
+	if(IndexCount != IndexSets.size())
+	{
+		INCA_FATAL_ERROR("ERROR: Got the wrong amount of indexes when checking the input series for " << GetName(Model, Input) << ". Got " << IndexCount << ", expected " << IndexSets.size() << std::endl);
+	}
+	index_t Indexes[256];
+	for(size_t IdxIdx = 0; IdxIdx < IndexSets.size(); ++IdxIdx)
+	{
+		Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
+	}
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexCount, DataSet->IndexCounts, Input.Handle);
+	
+	return DataSet->InputTimeseriesWasProvided[Offset];
+}
+
+inline bool
+InputSeriesWasProvided(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &IndexNames)
+{
+	return InputSeriesWasProvided(DataSet, Name, IndexNames.data(), IndexNames.size());
+}
+
 static void
 PrintResultSeries(inca_data_set *DataSet, const char *Name, const std::vector<const char*> &Indexes, size_t WriteSize)
 {
@@ -1234,3 +1270,73 @@ PrintIndexes(inca_data_set *DataSet, const char *IndexSetName)
 	}
 	std::cout << std::endl;
 }
+
+static void
+ForeachRecursive(inca_data_set *DataSet, char **CurrentIndexNames, const std::vector<index_set_h> &IndexSets, const std::function<void(const char *const *IndexNames, size_t IndexesCount)> &Do, s32 Level)
+{
+	if(Level + 1 == IndexSets.size())
+	{
+		Do(CurrentIndexNames, IndexSets.size());
+	}
+	else
+	{
+		index_set_h IterateOver = IndexSets[Level + 1];
+		size_t IndexCount = DataSet->IndexCounts[IterateOver.Handle];
+		for(index_t Index = 0; Index < IndexCount; ++Index)
+		{
+			CurrentIndexNames[Level + 1] = (char *)DataSet->IndexNames[IterateOver.Handle][Index]; //NOTE: Casting away constness because it is annoying, and it does not matter in this case.
+			ForeachRecursive(DataSet, CurrentIndexNames, IndexSets, Do, Level + 1);
+		}
+	}
+}
+
+static void
+ForeachInputInstance(inca_data_set *DataSet, const char *InputName, const std::function<void(const char *const *IndexNames, size_t IndexesCount)> &Do)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	char *CurrentIndexNames[256];
+	
+	input_h Input = GetInputHandle(Model, InputName);
+	
+	size_t UnitIndex = DataSet->InputStorageStructure.UnitForHandle[Input.Handle];
+	storage_unit_specifier &Unit = DataSet->InputStorageStructure.Units[UnitIndex];
+	std::vector<index_set_h> &IndexSets = Unit.IndexSets;
+	
+	ForeachRecursive(DataSet, CurrentIndexNames, IndexSets, Do, -1);
+}
+
+static void
+ForeachResultInstance(inca_data_set *DataSet, const char *ResultName, const std::function<void(const char *const *IndexNames, size_t IndexesCount)> &Do)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	char *CurrentIndexNames[256];
+	
+	equation_h Equation = GetEquationHandle(Model, ResultName);
+	
+	size_t UnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
+	storage_unit_specifier &Unit = DataSet->ResultStorageStructure.Units[UnitIndex];
+	std::vector<index_set_h> &IndexSets = Unit.IndexSets;
+	
+	ForeachRecursive(DataSet, CurrentIndexNames, IndexSets, Do, -1);
+}
+
+static void
+ForeachParameterInstance(inca_data_set *DataSet, const char *ParameterName, const std::function<void(const char *const *IndexNames, size_t IndexesCount)> &Do)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	char *CurrentIndexNames[256];
+	
+	entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName);
+	
+	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+	storage_unit_specifier &Unit = DataSet->ParameterStorageStructure.Units[UnitIndex];
+	std::vector<index_set_h> &IndexSets = Unit.IndexSets;
+	
+	ForeachRecursive(DataSet, CurrentIndexNames, IndexSets, Do, -1);
+}
+
+
+

@@ -2,88 +2,6 @@
 #include "json/json.hpp"    //NOTE: download at https://github.com/nlohmann/json
 
 
-static void
-WriteTimeseriesToJsonRecursive(inca_data_set *DataSet, nlohmann::json &Json, entity_handle Handle, int Type, index_t *CurrentIndexes, u64 Timesteps, s32 Level = -1)
-{
-	//NOTE: Type==0: Result, Type==1: Input.
-	
-	using nlohmann::json;
-	
-	const inca_model *Model = DataSet->Model;
-	
-	std::string Name;
-	std::vector<index_set_h> IndexSetDependencies;
-	
-	if(Type == 0)
-	{
-		const equation_spec &Spec = Model->EquationSpecs[Handle];
-		
-		//NOTE: It is horribly inefficient to do this for each recursion, we should just pass through the dependency list.
-		size_t UnitIdx = DataSet->ResultStorageStructure.UnitForHandle[Handle];
-		storage_unit_specifier &Unit = DataSet->ResultStorageStructure.Units[UnitIdx];
-		IndexSetDependencies = Unit.IndexSets;
-		Name = std::string(Spec.Name);
-		
-		//std::cout << "Name : " << Name << std::endl;
-		//std::cout << "Handle : " << Handle << std::endl;
-		//std::cout << "Size: " << IndexSetDependencies.size() << std::endl;
-	}
-	else
-	{
-		const input_spec &Spec = Model->InputSpecs[Handle];
-		IndexSetDependencies = Spec.IndexSetDependencies;
-		Name = Spec.Name;
-	}
-	
-	size_t Count = IndexSetDependencies.size();
-	if(Level + 1 == (s32)Count)
-	{
-		//std::cout << Name << std::endl;
-		
-		std::vector<double> Values((size_t)Timesteps);
-		
-		std::vector<const char *> Indices(Count);
-		
-		for(size_t IdxIdx = 0; IdxIdx < Count; ++IdxIdx)
-		{
-			Indices[IdxIdx] = DataSet->IndexNames[IndexSetDependencies[IdxIdx].Handle][CurrentIndexes[IdxIdx]];
-		}
-		
-		//for(const char *Index : Indices) std::cout << Index << " ";
-		//std::cout << std::endl;
-		
-		if(Type == 0)
-		{
-			GetResultSeries(DataSet, Name.c_str(), Indices, Values.data(), Values.size());
-		}
-		else
-		{
-			GetInputSeries(DataSet, Name.c_str(), Indices, Values.data(), Values.size());
-		}
-	   
-		json JObj
-		{
-			{"indices", Indices},
-			{"values", Values},
-		};
-		
-		Json["data"][Name].push_back(JObj);
-	}
-	else
-	{
-		index_set_h IndexSetAtLevel = IndexSetDependencies[Level + 1];
-		
-		//std::cout << "index set at level: " << GetName(DataSet->Model, IndexSetAtLevel) << std::endl;
-		
-		for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetAtLevel.Handle]; ++Index)
-		{
-			CurrentIndexes[Level + 1] = Index;
-			WriteTimeseriesToJsonRecursive(DataSet, Json, Handle, Type, CurrentIndexes, Timesteps, Level + 1);
-		}
-		
-	}
-}
-
 
 static void
 WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
@@ -134,10 +52,32 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 				{"data", nullptr},
 			};
 	
-	index_t CurrentIndexes[256];
+	
+	//index_t CurrentIndexes[256];
 	for(entity_handle InputHandle = 1; InputHandle < Model->FirstUnusedInputHandle; ++InputHandle)
 	{
-		WriteTimeseriesToJsonRecursive(DataSet, Json, InputHandle, 1, CurrentIndexes, Timesteps);
+		const char *InputName = GetName(Model, input_h {InputHandle});
+		
+		ForeachInputInstance(DataSet, InputName,
+			[DataSet, Timesteps, InputName, &Json](const char * const *IndexNames, size_t IndexesCount)
+			{
+				std::vector<double> Values((size_t)Timesteps);
+				GetInputSeries(DataSet, InputName, IndexNames, IndexesCount, Values.data(), Values.size());
+				
+				std::vector<std::string> Indices(IndexesCount);
+				for(size_t Idx = 0; Idx < IndexesCount; ++Idx) Indices[Idx] = IndexNames[Idx];
+				
+				json JObj
+				{
+					{"indices", Indices},
+					{"values", Values},
+				};
+				
+				Json["data"][InputName].push_back(JObj);
+			}
+		);
+		
+		//WriteTimeseriesToJsonRecursive(DataSet, Json, InputHandle, 1, CurrentIndexes, Timesteps);
 	}
   
 	std::ofstream Out(Filename);
@@ -186,10 +126,31 @@ WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
 				{"data", nullptr},
 			};
    
-	index_t CurrentIndexes[256];
+	//index_t CurrentIndexes[256];
 	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 	{
-		WriteTimeseriesToJsonRecursive(DataSet, Json, EquationHandle, 0, CurrentIndexes, Timesteps);
+		const char *EquationName = GetName(Model, equation_h {EquationHandle});
+		
+		ForeachResultInstance(DataSet, EquationName,
+			[DataSet, Timesteps, EquationName, &Json](const char * const *IndexNames, size_t IndexesCount)
+			{
+				std::vector<double> Values((size_t)Timesteps);
+				GetResultSeries(DataSet, EquationName, IndexNames, IndexesCount, Values.data(), Values.size());
+				
+				std::vector<std::string> Indices(IndexesCount);
+				for(size_t Idx = 0; Idx < IndexesCount; ++Idx) Indices[Idx] = IndexNames[Idx];
+				
+				json JObj
+				{
+					{"indices", Indices},
+					{"values", Values},
+				};
+				
+				Json["data"][EquationName].push_back(JObj);
+			}
+		);
+		
+		//WriteTimeseriesToJsonRecursive(DataSet, Json, InputHandle, 1, CurrentIndexes, Timesteps);
 	}
   
 	std::ofstream Out(Filename);
@@ -355,69 +316,41 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
 	{
 		const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+		const char *ParameterName = Spec.Name;
+		parameter_type Type = Spec.Type;
 		
-		//NOTE: This is pretty horrible. It should be wrapped up somehow instead.
-		size_t UnitIdx = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
-		storage_unit_specifier &Unit = DataSet->ParameterStorageStructure.Units[UnitIdx];
-		size_t ParametersInUnit = Unit.Handles.size();
-		size_t TotalValuesInUnit = DataSet->ParameterStorageStructure.TotalCountForUnit[UnitIdx];
-		size_t ValuesPerPar = TotalValuesInUnit / ParametersInUnit;
-		
-		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
+		std::vector<parameter_value> Values;
+		ForeachParameterInstance(DataSet, ParameterName,
+			[DataSet, ParameterName, Type, &Values](const char * const *IndexNames, size_t IndexCount)
+			{
+				parameter_value Value = GetParameterValue(DataSet, ParameterName, IndexNames, IndexCount, Type);
+				Values.push_back(Value);
+			}
+		);
 		
 		if(Spec.Type == ParameterType_Double)
 		{
-			std::vector<double> Values;
-			
-			parameter_value *At = DataSet->ParameterData + Offset;
-			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
-			{
-				Values.push_back((*At).ValDouble);
-				At += ParametersInUnit;
-			}
-			
-			Json["parameters"][Spec.Name] = Values;
+			std::vector<double> ValuesDouble(Values.size());
+			for(size_t Idx = 0; Idx < Values.size(); ++Idx) ValuesDouble[Idx] = Values[Idx].ValDouble;
+			Json["parameters"][ParameterName] = ValuesDouble;
 		}
 		else if(Spec.Type == ParameterType_UInt)
 		{
-			std::vector<u64> Values;
-			
-			parameter_value *At = DataSet->ParameterData + Offset;
-			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
-			{
-				Values.push_back((*At).ValUInt);
-				At += ParametersInUnit;
-			}
-			
-			Json["parameters"][Spec.Name] = Values;
+			std::vector<u64> ValuesUInt(Values.size());
+			for(size_t Idx = 0; Idx < Values.size(); ++Idx) ValuesUInt[Idx] = Values[Idx].ValUInt;
+			Json["parameters"][ParameterName] = ValuesUInt;
 		}
 		else if(Spec.Type == ParameterType_Bool)
 		{
-			std::vector<bool> Values;
-			
-			parameter_value *At = DataSet->ParameterData + Offset;
-			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
-			{
-				Values.push_back((*At).ValBool);
-				At += ParametersInUnit;
-			}
-			
-			Json["parameters"][Spec.Name] = Values;
+			std::vector<bool> ValuesBool(Values.size());
+			for(size_t Idx = 0; Idx < Values.size(); ++Idx) ValuesBool[Idx] = Values[Idx].ValBool;
+			Json["parameters"][ParameterName] = ValuesBool;
 		}
 		else if(Spec.Type == ParameterType_Time)
 		{
-			std::vector<std::string> Values;
-			
-			parameter_value *At = DataSet->ParameterData + Offset;
-			for(size_t Idx = 0; Idx < ValuesPerPar; ++Idx)
-			{
-				s64 SecondsSinceEpoch = (*At).ValTime;
-				std::string Date = TimeString(SecondsSinceEpoch);
-				Values.push_back(Date);
-				At += ParametersInUnit;
-			}
-			
-			Json["parameters"][Spec.Name] = Values;
+			std::vector<std::string> ValuesTime(Values.size());
+			for(size_t Idx = 0; Idx < Values.size(); ++Idx) ValuesTime[Idx] = TimeString(Values[Idx].ValTime);
+			Json["parameters"][ParameterName] = ValuesTime;
 		}
 	}
 	

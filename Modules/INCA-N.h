@@ -31,49 +31,49 @@ AddIncaNModel(inca_model *Model)
 	
 	auto Land = GetParameterGroupHandle(Model, "Landscape units");
 	
-	auto DirectRunoffInitialNitrateConcentration      = RegisterParameterDouble(Model, Land, "Direct runoff initial nitrate concentration", MgPerL, 10.0, 0.0, 10.0);
-	auto DirectRunoffInitialAmmoniumConcentration     = RegisterParameterDouble(Model, Land, "Direct runoff initial ammonium concentration", MgPerL, 2.0, 0.0, 2.0);
-	auto SoilwaterInitialNitrateConcentration         = RegisterParameterDouble(Model, Land, "Soil water initial nitrate concentration", MgPerL, 10.0);
-	auto SoilwaterInitialAmmoniumConcentration        = RegisterParameterDouble(Model, Land, "Soil water initial ammonium concentration", MgPerL, 10.0);
+	auto DirectRunoffInitialNitrateConcentration      = RegisterParameterDouble(Model, Land, "Direct runoff initial nitrate concentration", MgPerL, 0.0, 0.0, 100.0, "Initial nitrate concentration in quick flow");
+	auto DirectRunoffInitialAmmoniumConcentration     = RegisterParameterDouble(Model, Land, "Direct runoff initial ammonium concentration", MgPerL, 0.0, 0.0, 100.0, "Initial ammonium concentration in quick flow");
+	auto SoilwaterInitialNitrateConcentration         = RegisterParameterDouble(Model, Land, "Soil water initial nitrate concentration", MgPerL, 5.0, 0.0, 100.0, "Initial nitrate concentration in soil water");
+	auto SoilwaterInitialAmmoniumConcentration        = RegisterParameterDouble(Model, Land, "Soil water initial ammonium concentration", MgPerL, 0.0, 0.0, 100.0, "Initial ammonium concentration in soil water");
 	
-	auto GrowthCurveOffset              = RegisterParameterDouble(Model, Land, "Growth curve offset", Dimensionless, 20.0);
-	auto GrowthCurveAmplitude           = RegisterParameterDouble(Model, Land, "Growth curve amplitude", Dimensionless, 20.0);
-	auto PlantGrowthStartDay            = RegisterParameterUInt(Model, Land, "Plant growth start day", JulianDay, 20, 1, 365, "Day of year when plant growth begins");
-	auto PlantGrowthPeriod              = RegisterParameterUInt(Model, Land, "Plant growth period", JulianDay, 20, 0, 365, "Length of plant growth period in days");
-	auto NitratePlantUptakeRate         = RegisterParameterDouble(Model, Land, "Nitrate plant uptake rate", MetresPerDay, 20.0, 0.0, 162.0, "Rate at which NO3 is taken up by plants.");
-	auto SoilwaterDenitrificationRate   = RegisterParameterDouble(Model, Land, "Soil water denitrification rate", MetresPerDay, 20.0);
-	auto AmmoniumNitrificationRate      = RegisterParameterDouble(Model, Land, "Ammonium nitrification rate", MetresPerDay, 20.0);
-	auto NitrogenFixationRate           = RegisterParameterDouble(Model, Land, "Nitrogen fixation rate", KgPerHectarePerDay, 20.0);
-	auto MaximumNitrogenUptake          = RegisterParameterDouble(Model, Land, "Maximum nitrogen uptake", KgPerHectarePerYear, 20.0);
-	auto FertilizerAdditionStartDay     = RegisterParameterUInt(Model, Land, "Fertilizer addition start day", JulianDay, 20, 1, 365, "Day of year when fertiliser application begins.");
-	auto FertilizerAdditionPeriod       = RegisterParameterUInt(Model, Land, "Fertilizer addition period", JulianDay, 20, 0, 365, "Length of fertiliser addition period in days.");
-	auto FertilizerNitrateAdditionRate  = RegisterParameterDouble(Model, Land, "Fertilizer nitrate addition rate", KgPerHectarePerDay, 20.0, 0.0, 100.0, "Amount of nitrate added as fertiliser on each day of fertiliser addition period.");
-	auto FertilizerAmmoniumAdditionRate = RegisterParameterDouble(Model, Land, "Fertilizer ammonium addition rate", KgPerHectarePerDay, 20.0, 0.0, 100.0, "Amount of ammonium added as fertiliser on each day of fertiliser addition period.");
-	auto AmmoniumPlantUptakeRate        = RegisterParameterDouble(Model, Land, "Ammonium plant uptake rate", MetresPerDay, 20.0, 0.0, 162.0, "Rate at which NH4 is taken up by plants.");
-	auto AmmoniumImmobilisationRate     = RegisterParameterDouble(Model, Land, "Ammonium immobilisation rate", MetresPerDay, 20.0);
-	auto AmmoniumMineralisationRate     = RegisterParameterDouble(Model, Land, "Ammonium mineralisation rate", KgPerHectarePerDay, 20.0);
-	auto ZeroRateDepth                  = RegisterParameterDouble(Model, Land, "Zero rate depth", MilliMetres, 20.0);
-	auto MaxRateDepth                   = RegisterParameterDouble(Model, Land, "Max rate depth", MilliMetres, 100.0);
-	auto ResponseToA10DegreeChange      = RegisterParameterDouble(Model, Land, "Response to a 10° soil temperature change", Dimensionless, 2.0, 0.0, 10.0, "Response to a 10° soil temperature change for each process.");
-	auto BaseTemperature                = RegisterParameterDouble(Model, Land, "Base temperature at which response is 1", DegreesCelsius, 20.0, 0.0, 50.0, "Base temperature for each process at which the response is 1.");
+	auto GrowthCurveOffset              = RegisterParameterDouble(Model, Land, "Growth curve offset", Dimensionless, 0.66, 0.0, 10.0, "Vertical shift in the sine curve describing the seasonal N uptake coefficient. Must be greater than growth curve amplitude");
+	auto GrowthCurveAmplitude           = RegisterParameterDouble(Model, Land, "Growth curve amplitude", Dimensionless, 0.34, 0.0, 5.0, "Amplitude of sine curve describing the seasonal N uptake coefficient");
+	auto PlantGrowthStartDay            = RegisterParameterUInt(Model, Land, "Plant growth start day", JulianDay, 50, 1, 365, "Day of year when N uptake begins, and also the horizontal shift in the seasonal plant N uptake coefficient");
+	auto PlantGrowthPeriod              = RegisterParameterUInt(Model, Land, "Plant growth period", JulianDay, 365, 0, 365, "Length of plant growth period in days");
+	auto NitratePlantUptakeRate         = RegisterParameterDouble(Model, Land, "Nitrate plant uptake rate", MetresPerDay, 0.2, 0.0, 100.0, "Coefficient to scale the NO3 plant uptake rate");
+	auto SoilwaterDenitrificationRate   = RegisterParameterDouble(Model, Land, "Soil water denitrification rate", MetresPerDay, 0.0, 0.0, 100.0, "Rate coefficient to scale the loss of nitrate from the system by denitrification");
+	auto AmmoniumNitrificationRate      = RegisterParameterDouble(Model, Land, "Ammonium nitrification rate", MetresPerDay, 0.0, 0.0, 100.0, "Coefficient to scale the rate of conversion of ammonium to nitrate via nitrification in the soil water");
+	auto NitrogenFixationRate           = RegisterParameterDouble(Model, Land, "Nitrogen fixation rate", KgPerHectarePerDay, 0.0, 0.0, 100.0, "Coefficient to scale the rate of NO3 inputs to soilwater via N2 fixation");
+	auto MaximumNitrogenUptake          = RegisterParameterDouble(Model, Land, "Maximum nitrogen uptake", KgPerHectarePerYear, 300.0, 0.0, 5000.0, "Maximum annual nitrate plus ammonium plant uptake from the soilwater, above which uptake ceases");
+	auto FertilizerAdditionStartDay     = RegisterParameterUInt(Model, Land, "Fertilizer addition start day", JulianDay, 50, 1, 365, "Day of year when fertiliser application begins");
+	auto FertilizerAdditionPeriod       = RegisterParameterUInt(Model, Land, "Fertilizer addition period", JulianDay, 365, 0, 365, "Length of fertiliser addition period in days");
+	auto FertilizerNitrateAdditionRate  = RegisterParameterDouble(Model, Land, "Fertilizer nitrate addition rate", KgPerHectarePerDay, 0.0, 0.0, 100.0, "Amount of nitrate added as fertiliser on each day of fertiliser addition period");
+	auto FertilizerAmmoniumAdditionRate = RegisterParameterDouble(Model, Land, "Fertilizer ammonium addition rate", KgPerHectarePerDay, 0.0, 0.0, 100.0, "Amount of ammonium added as fertiliser on each day of fertiliser addition period");
+	auto AmmoniumPlantUptakeRate        = RegisterParameterDouble(Model, Land, "Ammonium plant uptake rate", MetresPerDay, 0.0, 0.0, 100.0, "Rate coefficient to scale the rate of NH4 plant uptake");
+	auto AmmoniumImmobilisationRate     = RegisterParameterDouble(Model, Land, "Ammonium immobilisation rate", MetresPerDay, 0.0, 0.0, 100.0, "Coefficient to scale the rate of ammonium loss from the soil water via immobilisation");
+	auto AmmoniumMineralisationRate     = RegisterParameterDouble(Model, Land, "Ammonium mineralisation rate", KgPerHectarePerDay, 0.0, 0.0, 100.0, "Coefficient to scale the rate of ammonium input to the soil water via mineralisation");
+	auto ZeroRateDepth                  = RegisterParameterDouble(Model, Land, "Zero rate depth", MilliMetres, 0.0, 0.0, 9999.0, "Soil water depth at which N processing rates are 0 due to soil moisture limitation. Should be less than the Max rate depth parameter");
+	auto MaxRateDepth                   = RegisterParameterDouble(Model, Land, "Max rate depth", MilliMetres, 0.0, 0.0, 9999.0, "Soil water depth above which N processing rates are no longer moisture-limited. The soil retained water depth is likely appropriate");
+	auto ResponseToA10DegreeChange      = RegisterParameterDouble(Model, Land, "Response to a 10° soil temperature change", Dimensionless, 2.0, 0.0, 20.0, "Rate response to a 10°C soil temperature change for all processes");
+	auto BaseTemperature                = RegisterParameterDouble(Model, Land, "Base temperature at which response is 1", DegreesCelsius, 20.0, -10.0, 50.0, "Base temperature for all processes at which the rate response is 1");
     
-
+	
 	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
 	
-	auto GroundwaterInitialNitrateConcentration  = RegisterParameterDouble(Model, Reaches, "Groundwater initial nitrate concentration", MgPerL, 10.0);
-	auto GroundwaterInitialAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Groundwater initial ammonium concentration", MgPerL, 0.0);
-	auto GroundwaterDenitrificationRate          = RegisterParameterDouble(Model, Reaches, "Groundwater denitrification rate", MetresPerDay, 20.0);
-	auto NitrateDryDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate dry deposition", KgPerHectarePerDay, 20.0);
-	auto NitrateWetDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate wet deposition", KgPerHectarePerDay, 20.0);
-	auto AmmoniumDryDeposition                   = RegisterParameterDouble(Model, Reaches, "Ammonium dry deposition", KgPerHectarePerDay, 20.0);
-	auto AmmoniumWetDeposition                   = RegisterParameterDouble(Model, Reaches, "Ammonium wet deposition", KgPerHectarePerDay, 20.0);
-	auto ReachDenitrificationRate                = RegisterParameterDouble(Model, Reaches, "Reach denitrification rate", PerDay, 20.0);
-	auto ReachNitrificationRate                  = RegisterParameterDouble(Model, Reaches, "Reach nitrification rate", PerDay, 20.0);
-	auto ReachEffluentNitrateConcentration       = RegisterParameterDouble(Model, Reaches, "Reach effluent nitrate concentration", MgPerL, 0.0);
-	auto ReachEffluentAmmoniumConcentration      = RegisterParameterDouble(Model, Reaches, "Reach effluent ammonium concentration", MgPerL, 0.0);
+	auto GroundwaterInitialNitrateConcentration  = RegisterParameterDouble(Model, Reaches, "Groundwater initial nitrate concentration", MgPerL, 4.0, 0.0, 100.0, "Initial nitrate concentration in groundwater");
+	auto GroundwaterInitialAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Groundwater initial ammonium concentration", MgPerL, 0.0, 0.0, 100.0, "Initial ammonium concentration in groundwater");
+	auto GroundwaterDenitrificationRate          = RegisterParameterDouble(Model, Reaches, "Groundwater denitrification rate", MetresPerDay, 0.0, 0.0, 1000.0, "Groundwater denitrification rate");
+	auto NitrateDryDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate dry deposition", KgPerHectarePerDay, 0.0, 0.0, 1.0, "Daily nitrate dry deposition rate");
+	auto NitrateWetDeposition                    = RegisterParameterDouble(Model, Reaches, "Nitrate wet deposition", KgPerHectarePerDay, 0.0, 0.0, 1.0, "Daily nitrate wet deposition rate");
+	auto AmmoniumDryDeposition                   = RegisterParameterDouble(Model, Reaches, "Ammonium dry deposition", KgPerHectarePerDay, 0.0, 0.0, 1.0, "Daily ammonium dry deposition rate");
+	auto AmmoniumWetDeposition                   = RegisterParameterDouble(Model, Reaches, "Ammonium wet deposition", KgPerHectarePerDay, 0.0, 0.0, 1.0, "Daily ammonium wet deposition rate");
+	auto ReachDenitrificationRate                = RegisterParameterDouble(Model, Reaches, "Reach denitrification rate", PerDay, 0.0, 0.0, 100.0, "Coefficient to scale loss of nitrate from the reach via denitrification");
+	auto ReachNitrificationRate                  = RegisterParameterDouble(Model, Reaches, "Reach nitrification rate", PerDay, 0.0, 0.0, 100.0, "Coefficient to scale reach nitrification (conversion of ammonium to nitrate)");
+	auto ReachEffluentNitrateConcentration       = RegisterParameterDouble(Model, Reaches, "Reach effluent nitrate concentration", MgPerL, 0.0, 0.0, 1000.0, "Concentration of nitrate in effluent inputs to reach");
+	auto ReachEffluentAmmoniumConcentration      = RegisterParameterDouble(Model, Reaches, "Reach effluent ammonium concentration", MgPerL, 0.0, 0.0, 1000.0, "Concentration of ammonium in effluent inputs to reach");
 	
-	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream nitrate concentration", MgPerL, 10.0);
-	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 10.0);
+	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream nitrate concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream nitrate concentration");
+	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream ammonium concentration");
 	
 	
 	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);

@@ -10,6 +10,22 @@
 #include "Calibration/Optimizer/optimizer.h"
 #endif
 
+#if !defined(INCAVIEW_INCLUDE_GLUE)
+#define INCAVIEW_INCLUDE_GLUE 0
+#endif
+
+#if INCAVIEW_INCLUDE_GLUE
+#include "Calibration/GLUE/glue.h"
+#endif
+
+#if !defined(INCAVIEW_INCLUDE_MCMC)
+#define INCAVIEW_INCLUDE_MCMC 0
+#endif
+
+#if INCAVIEW_INCLUDE_MCMC
+#include "Calibration/MCMC/inca_mcmc.h"
+#endif
+
 
 #if !defined INCAVIEW_INCLUDE_JSON
 #define INCAVIEW_INCLUDE_JSON 0
@@ -26,6 +42,8 @@ enum incaview_run_mode
 	IncaviewRunMode_ExportParameters,
 	IncaviewRunMode_FillParameterFile,
 	IncaviewRunMode_RunOptimization,
+	IncaviewRunMode_RunGLUE,
+	IncaviewRunMode_RunMCMC,
 };
 
 struct incaview_commandline_arguments
@@ -99,6 +117,28 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 			CorrectUse = true;
 		}
 #endif
+#if INCAVIEW_INCLUDE_GLUE
+		if(strcmp(argv[1], "run_glue") == 0)
+		{
+			Args->Mode = IncaviewRunMode_RunGLUE;
+			Args->InputFileName       = argv[2];
+			Args->ParameterInFileName = argv[3];
+			Args->CalibrationScriptName = argv[4];
+			Args->ParameterOutFileName = argv[5];
+			CorrectUse = true;
+		}
+#endif
+#if INCAVIEW_INCLUDE_GLUE
+		if(strcmp(argv[1], "run_mcmc") == 0)
+		{
+			Args->Mode = IncaviewRunMode_RunMCMC;
+			Args->InputFileName       = argv[2];
+			Args->ParameterInFileName = argv[3];
+			Args->CalibrationScriptName = argv[4];
+			Args->ParameterOutFileName = argv[5];
+			CorrectUse = true;
+		}
+#endif
 	}
 	
 	if(!CorrectUse)
@@ -111,6 +151,12 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 #if INCAVIEW_INCLUDE_OPTIMIZER
 		INCA_PARTIAL_ERROR(" <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat or .db)>" << std::endl);
 #endif
+#if INCAVIEW_INCLUDE_GLUE
+		INCA_PARTIAL_ERROR(" <exename> run_glue <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <calibrationresults(.db)>" << std::endl);
+#endif
+#if INCAVIEW_INCLUDE_MCMC
+		INCA_PARTIAL_ERROR(" <exename> run_mcmc <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <calibrationresults(.dat)>" << std::endl);
+#endif
 		INCA_FATAL_ERROR("");
 	}
 }
@@ -118,7 +164,7 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 static void
 EnsureModelComplianceWithIncaviewCommandline(inca_model *Model, incaview_commandline_arguments *Args)
 {
-	if(Args->Mode == IncaviewRunMode_Run || Args->Mode == IncaviewRunMode_RunOptimization)
+	if(Args->Mode == IncaviewRunMode_Run || Args->Mode == IncaviewRunMode_RunOptimization || Args->Mode == IncaviewRunMode_RunGLUE || Args->Mode == IncaviewRunMode_RunMCMC)
 	{
 		ReadInputDependenciesFromFile(Model, Args->InputFileName);
 	}
@@ -209,6 +255,71 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		else
 			WriteParametersToFile(DataSet, Args->ParameterOutFileName);
 		
+	}
+#endif
+#if INCAVIEW_INCLUDE_GLUE
+	else if(Args->Mode == IncaviewRunMode_RunGLUE)
+	{
+		int Type = IncaviewParseFileType(Args->ParameterInFileName);
+		
+		if(Type == 0)
+			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
+		else
+			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
+		
+		ReadInputsFromFile(DataSet, Args->InputFileName);
+		
+		glue_setup Setup;
+		glue_results Results;
+		
+		ReadGLUESetupFromFile(&Setup, Args->CalibrationScriptName);
+		
+		timer RunGlueTimer = BeginTimer();
+		RunGLUE(DataSet, &Setup, &Results);
+		u64 Ms = GetTimerMilliseconds(&RunGlueTimer);
+		
+		std::cout << "GLUE finished. Running the model " << Setup.NumRuns << " times with " << Setup.NumThreads << " threads took " << Ms << " milliseconds." << std::endl;
+		
+		WriteGLUEResultsToDatabase(Args->ParameterOutFileName, &Setup, &Results, DataSet); //NOTE: misleading name, it is not a parameter file, it is a GLUE results database.
+	}
+#endif
+#if INCAVIEW_INCLUDE_MCMC
+	if(Args->Mode == IncaviewRunMode_RunMCMC)
+	{
+		int Type = IncaviewParseFileType(Args->ParameterInFileName);
+		
+		if(Type == 0)
+			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
+		else
+			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
+		
+		ReadInputsFromFile(DataSet, Args->InputFileName);
+		
+		mcmc_setup Setup = {};
+	
+		ReadMCMCSetupFromFile(&Setup, Args->CalibrationScriptName);
+
+		mcmc_results Results;
+		
+		timer MCMCTimer = BeginTimer();
+		RunMCMC(DataSet, &Setup, &Results);
+		
+		u64 Ms = GetTimerMilliseconds(&MCMCTimer);
+		
+		std::cout << "Total MCMC run time : " << Ms << " milliseconds." << std::endl;
+		
+		std::cout << "Acceptance rate: " << Results.AcceptanceRate << std::endl;
+		
+		if(Setup.Algorithm == MCMCAlgorithm_DifferentialEvolution)
+		{
+			arma::cube& Draws = Results.DrawsOut;
+			Draws.save(Args->ParameterOutFileName, arma::arma_ascii);
+		}
+		else
+		{
+			arma::mat& Draws2 = Results.DrawsOut2;
+			Draws2.save(Args->ParameterOutFileName, arma::arma_ascii);
+		}
 	}
 #endif
 	else if(Args->Mode == IncaviewRunMode_CreateParameterDatabase)

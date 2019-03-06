@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 	incaview_commandline_arguments Args;
 	ParseIncaviewCommandline(argc, argv, &Args);
 	
-	inca_model *Model = BeginModelDefinition("Simply P", "0.0");
+	inca_model *Model = BeginModelDefinition("Simply P", "0.2");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
 	auto DynamicOptions       = RegisterParameterGroup(Model, "Dynamic options");

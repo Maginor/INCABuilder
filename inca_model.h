@@ -226,6 +226,8 @@ struct equation_batch
 struct equation_batch_group
 {
 	std::vector<index_set_h> IndexSets;
+	
+	std::vector<equation_h>     LastResultsToReadAtBase;  //Unfortunately we need this..
 	std::vector<iteration_data> IterationData;
 	size_t FirstBatch;
 	size_t LastBatch;

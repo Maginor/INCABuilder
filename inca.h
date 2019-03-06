@@ -14,11 +14,11 @@ TODOs:
 	- Register units with inputs too? They are after all expected to be in a certain unit.
 	- Allow the dependency system to be able to understand explicitly indexed lookups of results better.
 	- Standardize the input format. Includes finding a better format for dates.
-	- Add in pre-processing options: Tests on parameter values. Pre-compute parameter values.
+	- Pre-computed parameter values.
 	- Allow certain values to either be a parameter, input series or result, depending on model settings?
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
-	- Better convenience accessors for the DataSet so that io code does not have to understand the inner structure of the DataSet that much.
+	- Better convenience accessors for the DataSet so that io and application code does not have to understand the inner structure of the DataSet that much.
 	*/
 
 

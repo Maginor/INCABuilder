@@ -899,6 +899,24 @@ EndModelDefinition(inca_model *Model)
 				}
 			}
 			
+			for(equation_h Equation : AllLastResultDependenciesForBatchGroup)    //NOTE: We need a separate system for last_results with no index set dependencies, unfortunately.
+			{
+				equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
+				if(Spec.Type != EquationType_InitialValue) //NOTE: Initial values are handled separately in an initial setup run.
+				{
+					size_t ResultBatchGroupIndex = EquationBelongsToBatchGroup[Equation.Handle];
+					if(ResultBatchGroupIndex != BatchGroupIdx) //NOTE: LAST_RESULTs in the current batch group are loaded using a different mechanism.
+					{
+						std::vector<index_set_h> &ThisResultDependsOn = Model->BatchGroups[ResultBatchGroupIndex].IndexSets;
+						
+						if(ThisResultDependsOn.empty())
+						{
+							BatchGroup.LastResultsToReadAtBase.push_back(Equation);
+						}
+					}
+				}
+			}
+			
 			++BatchGroupIdx;
 		}
 	}
@@ -936,7 +954,7 @@ ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_
 			continue;
 		}
 		
-		s32 BottomLevel = BatchGroup.IndexSets.size() - 1;
+		s32 BottomLevel = (s32)BatchGroup.IndexSets.size() - 1;
 		s32 CurrentLevel = 0;
 		
 		while (true)
@@ -1027,7 +1045,7 @@ INNER_LOOP_BODY(RunInnerLoop)
 {
 	const inca_model *Model = DataSet->Model;
 	
-	s32 BottomLevel = BatchGroup.IndexSets.size() - 1;
+	s32 BottomLevel = (s32)BatchGroup.IndexSets.size() - 1;
 	
 	//NOTE: Reading in to the Cur-buffers data that need to be updated at this iteration stage.
 	if(CurrentLevel >= 0)
@@ -1051,6 +1069,15 @@ INNER_LOOP_BODY(RunInnerLoop)
 			ValueSet->CurResults[Result.Handle] = ValueSet->AllCurResultsBase[Offset];
 		}
 		for(equation_h Result : IterationData.LastResultsToRead)
+		{
+			size_t Offset = *ValueSet->AtLastResultLookup;
+			++ValueSet->AtLastResultLookup;
+			ValueSet->LastResults[Result.Handle] = ValueSet->AllLastResultsBase[Offset];
+		}
+	}
+	else
+	{
+		for(equation_h Result : BatchGroup.LastResultsToReadAtBase)
 		{
 			size_t Offset = *ValueSet->AtLastResultLookup;
 			++ValueSet->AtLastResultLookup;
@@ -1204,34 +1231,42 @@ INNER_LOOP_BODY(RunInnerLoop)
 
 INNER_LOOP_BODY(FastLookupSetupInnerLoop)
 {
-	if(CurrentLevel < 0) return;
-	
-	for(entity_handle ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
+	if(CurrentLevel >= 0)
 	{
-		//NOTE: Parameters are special here in that we can just store the value in the fast lookup, instead of the offset. This is because they don't change with the timestep.
-		size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, ParameterHandle);
-		parameter_value Value = DataSet->ParameterData[Offset];
-		DataSet->FastParameterLookup.push_back(Value);
+		for(entity_handle ParameterHandle : BatchGroup.IterationData[CurrentLevel].ParametersToRead)
+		{
+			//NOTE: Parameters are special here in that we can just store the value in the fast lookup, instead of the offset. This is because they don't change with the timestep.
+			size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, ParameterHandle);
+			parameter_value Value = DataSet->ParameterData[Offset];
+			DataSet->FastParameterLookup.push_back(Value);
+		}
+		
+		for(input_h Input : BatchGroup.IterationData[CurrentLevel].InputsToRead)
+		{
+			size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Input.Handle);
+			DataSet->FastInputLookup.push_back(Offset);
+		}
+		
+		for(equation_h Equation : BatchGroup.IterationData[CurrentLevel].ResultsToRead)
+		{
+			size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Equation.Handle);
+			DataSet->FastResultLookup.push_back(Offset);
+		}
+		
+		for(equation_h Equation : BatchGroup.IterationData[CurrentLevel].LastResultsToRead)
+		{
+			size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Equation.Handle);
+			DataSet->FastLastResultLookup.push_back(Offset);
+		}
 	}
-	
-	for(input_h Input : BatchGroup.IterationData[CurrentLevel].InputsToRead)
+	else
 	{
-		size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Input.Handle);
-		DataSet->FastInputLookup.push_back(Offset);
+		for(equation_h Equation : BatchGroup.LastResultsToReadAtBase)
+		{
+			size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Equation.Handle);
+			DataSet->FastLastResultLookup.push_back(Offset);
+		}
 	}
-	
-	for(equation_h Equation : BatchGroup.IterationData[CurrentLevel].ResultsToRead)
-	{
-		size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Equation.Handle);
-		DataSet->FastResultLookup.push_back(Offset);
-	}
-	
-	for(equation_h Equation : BatchGroup.IterationData[CurrentLevel].LastResultsToRead)
-	{
-		size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Equation.Handle);
-		DataSet->FastLastResultLookup.push_back(Offset);
-	}
-
 }
 
 

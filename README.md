@@ -63,7 +63,7 @@ Other more advanced functionality such as the C++-written calibration systems re
 If you are just a user of existing models, or if you want to use an interface to quickly get visual results out of your own models, you can make model exes that are compatible with INCAView.
 
 We already have .cpp files ready for compilation that are set up to produce INCAView-compatible exes for most of our models. See e.g Applications/INCA-N/incan.cpp
-To set up your own .cpp files like these, try to follow the example from one of those files. To compile them you also need the sqlite3 library. Download the source code for sqlite3 from https://www.sqlite.org/download.html . See also e.g. Applications/INCA-N/COMPILE for guidance on how to compile.
+To set up your own .cpp files like these, try to follow the example from one of those files. To compile them you also need the sqlite3 library. Download the source code for sqlite3 from https://www.sqlite.org/download.html . See also e.g. Applications/INCA-N/COMPILE for guidance on how to compile. You should put the sqlite3 files in INCABuilder/sqlite3 (create a new folder). You also have to download json.hpp from https://github.com/nlohmann/json/tree/develop/single_include/nlohmann and put it in INCABuilder/json (create a new folder).
 
 See the INCAView repository for the interface itself.
 

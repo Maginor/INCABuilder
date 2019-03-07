@@ -541,11 +541,11 @@ The structure of the input file in json
 	"inputs": {
 		"Air temperature": [
 			{
-				"indices": ["Reach 1"],
+				"indexes": ["Reach 1"],
 				"values": [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 			},
 			{
-				"indices": ["Reach 2"],
+				"indexes": ["Reach 2"],
 				"values":  [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 			},
 		],
@@ -563,7 +563,7 @@ The structure of the input file in json
 \item The value of {\tt start\_date} is a string with a date on the format "y-m-d".
 \item The value of {\tt timesteps} is a number.
 \item The value of {\tt inputs} is a dictionary where every key is the name of an input.
-\item The value of every input in {\tt inputs} is a list of dictionaries. Each of these dictionaries has the two keys {\tt indices} and {\tt values}. The value of {\tt indices} is a list of names of indexes for this timeseries. The value of {\tt values} is a list of numeric values. Unlike in the dat format, {\tt NaN} is not a valid json identifier, so {\tt null} is used to signify a missing value instead.
+\item The value of every input in {\tt inputs} is a list of dictionaries. Each of these dictionaries has the two keys {\tt indexes} and {\tt values}. The value of {\tt indexes} is a list of names of indexes for this timeseries. The value of {\tt values} is a list of numeric values. Unlike in the dat format, {\tt NaN} is not a valid json identifier, so {\tt null} is used to signify a missing value instead.
 \end{enumerate}
 
 \section{The sqlite3 format}

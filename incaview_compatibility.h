@@ -27,19 +27,16 @@
 #endif
 
 
-#if !defined INCAVIEW_INCLUDE_JSON
-#define INCAVIEW_INCLUDE_JSON 0
-#endif
 
-#if INCAVIEW_INCLUDE_JSON
 #include "inca_json_io.cpp"
-#endif
+#include "inca_sqlite3_io.cpp"
 
 enum incaview_run_mode
 {
 	IncaviewRunMode_Run,
-	IncaviewRunMode_CreateParameterDatabase,
-	IncaviewRunMode_ExportParameters,
+	IncaviewRunMode_CreateParameterDatabase, //TODO: Should be deprecated
+	IncaviewRunMode_ExportParameters,        //TODO: Should be deprecated
+	IncaviewRunMode_ConvertParameters,
 	IncaviewRunMode_FillParameterFile,
 	IncaviewRunMode_RunOptimization,
 	IncaviewRunMode_RunGLUE,
@@ -82,16 +79,23 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 			Args->ParameterInFileName = argv[3];
 			CorrectUse = true;
 		}
-		else if(strcmp(argv[1], "create_parameter_database") == 0)
+		else if(strcmp(argv[1], "create_parameter_database") == 0) //TODO: Should be deprecated
 		{
 			Args->Mode = IncaviewRunMode_CreateParameterDatabase;
 			Args->ParameterInFileName    = argv[2];
 			Args->ParameterOutFileName   = argv[3];
 			CorrectUse = true;
 		}
-		else if(strcmp(argv[1], "export_parameters") == 0)
+		else if(strcmp(argv[1], "export_parameters") == 0) //TODO: Should be deprecated
 		{
 			Args->Mode = IncaviewRunMode_ExportParameters;
+			Args->ParameterInFileName   = argv[2];
+			Args->ParameterOutFileName  = argv[3];
+			CorrectUse = true;
+		}
+		else if(strcmp(argv[1], "convert_parameters") == 0)
+		{
+			Args->Mode = IncaviewRunMode_ConvertParameters;
 			Args->ParameterInFileName   = argv[2];
 			Args->ParameterOutFileName  = argv[3];
 			CorrectUse = true;
@@ -144,29 +148,20 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 	if(!CorrectUse)
 	{
 		INCA_PARTIAL_ERROR("Incorrect use of the executable. Correct use is one of: " << std::endl);
-		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat)> <parameterfile(.db or .dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER
-		INCA_PARTIAL_ERROR(" <exename> run_optimizer <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <parameterfileout(.dat or .db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> run_optimizer <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <parameterfileout(.dat or .db or .json)>" << std::endl);
 #endif
 #if INCAVIEW_INCLUDE_GLUE
-		INCA_PARTIAL_ERROR(" <exename> run_glue <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <calibrationresults(.db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> run_glue <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.db)>" << std::endl);
 #endif
 #if INCAVIEW_INCLUDE_MCMC
-		INCA_PARTIAL_ERROR(" <exename> run_mcmc <inputfile.dat> <parameterfile(.db or .dat)> <calibrationscript(.dat)> <calibrationresults(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> run_mcmc <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.dat)>" << std::endl);
 #endif
 		INCA_FATAL_ERROR("");
-	}
-}
-
-static void
-EnsureModelComplianceWithIncaviewCommandline(inca_model *Model, incaview_commandline_arguments *Args)
-{
-	if(Args->Mode == IncaviewRunMode_Run || Args->Mode == IncaviewRunMode_RunOptimization || Args->Mode == IncaviewRunMode_RunGLUE || Args->Mode == IncaviewRunMode_RunMCMC)
-	{
-		ReadInputDependenciesFromFile(Model, Args->InputFileName);
 	}
 }
 
@@ -186,8 +181,90 @@ IncaviewParseFileType(const char *Filename)
 	
 	if(strcmp(Extension, "db") == 0) return 0;
 	if(strcmp(Extension, "dat") == 0) return 1;
+	if(strcmp(Extension, "json") == 0) return 2;
 	
 	INCA_FATAL_ERROR("ERROR: Unsupported file extension: " << Extension << " for file " << Filename << std::endl);
+}
+
+static void
+ReadInputDependenciesFromFile_Ext(inca_model *Model, const char *Filename)
+{
+	int FileType = IncaviewParseFileType(Filename);
+	if(FileType == 0)
+	{
+		INCA_FATAL_ERROR("ERROR: We do not currently support loading inputs from databases" << std::endl);
+	}
+	else if(FileType == 1)
+	{
+		ReadInputDependenciesFromFile(Model, Filename);
+	}
+	else if(FileType == 2)
+	{
+		ReadInputDependenciesFromJson(Model, Filename);
+	}	
+}
+
+static void
+ReadInputsFromFile_Ext(inca_data_set *DataSet, const char *Filename)
+{
+	int FileType = IncaviewParseFileType(Filename);
+	if(FileType == 0)
+	{
+		INCA_FATAL_ERROR("ERROR: We do not currently support loading inputs from databases" << std::endl);
+	}
+	else if(FileType == 1)
+	{
+		ReadInputsFromFile(DataSet, Filename);
+	}
+	else if(FileType == 2)
+	{
+		ReadInputsFromJson(DataSet, Filename);
+	}
+}
+
+static void
+ReadParametersFromFile_Ext(inca_data_set *DataSet, const char *Filename)
+{
+	int FileType = IncaviewParseFileType(Filename);
+	if(FileType == 0)
+	{
+		ReadParametersFromDatabase(DataSet, Filename);
+	}
+	else if(FileType == 1)
+	{
+		ReadParametersFromFile(DataSet, Filename);
+	}
+	else if(FileType == 2)
+	{
+		ReadParametersFromJson(DataSet, Filename);
+	}
+}
+
+static void
+WriteParametersToFile_Ext(inca_data_set *DataSet, const char *Filename)
+{
+	int FileType = IncaviewParseFileType(Filename);
+	if(FileType == 0)
+	{
+		CreateParameterDatabase(DataSet, Filename);
+	}
+	else if(FileType == 1)
+	{
+		WriteParametersToFile(DataSet, Filename);
+	}
+	else if(FileType == 2)
+	{
+		WriteParametersToJson(DataSet, Filename);
+	}
+}
+
+static void
+EnsureModelComplianceWithIncaviewCommandline(inca_model *Model, incaview_commandline_arguments *Args)
+{
+	if(Args->Mode == IncaviewRunMode_Run || Args->Mode == IncaviewRunMode_RunOptimization || Args->Mode == IncaviewRunMode_RunGLUE || Args->Mode == IncaviewRunMode_RunMCMC)
+	{
+		ReadInputDependenciesFromFile_Ext(Model, Args->InputFileName);
+	}
 }
 
 static void
@@ -199,14 +276,12 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		const char *ResultDbFileName    = "results.db";
 		const char *InputDbFileName     = "inputs.db"; //NOTE: This is only for writing inputs TO so that they can be read by INCAView. Inputs are always read in from the provided .dat file.
 		const char *ResultJsonFileName  = "results.json";
+		const char *InputJsonFileName   = "inputs.json";
 		
 		int Type = IncaviewParseFileType(Args->ParameterInFileName);
 		
-		if(Type == 0)
-			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
-		else
-			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
-		ReadInputsFromFile(DataSet, Args->InputFileName);
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
+		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		RunModel(DataSet);
 		
@@ -220,23 +295,16 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		else
 		{
 			//TODO: This should be a command line option instead maybe.
-#if INCAVIEW_INCLUDE_JSON
 			std::cout << "Model run finished. Writing result data to " << ResultJsonFileName << std::endl;
 			WriteResultsToJson(DataSet, ResultJsonFileName);
-#endif
+			WriteInputsToJson(DataSet, InputJsonFileName);
 		}
 	}
 #if INCAVIEW_INCLUDE_OPTIMIZER
 	else if(Args->Mode == IncaviewRunMode_RunOptimization)
 	{
-		int Type = IncaviewParseFileType(Args->ParameterInFileName);
-		
-		if(Type == 0)
-			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
-		else
-			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
-		
-		ReadInputsFromFile(DataSet, Args->InputFileName);
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName)
+		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		optimization_setup Setup;
 	
@@ -249,25 +317,14 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		
 		WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
 		
-		int Type2 = IncaviewParseFileType(Args->ParameterOutFileName);
-		if(Type2 == 0)
-			CreateParameterDatabase(DataSet, Args->ParameterOutFileName, Args->Exename);
-		else
-			WriteParametersToFile(DataSet, Args->ParameterOutFileName);
-		
+		WriteParametersToFile_Ext(DataSet, Args->ParameterOutFileName);
 	}
 #endif
 #if INCAVIEW_INCLUDE_GLUE
 	else if(Args->Mode == IncaviewRunMode_RunGLUE)
 	{
-		int Type = IncaviewParseFileType(Args->ParameterInFileName);
-		
-		if(Type == 0)
-			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
-		else
-			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
-		
-		ReadInputsFromFile(DataSet, Args->InputFileName);
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName)
+		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		glue_setup Setup;
 		glue_results Results;
@@ -286,14 +343,8 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 #if INCAVIEW_INCLUDE_MCMC
 	if(Args->Mode == IncaviewRunMode_RunMCMC)
 	{
-		int Type = IncaviewParseFileType(Args->ParameterInFileName);
-		
-		if(Type == 0)
-			ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
-		else
-			ReadParametersFromFile(DataSet, Args->ParameterInFileName);
-		
-		ReadInputsFromFile(DataSet, Args->InputFileName);
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName)
+		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		mcmc_setup Setup = {};
 	
@@ -324,16 +375,20 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 #endif
 	else if(Args->Mode == IncaviewRunMode_CreateParameterDatabase)
 	{
-		//TODO: Check right file types?
+		//TODO: Should be deprecated
 		ReadParametersFromFile(DataSet, Args->ParameterInFileName);
-		//TODO: Delete existing database if it exists? (right now it is handled by incaview, but it could be confusing if somebody runs the exe manually)
 		CreateParameterDatabase(DataSet, Args->ParameterOutFileName, Args->Exename);
 	}
 	else if(Args->Mode == IncaviewRunMode_ExportParameters)
 	{
-		//TODO: Check right file types?
+		//TODO: Should be deprecated
 		ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
 		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
+	}
+	else if(Args->Mode == IncaviewRunMode_ConvertParameters)
+	{
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
+		WriteParametersToFile_Ext(DataSet, Args->ParameterOutFileName);
 	}
 	else if(Args->Mode == IncaviewRunMode_FillParameterFile)
 	{

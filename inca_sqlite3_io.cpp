@@ -1,9 +1,10 @@
 
-
+#if !defined(INCA_SQLITE3_IO_CPP)
 
 //TODO: There is almost no error handling in this file..
 
 #include <chrono>
+#include "sqlite3/sqlite3.h"
 
 static void
 WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, int Rgt, int Dpt, const char *Type, const char *Unit, const char *Description, bool IsIndexer, bool IsIndex)
@@ -955,3 +956,5 @@ WriteInputsToDatabase(inca_data_set *DataSet, const char *Dbname)
 	WriteStorageToDatabase(DataSet, DataSet->InputStorageStructure, DataSet->InputData, Dbname, "InputsStructure", "Inputs", 1);
 }
 
+#define INCA_SQLITE3_IO_CPP
+#endif

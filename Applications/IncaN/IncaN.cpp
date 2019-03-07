@@ -11,11 +11,6 @@
 #include "../../Modules/WaterTemperature.h"
 #include "../../Modules/INCA-N.h"
 
-#include "../../sqlite3/sqlite3.h"
-#include "../../inca_database_io.cpp"
-
-#define INCAVIEW_INCLUDE_JSON 0
-
 #include "../../incaview_compatibility.h"
 
 int main(int argc, char **argv)

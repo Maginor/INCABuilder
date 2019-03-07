@@ -1,7 +1,7 @@
 
+#if !defined(INCA_JSON_IO_CPP)
+
 #include "json/json.hpp"    //NOTE: download at https://github.com/nlohmann/json
-
-
 
 static void
 WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
@@ -457,4 +457,5 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 	}
 }
 
-
+#define INCA_JSON_IO_CPP
+#endif

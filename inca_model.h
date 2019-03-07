@@ -21,7 +21,7 @@ MODEL_ENTITY_HANDLE(equation_h)
 MODEL_ENTITY_HANDLE(parameter_double_h)
 MODEL_ENTITY_HANDLE(parameter_uint_h)
 MODEL_ENTITY_HANDLE(parameter_bool_h)
-MODEL_ENTITY_HANDLE(parameter_ptime_h)
+MODEL_ENTITY_HANDLE(parameter_time_h)
 
 MODEL_ENTITY_HANDLE(solver_h)
 
@@ -582,7 +582,7 @@ GET_ENTITY_NAME(input_h, Input)
 GET_ENTITY_NAME(parameter_double_h, Parameter)
 GET_ENTITY_NAME(parameter_uint_h, Parameter)
 GET_ENTITY_NAME(parameter_bool_h, Parameter)
-GET_ENTITY_NAME(parameter_ptime_h, Parameter)
+GET_ENTITY_NAME(parameter_time_h, Parameter)
 GET_ENTITY_NAME(index_set_h, IndexSet)
 GET_ENTITY_NAME(parameter_group_h, ParameterGroup)
 GET_ENTITY_NAME(solver_h, Solver)
@@ -617,7 +617,7 @@ GET_ENTITY_HANDLE(input_h, Input, Input)
 GET_ENTITY_HANDLE(parameter_double_h, Parameter, ParameterDouble)
 GET_ENTITY_HANDLE(parameter_uint_h, Parameter, ParameterUInt)
 GET_ENTITY_HANDLE(parameter_bool_h, Parameter, ParameterBool)
-GET_ENTITY_HANDLE(parameter_ptime_h, Parameter, ParameterTime)
+GET_ENTITY_HANDLE(parameter_time_h, Parameter, ParameterTime)
 GET_ENTITY_HANDLE(index_set_h, IndexSet, IndexSet)
 GET_ENTITY_HANDLE(parameter_group_h, ParameterGroup, ParameterGroup)
 GET_ENTITY_HANDLE(solver_h, Solver, Solver)
@@ -625,7 +625,7 @@ GET_ENTITY_HANDLE(solver_h, Solver, Solver)
 #undef GET_ENTITY_HANDLE
 
 inline entity_handle
-GetParameterHandle(const inca_model *Model, token_string Name) //NOTE: In case we don't know the type of the parameter and just want the handle.
+GetParameterHandle(const inca_model *Model, const token_string &Name) //NOTE: In case we don't know the type of the parameter and just want the handle.
 {
 	entity_handle Handle = 0;
 	auto Find = Model->ParameterNameToHandle.find(Name);
@@ -837,12 +837,12 @@ RegisterParameterBool(inca_model *Model, parameter_group_h Group, const char *Na
 	return Parameter;
 }
 
-inline parameter_ptime_h
+inline parameter_time_h
 RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Name, const char *Default, const char *Min = "1000-1-1", const char *Max = "3000-12-31", const char *Description = 0)
 {
 	REGISTRATION_BLOCK(Model)
 	
-	parameter_ptime_h Parameter = {};
+	parameter_time_h Parameter = {};
 	REGISTER_MODEL_ENTITY(Model, Parameter, Parameter, Name)
 	
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];

@@ -1,4 +1,9 @@
 
+
+
+
+#if !defined(CALIBRATION_H)
+
 //NOTE: This file contains common functionality between all calibration/uncertainty analysis algorithms that want to work with our models.
 
 #include <boost/accumulators/accumulators.hpp>
@@ -525,3 +530,5 @@ EvaluateObjectiveAndGradientSingleForwardDifference(inca_data_set *DataSet, std:
 	return F0;
 }
 
+#define CALIBRATION_H
+#endif

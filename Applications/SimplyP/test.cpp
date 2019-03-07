@@ -2,13 +2,11 @@
 
 #define INCA_TEST_FOR_NAN 0
 #define INCA_EQUATION_PROFILING 0
-#define INCA_PRINT_TIMING_INFO 0
+#define INCA_PRINT_TIMING_INFO 1
 
 #include "../../inca.h"
 
 #include "../../Modules/SimplyP.h"
-
-#include "../../Modules/Preprocessing/ThornthwaitePET.cpp"
 
 #define READ_PARAMETER_FILE 1
 
@@ -53,6 +51,7 @@ int main()
 	RunModel(DataSet);
 #endif
 
+	PrintResultSeries(DataSet, "Snow depth", {}, 485);
 	//PrintResultSeries(DataSet, "Agricultural soil water volume", {"Tarland1"}, 10);
 	//PrintResultSeries(DataSet, "Agricultural soil water flow", {"Tarland1"}, 10);
 

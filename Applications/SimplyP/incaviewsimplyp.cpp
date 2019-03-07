@@ -4,7 +4,10 @@
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 0
 
-#define INCAVIEW_INCLUDE_OPTIMIZER 1
+//NOTE: You should probably not turn the following flags on unless you are Magnus or Magnus has shown you how to set up the libraries you need for correct compilation.
+#define INCAVIEW_INCLUDE_OPTIMIZER 0
+#define INCAVIEW_INCLUDE_GLUE 0
+#define INCAVIEW_INCLUDE_MCMC 0
 
 #define CALIBRATION_PRINT_DEBUG_INFO 0
 
@@ -22,7 +25,7 @@ int main(int argc, char **argv)
 	incaview_commandline_arguments Args;
 	ParseIncaviewCommandline(argc, argv, &Args);
 	
-	inca_model *Model = BeginModelDefinition("Simply P", "0.0");
+	inca_model *Model = BeginModelDefinition("Simply P", "0.2");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
 	auto DynamicOptions       = RegisterParameterGroup(Model, "Dynamic options");

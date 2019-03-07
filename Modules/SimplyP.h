@@ -96,7 +96,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	
 	auto Reach = RegisterIndexSetBranched(Model, "Reaches");
 	
-	auto Snow = RegisterParameterGroup(Model, "Snow", Reach);
+	//auto Snow = RegisterParameterGroup(Model, "Snow", Reach);
+	auto Snow = RegisterParameterGroup(Model, "Snow");
 	
 	auto InitialSnowDepth        = RegisterParameterDouble(Model, Snow, "Initial snow depth", Mm, 0.0, 0.0, 50000.0);
 	auto DegreeDayFactorSnowmelt = RegisterParameterDouble(Model, Snow, "Degree-day factor for snowmelt", MmPerDegreePerDay, 2.74, 0.0, 5.0);
@@ -163,7 +164,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, SnowDepth,
-		return LAST_RESULT(SnowDepth) + RESULT(PrecipitationFallingAsSnow) - RESULT(SnowMelt);
+		return LAST_RESULT(SnowDepth) + RESULT(PrecipitationFallingAsSnow) - RESULT(SnowMelt);;
 	)
 	
 	EQUATION(Model, HydrologicalInputToSoilBox,

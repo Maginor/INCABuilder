@@ -18,19 +18,19 @@ parameter_calibration :
 #           } min max
 
 
-"Proportion of precipitation that contributes to quick flow"  {"Tarland1"}
+"Proportion of precipitation that contributes to quick flow"  {}
 0.01 0.08
 
-"Baseflow index"                                              {"Tarland1"}
+"Baseflow index"                                              {}
 0.18 1.0
 
-"Groundwater time constant"                                   {"Tarland1"}
+"Groundwater time constant"                                   {}
 16.25 200.0
 
-"Gradient of stream velocity-discharge relationship"          {"Tarland1"}
+"Gradient of stream velocity-discharge relationship"          {}
 0.12 0.99
 
-"Exponent of stream velocity-discharge relationship"          {"Tarland1"}
+"Exponent of stream velocity-discharge relationship"          {}
 0.11 0.99
 
 "Soil water time constant"                                    {"Arable"}
@@ -42,7 +42,7 @@ parameter_calibration :
 
 
 objectives:
-"Daily mean reach flow" {"Tarland1"}     "observed Q mm/d" {}     mean_absolute_error
+"Reach flow (daily mean)" {"Tarland1"}     "observed Q mm/d" {}     mean_absolute_error
 
 
 

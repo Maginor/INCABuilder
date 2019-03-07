@@ -34,6 +34,7 @@ objective = (log_likelyhood, 'Daily mean reach flow', ['Tarland1'], 'observed Q 
 
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)
+#param_est = param_est[0]
 
 print('\n')
 for idx, cal in enumerate(calibration) :

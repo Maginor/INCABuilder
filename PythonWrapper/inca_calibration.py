@@ -5,6 +5,7 @@ import numdifftools as nd
 from scipy.stats import norm
 import pandas as pd
 import datetime as dt
+import dlib
 
 #from emcee.utils import MPIPool
 
@@ -25,6 +26,14 @@ def run_optimization(dataset, min, max, initial_guess, calibration, objective, m
 
 	#if skiptimesteps >= dataset.get_parameter_uint('Timesteps', []) :
 	#	raise ValueError('We were told to skip more timesteps in the evaluation of the objective than the amount of timesteps we run the model for.')
+	
+	#def eval(*params):
+	#	return objective_fun(params, dataset, calibration, objective)
+	
+	#if minimize :
+	#	return dlib.find_min_global(eval, min, max, 1000)
+	#else :
+	#	return dlib.find_max_global(eval, min, max, 1000)
 	
 	if minimize :
 		def eval(params) :

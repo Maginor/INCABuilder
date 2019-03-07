@@ -241,12 +241,12 @@ ReadParametersFromFile_Ext(inca_data_set *DataSet, const char *Filename)
 }
 
 static void
-WriteParametersToFile_Ext(inca_data_set *DataSet, const char *Filename)
+WriteParametersToFile_Ext(inca_data_set *DataSet, const char *Filename, const char *Exename)
 {
 	int FileType = IncaviewParseFileType(Filename);
 	if(FileType == 0)
 	{
-		CreateParameterDatabase(DataSet, Filename);
+		WriteParametersToDatabase(DataSet, Filename, Exename);
 	}
 	else if(FileType == 1)
 	{
@@ -377,7 +377,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 	{
 		//TODO: Should be deprecated
 		ReadParametersFromFile(DataSet, Args->ParameterInFileName);
-		CreateParameterDatabase(DataSet, Args->ParameterOutFileName, Args->Exename);
+		WriteParametersToDatabase(DataSet, Args->ParameterOutFileName, Args->Exename);
 	}
 	else if(Args->Mode == IncaviewRunMode_ExportParameters)
 	{
@@ -388,7 +388,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 	else if(Args->Mode == IncaviewRunMode_ConvertParameters)
 	{
 		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
-		WriteParametersToFile_Ext(DataSet, Args->ParameterOutFileName);
+		WriteParametersToFile_Ext(DataSet, Args->ParameterOutFileName, Args->Exename);
 	}
 	else if(Args->Mode == IncaviewRunMode_FillParameterFile)
 	{

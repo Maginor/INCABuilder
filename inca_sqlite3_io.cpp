@@ -161,7 +161,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, entity_handle 
 }
 
 static void
-CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *Exename = "")
+WriteParametersToDatabase(inca_data_set *DataSet, const char *Dbname, const char *Exename = "")
 {
 	//NOTE: Deletes any (potentially) existing database of the same name.
 	//TODO: We should figure out if it is safe to have this here?
@@ -830,6 +830,10 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 static void
 WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, const char *Dbname, const char *StructureTable, const char *ValueTable, int Mode)
 {
+	//NOTE: Deletes any (potentially) existing database of the same name.
+	//TODO: We should figure out if it is safe to have this here?
+	remove(Dbname);
+	
 	const inca_model *Model = DataSet->Model;
 	
 	//NOTE: Deletes any (potentially) existing database of the same name.

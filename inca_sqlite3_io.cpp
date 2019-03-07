@@ -1,9 +1,10 @@
 
-
+#if !defined(INCA_SQLITE3_IO_CPP)
 
 //TODO: There is almost no error handling in this file..
 
 #include <chrono>
+#include "sqlite3/sqlite3.h"
 
 static void
 WriteStructureEntryToDatabase(sqlite3 *Db, int ID, const char *Name, int Lft, int Rgt, int Dpt, const char *Type, const char *Unit, const char *Description, bool IsIndexer, bool IsIndex)
@@ -160,7 +161,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, entity_handle 
 }
 
 static void
-CreateParameterDatabase(inca_data_set *DataSet, const char *Dbname, const char *Exename = "")
+WriteParametersToDatabase(inca_data_set *DataSet, const char *Dbname, const char *Exename = "")
 {
 	//NOTE: Deletes any (potentially) existing database of the same name.
 	//TODO: We should figure out if it is safe to have this here?
@@ -829,6 +830,10 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 static void
 WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, const char *Dbname, const char *StructureTable, const char *ValueTable, int Mode)
 {
+	//NOTE: Deletes any (potentially) existing database of the same name.
+	//TODO: We should figure out if it is safe to have this here?
+	remove(Dbname);
+	
 	const inca_model *Model = DataSet->Model;
 	
 	//NOTE: Deletes any (potentially) existing database of the same name.
@@ -955,3 +960,5 @@ WriteInputsToDatabase(inca_data_set *DataSet, const char *Dbname)
 	WriteStorageToDatabase(DataSet, DataSet->InputStorageStructure, DataSet->InputData, Dbname, "InputsStructure", "Inputs", 1);
 }
 
+#define INCA_SQLITE3_IO_CPP
+#endif

@@ -1,7 +1,7 @@
 
+#if !defined(INCA_JSON_IO_CPP)
+
 #include "json/json.hpp"    //NOTE: download at https://github.com/nlohmann/json
-
-
 
 static void
 WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
@@ -292,12 +292,11 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 		}
 		else if(Spec.Type == IndexSetType_Branched)
 		{
-			std::map<std::string, std::vector<std::string>> BranchInputs;
+			std::vector<std::vector<std::string>> BranchInputs;
 			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 			{
-				std::string IndexName = DataSet->IndexNames[IndexSetHandle][Index];
-				
 				std::vector<std::string> Branches;
+				Branches.push_back(DataSet->IndexNames[IndexSetHandle][Index]); //NOTE: The name of the index itself.
 				for(size_t In = 0; In < DataSet->BranchInputs[IndexSetHandle][Index].Count; ++In)
 				{
 					index_t InIndex = DataSet->BranchInputs[IndexSetHandle][Index].Inputs[In];
@@ -306,10 +305,9 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 					Branches.push_back(InName);
 				}
 				
-				BranchInputs[IndexName] = Branches;
-				
-				Json["index_sets"][Spec.Name] = BranchInputs;
+				BranchInputs.push_back(Branches);
 			}
+			Json["index_sets"][Spec.Name] = BranchInputs;
 		}
 	}
 	
@@ -386,15 +384,19 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 			}
 			else if(Spec.Type == IndexSetType_Branched)
 			{
-				std::map<std::string, std::vector<std::string>> Indexes = It->get<std::map<std::string, std::vector<std::string>>>();
+				std::vector<std::vector<std::string>> Indexes = It->get<std::vector<std::vector<std::string>>>();
 				
 				std::vector<std::pair<token_string, std::vector<token_string>>> Inputs;
 				
 				for(auto &Branch : Indexes)
 				{
-					std::vector<token_string> IndexNames2;
-					for(std::string &Str : Branch.second) IndexNames2.push_back(Str.c_str());
-					Inputs.push_back({Branch.first.c_str(), IndexNames2});
+					std::vector<token_string> BranchInputs;
+					token_string IndexName = Branch[0].c_str();
+					for(size_t Idx = 1; Idx < Branch.size(); ++Idx)
+					{
+						BranchInputs.push_back(Branch[Idx].c_str());
+					}
+					Inputs.push_back({IndexName, BranchInputs});
 				}
 				
 				SetBranchIndexes(DataSet, IndexSetName.c_str(), Inputs);
@@ -457,4 +459,5 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 	}
 }
 
-
+#define INCA_JSON_IO_CPP
+#endif

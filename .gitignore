@@ -6,3 +6,4 @@ sqlite3/sqlite3.o
 sqlite3/sqlite3ext.h
 *.exe
 *.db
+json/json.hpp

@@ -25,12 +25,12 @@ int main(int argc, char **argv)
 	incaview_commandline_arguments Args;
 	ParseIncaviewCommandline(argc, argv, &Args);
 	
-	inca_model *Model = BeginModelDefinition("Simply P", "0.2");
+	inca_model *Model = BeginModelDefinition("SimplyP", "0.2");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
-	auto DynamicOptions       = RegisterParameterGroup(Model, "Dynamic options");
-	RegisterParameterUInt(Model, DynamicOptions, "Timesteps", Days, 100);
-	RegisterParameterDate(Model, DynamicOptions, "Start date", "1999-1-1");
+	auto System = RegisterParameterGroup(Model, "System");
+	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
+	RegisterParameterDate(Model, System, "Start date", "1991-1-1");
 	
 	AddSimplyPHydrologyModule(Model);
 	AddSimplyPSedimentModule(Model);

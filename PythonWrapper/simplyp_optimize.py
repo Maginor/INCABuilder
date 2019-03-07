@@ -10,11 +10,11 @@ dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/Sim
 
 #NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
-	('Proportion of precipitation that contributes to quick flow', ['Tarland1']),
-	('Baseflow index',                                             ['Tarland1']),
-	('Groundwater time constant',                                  ['Tarland1']),
-	('Gradient of stream velocity-discharge relationship',         ['Tarland1']),
-	('Exponent of stream velocity-discharge relationship',         ['Tarland1']),
+	('Proportion of precipitation that contributes to quick flow', []),
+	('Baseflow index',                                             []),
+	('Groundwater time constant',                                  []),
+	('Gradient of stream velocity-discharge relationship',         []),
+	('Exponent of stream velocity-discharge relationship',         []),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -30,7 +30,7 @@ constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min an
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (log_likelyhood, 'Daily mean reach flow', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
+objective = (log_likelyhood, 'Reach flow (daily mean)', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
 
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)

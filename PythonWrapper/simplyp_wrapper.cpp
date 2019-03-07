@@ -17,9 +17,9 @@ DllSetupModel(char *ParameterFilename, char *InputFilename)
 	inca_model *Model = BeginModelDefinition("SimplyP", "1.0");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
-	auto Dynamic      = RegisterParameterGroup(Model, "Dynamic options");
-	RegisterParameterUInt(Model, Dynamic, "Timesteps", Days, 100);
-	RegisterParameterDate(Model, Dynamic, "Start date", "1999-1-1");
+	auto System       = RegisterParameterGroup(Model, "System");
+	RegisterParameterUInt(Model, System, "Timesteps", Days, 100);
+	RegisterParameterDate(Model, System, "Start date", "1999-1-1");
 	
 	AddSimplyPHydrologyModule(Model);
 	AddSimplyPSedimentModule(Model);

@@ -2,22 +2,22 @@
 
 #define INCA_TEST_FOR_NAN 0
 #define INCA_EQUATION_PROFILING 0
-#define INCA_PRINT_TIMING_INFO 1
+#define INCA_PRINT_TIMING_INFO 0
 
 #include "../../inca.h"
 
 #include "../../Modules/SimplyP.h"
 
-#define READ_PARAMETER_FILE 1
+#define READ_PARAMETER_FILE 1 //Read params from file? Or auto-generate using indexers defined below & defaults
 
 int main()
 {
-	inca_model *Model = BeginModelDefinition("Simply P", "0.0");
+	inca_model *Model = BeginModelDefinition("SimplyP", "0.0");
 	
 	auto Days 	        = RegisterUnit(Model, "days");
-	auto DynamicOptions = RegisterParameterGroup(Model, "Dynamic options");
-	RegisterParameterUInt(Model, DynamicOptions, "Timesteps", Days, 10957);
-	RegisterParameterDate(Model, DynamicOptions, "Start date", "1981-1-1");
+	auto System = RegisterParameterGroup(Model, "System");
+	RegisterParameterUInt(Model, System, "Timesteps", Days, 10957);
+	RegisterParameterDate(Model, System, "Start date", "1981-1-1");
 	
 	AddSimplyPHydrologyModule(Model);
 	AddSimplyPSedimentModule(Model);
@@ -31,13 +31,13 @@ int main()
 	inca_data_set *DataSet = GenerateDataSet(Model);
 
 #if READ_PARAMETER_FILE == 0
-	SetIndexes(DataSet, "Landscape units", {"Arable", "Semi-natural", "Improved grassland"});
+	SetIndexes(DataSet, "Landscape units", {"Arable", "Improved grassland", "Semi-natural"});
 	SetBranchIndexes(DataSet, "Reaches", {  {"Tarland1", {}} }  );
 	
 	AllocateParameterStorage(DataSet);
 	WriteParametersToFile(DataSet, "newparams.dat");
 #else
-	ReadParametersFromFile(DataSet, "tarlandparameters.dat");
+	ReadParametersFromFile(DataSet, "tarlandparameters_new.dat");
 
 	ReadInputsFromFile(DataSet, "tarlandinputs.dat");
 	
@@ -51,8 +51,7 @@ int main()
 	RunModel(DataSet);
 #endif
 
-	PrintResultSeries(DataSet, "Snow depth", {}, 485);
-	//PrintResultSeries(DataSet, "Agricultural soil water volume", {"Tarland1"}, 10);
+	//PrintResultSeries(DataSet, "Agricultural soil water volume", {"Tarland1"}, 10); //Print just first 10 values
 	//PrintResultSeries(DataSet, "Agricultural soil water flow", {"Tarland1"}, 10);
 
 	

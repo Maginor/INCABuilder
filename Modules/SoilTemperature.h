@@ -13,8 +13,7 @@ AddSoilTemperatureModel(inca_model *Model)
 	auto Seconds									= RegisterUnit(Model, "s");
 	auto DegreesCelsius								= RegisterUnit(Model, "°C");
 	
-	//auto LandscapeUnits = GetIndexerHandle(Model, "Landscape units"); //NOTE: This is declared in the snow melt model
-	auto Land = GetParameterGroupHandle(Model, "Landscape units");    //NOTE: This is declared in the snow melt model
+	auto Land = GetParameterGroupHandle(Model, "Landscape units");    //NOTE: This should be declared by the main model
 	
 	auto ThermalConductivitySoil 			= RegisterParameterDouble(Model, Land, "Thermal conductivity of soil", 				WattsPerMetrePerDegreeCelsius,			 0.7);
 	auto SpecificHeatCapacityFreezeThaw	    = RegisterParameterDouble(Model, Land, "Specific heat capacity due to freeze/thaw", MegaJoulesPerCubicMetrePerDegreeCelsius, 6.6, 1.0, 200.0, "Controls the energy released when water is frozen and energy consumed under melting");

@@ -149,7 +149,7 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 	{
 		INCA_PARTIAL_ERROR("Incorrect use of the executable. Correct use is one of: " << std::endl);
 		INCA_PARTIAL_ERROR(" " << Args->Exename << " run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
-		INCA_PARTIAL_ERROR(" " << Args->Exename << " convert_parameters <parameterfile(.db or .dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " convert_parameters <parameterfilein(.db or .dat or .json)> <parameterfileout(.db or .dat or .json)>" << std::endl);
 		INCA_PARTIAL_ERROR(" " << Args->Exename << " fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER
 		INCA_PARTIAL_ERROR(" " << Args->Exename << " run_optimizer <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <parameterfileout(.dat or .db or .json)>" << std::endl);

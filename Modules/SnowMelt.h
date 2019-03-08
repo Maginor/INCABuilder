@@ -33,7 +33,7 @@ AddSnowMeltModel(inca_model *Model)
 	auto SnowMelt                   = RegisterEquation(Model, "Snow melt",                     MmPerDay);
 	auto SnowPackWithMelt           = RegisterEquation(Model, "Snow pack with melt",           Mm);
 	auto SnowEvaporation            = RegisterEquation(Model, "Snow evaporation",              MmPerDay);
-	auto SnowAsWaterEquivalent      = RegisterEquation(Model, "Snow as water equivalent",      Mm);
+	auto SnowAsWaterEquivalent      = RegisterEquation(Model, "Snow depth as water equivalent",      Mm);
 	SetInitialValue(Model, SnowAsWaterEquivalent, InitialSnowPackDepth);
 	
 	EQUATION(Model, PrecipitationFallingAsSnow,

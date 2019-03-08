@@ -32,7 +32,7 @@ static void AddSnowRoutine(inca_model *Model)
 	auto SnowmeltTemperatureDifference = RegisterEquation(Model, "Snowmelt temperature difference", DegreesCelsius);
 	auto Snowfall    = RegisterEquation(Model, "Snowfall", Mm);
 	auto Rainfall    = RegisterEquation(Model, "Rainfall", Mm);
-	auto Snowpack    = RegisterEquation(Model, "Snow as water equivalent", Mm);
+	auto Snowpack    = RegisterEquation(Model, "Snow depth as water equivalent", Mm);
 	SetInitialValue(Model, Snowpack, InitialSnowDepth);
 	auto MaxStorage  = RegisterEquation(Model, "Max storage", Mm);
 	auto MeltWater   = RegisterEquation(Model, "Meltwater", Mm);

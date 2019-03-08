@@ -106,7 +106,7 @@ AddPersistModel(inca_model *Model)
 	auto SnowFall = RegisterEquation(Model, "Snow fall", MmPerDay);
 	auto SnowMelt = RegisterEquation(Model, "Snow melt", MmPerDay);
 	auto RainFall = RegisterEquation(Model, "Rainfall",  MmPerDay);
-	auto SnowAsWaterEquivalent = RegisterEquation(Model, "Snow as water equivalent", MmSWE);
+	auto SnowAsWaterEquivalent = RegisterEquation(Model, "Snow depth as water equivalent", MmSWE);
 	SetInitialValue(Model, SnowAsWaterEquivalent, InitialSnowDepth);
 	
 	

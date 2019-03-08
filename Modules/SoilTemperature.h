@@ -32,7 +32,7 @@ AddSoilTemperatureModel(inca_model *Model)
 	auto SoilTemperature     = RegisterEquation(Model, "Soil temperature",      DegreesCelsius);
 	auto SnowDepth = RegisterEquation(Model, "Snow depth", Cm);
 	
-	auto SnowAsWaterEquivalent = GetEquationHandle(Model, "Snow as water equivalent");
+	auto SnowAsWaterEquivalent = GetEquationHandle(Model, "Snow depth as water equivalent");
 	
 	EQUATION(Model, Da,
 		if ( LAST_RESULT(COUPSoilTemperature) > 0.0)

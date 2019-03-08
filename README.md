@@ -8,6 +8,7 @@ Primarily INCABuilder was developed to model catchments (routing of precipitatio
 The framework lets you focus on specifying parameters, input timeseries (forcings) and equations for your model and it will set up the run structure of the model and handle input/output file formats for you. The run speed of the models is typically very fast compared to something that is written directly in Matlab or python.
 
 INCABuilder can produce executables that can be run standalone or together with the graphical user interface INCAView. https://github.com/Lecheps/INCAView
+
 There is also the option to compile the models to .dll's that can be called and interacted with from python using our python wrapper interface. The python wrapper interface is great for writing your own calibration systems or for making your own post-processing and plots.
 
 ![Alt text](PythonWrapper/simplyp_plots/optimizer_MAP.png?raw=true "Example of a plot made using the framework and the python wrapper.")
@@ -68,6 +69,8 @@ To set up your own .cpp files like these, try to follow the example from one of 
 See the INCAView repository for the interface itself.
 
 We may also look into a way of distributing precompiled exes of INCAView and some of the models.
+
+![Alt text](Documentation/img/incaviewpersist.png?raw=true "Example of running the PERSiST model in INCAView.")
 
 
 

@@ -1130,9 +1130,9 @@ The registration procedures can only be called on a {\tt inca\_model} object tha
 \apipar{inca\_model *Model}{Pointer to the model object.}
 \apipar{parameter\_group\_h ParameterGroup}{Handle to the parameter group that the parameter should be put in.}
 \apipar{const char *Name}{The full name of the parameter.}
-\apipar{const char *Default}{The default value of the parameter. Must be on the form "Y-m-d".}
-\apipar{const char *Min}{(optional) The minimum value of the parameter. Must be on the form "Y-m-d".}
-\apipar{const char *Max}{(optional) The maximum value of the parameter. Must be on the form "Y-m-d".}
+\apipar{const char *Default}{The default value of the parameter. Must be on the format "y-m-d".}
+\apipar{const char *Min}{(optional) The minimum value of the parameter. Must be on the form "y-m-d".}
+\apipar{const char *Max}{(optional) The maximum value of the parameter. Must be on the form "y-m-d".}
 \apipar{const char *Description}{(optional) A long-form description of the parameter.}
 \apiret{A {\tt parameter\_time\_h} handle to the newly registered parameter.}
 \apidesc{Register a new parameter of type date(time) with the model.}

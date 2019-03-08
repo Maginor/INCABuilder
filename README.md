@@ -9,8 +9,6 @@ The framework lets you focus on specifying parameters, input timeseries (forcing
 
 INCABuilder can produce executables that can be run standalone or together with the graphical user interface INCAView. https://github.com/Lecheps/INCAView
 
-![Alt text](Documentation/img/incaviewpersist.png?raw=true "Example of running the PERSiST model in INCAView.")
-
 There is also the option to compile the models to .dll's that can be called and interacted with from python using our python wrapper interface. The python wrapper interface is great for writing your own calibration systems or for making your own post-processing and plots.
 
 ![Alt text](PythonWrapper/simplyp_plots/optimizer_MAP.png?raw=true "Example of a plot made using the framework and the python wrapper.")
@@ -71,6 +69,8 @@ To set up your own .cpp files like these, try to follow the example from one of 
 See the INCAView repository for the interface itself.
 
 We may also look into a way of distributing precompiled exes of INCAView and some of the models.
+
+![Alt text](Documentation/img/incaviewpersist.png?raw=true "Example of running the PERSiST model in INCAView.")
 
 
 

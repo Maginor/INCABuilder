@@ -82,7 +82,7 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 	}
 	s32 StartYear = Year;
 	
-	s64 Date2 = Date + Timesteps*86400;
+	s64 Date2 = Date + Timesteps*86400 - 1;
 	YearMonthDay(Date2, &Year, &Month, &Day);
 	if(Month != 12 && Day != 31)
 	{

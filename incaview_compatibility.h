@@ -149,8 +149,8 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 	{
 		INCA_PARTIAL_ERROR("Incorrect use of the executable. Correct use is one of: " << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
-		INCA_PARTIAL_ERROR(" <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
-		INCA_PARTIAL_ERROR(" <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> convert_parameters <parameterfile(.db or .dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER

@@ -94,7 +94,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto Km2               = RegisterUnit(Model, "km^2");
 	auto M                 = RegisterUnit(Model, "m");
 	
-	// Set up indexers
+	// Set up index sets
 	auto Reach = RegisterIndexSetBranched(Model, "Reaches");
 	
 	auto LandscapeUnits = RegisterIndexSet(Model, "Landscape units");
@@ -1180,7 +1180,6 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	)
 	
 }
-
 
 
 

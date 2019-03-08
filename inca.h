@@ -64,7 +64,7 @@ typedef size_t index_t;
 //NOTE: We allow the error handling to be replaced by the application. This is for instance useful for the python wrapper.
 #if !defined(INCA_PARTIAL_ERROR)
 	#define INCA_PARTIAL_ERROR(Msg) \
-		std::cout << Msg;                  //Should probably be std::cerr, but right now INCAView does not listen to that channel, and will not pick it up.
+		std::cerr << Msg;
 #endif
 
 #if !defined(INCA_FATAL_ERROR)	

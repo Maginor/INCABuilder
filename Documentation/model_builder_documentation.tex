@@ -426,7 +426,7 @@ The SimplyP model \cite{jackson-blake17} uses the following very simple snow mod
 \label{tab:simplypsnow}
 \begin{tabular}{|lllllll|}
 \hline
-Symbol & Type & Units & Description & Default & Min & Max \\
+Symbol & Type & Units & Name & Default & Min & Max \\
 \hline
 $D_{snow,0}$ & parameter & $mm$                                    & Initial snow depth & 0.0 & 0.0 & 10000.0\\
 $f_{DDSM}$    & parameter & $mm\, d^{-1}\, \degree C^{-1}$ & Degree-day factor for snowmelt & 2.74 &1.6 & 6\\
@@ -987,7 +987,7 @@ We logically separate application building from model building. By application b
 
 \apientry{EndModelDefinition}{Application building procedure.}{
 \apipar{inca\_model *Model}{Pointer to the model object.}
-\apidesc{Finalizes the model object. You can no longer call model building procedures on it, and you should not try to make any further changes to it in general. This procedure generates the final equation batch structure of the mode according to the rules given in Section \ref{sec:advancedbatchstructure}.}
+\apidesc{Finalizes the model object. You can no longer call model building procedures on it, and you should not try to make any further changes to it in general. This procedure generates the final equation batch structure of the model according to the rules given in Section \ref{sec:advancedbatchstructure}.}
 }
 
 \apientry{GenerateDataSet}{Application building procedure}{
@@ -1134,7 +1134,7 @@ The registration procedures can only be called on a {\tt inca\_model} object tha
 \apipar{const char *Min}{(optional) The minimum value of the parameter. Must be on the form "Y-m-d".}
 \apipar{const char *Max}{(optional) The maximum value of the parameter. Must be on the form "Y-m-d".}
 \apipar{const char *Description}{(optional) A long-form description of the parameter.}
-\apiret{A {\tt parameter\_uint\_h} handle to the newly registered parameter.}
+\apiret{A {\tt parameter\_time\_h} handle to the newly registered parameter.}
 \apidesc{Register a new parameter of type date(time) with the model.}
 }
 
@@ -1226,7 +1226,7 @@ The registration procedures can only be called on a {\tt inca\_model} object tha
 \apipar{inca\_model *Model}{Pointer to the model object.}
 \apipar{const char *Name}{The name of an already registered X.}
 \apiret{A {\tt \emph{x}\_h} handle.}
-\apidesc{X is either Equation, Input, ParameterGroup, ParameterDouble, ParameterUInt, ParameterBool, ParameterTime, IndexSet, or Solver. Is useful if you want to modularize different parts of your model into several different registration procedures, but need one module to access some of the handles of previous one.}
+\apidesc{X is either Equation, Input, ParameterGroup, ParameterDouble, ParameterUInt, ParameterBool, ParameterTime, IndexSet, or Solver. Is useful if you want to modularize different parts of your model into several different registration procedures, but need one module to access some of the handles of another one.}
 }
 
 \subsection{Equation body declaration}

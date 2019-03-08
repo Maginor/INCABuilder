@@ -69,7 +69,7 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 				
 				json JObj
 				{
-					{"indices", Indices},
+					{"indexes", Indices},
 					{"values", Values},
 				};
 				
@@ -142,7 +142,7 @@ WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
 				
 				json JObj
 				{
-					{"indices", Indices},
+					{"indexes", Indices},
 					{"values", Values},
 				};
 				
@@ -242,7 +242,7 @@ ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
 			
 			for(auto Itit = It->begin(); Itit != It->end(); ++Itit)
 			{
-				std::vector<std::string> Indices = (*Itit)["indices"].get<std::vector<std::string>>();
+				std::vector<std::string> Indices = (*Itit)["indexes"].get<std::vector<std::string>>();
 				std::vector<const char *> Indices2;
 				for(std::string &Str : Indices) Indices2.push_back(Str.c_str());
 				

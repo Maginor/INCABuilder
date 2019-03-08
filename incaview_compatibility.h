@@ -149,8 +149,6 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 	{
 		INCA_PARTIAL_ERROR("Incorrect use of the executable. Correct use is one of: " << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
-		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
-		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> convert_parameters <parameterfile(.db or .dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER
@@ -162,6 +160,8 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 #if INCAVIEW_INCLUDE_MCMC
 		INCA_PARTIAL_ERROR(" <exename> run_mcmc <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.dat)>" << std::endl);
 #endif
+		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
 		INCA_FATAL_ERROR("");
 	}
 }
@@ -376,13 +376,13 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 #endif
 	else if(Args->Mode == IncaviewRunMode_CreateParameterDatabase)
 	{
-		//TODO: Should be deprecated
+		std::cout << "WARNING: The create_parameter_database command is deprecated and will be removed in the future. Use convert_parameters instead." << std::endl;
 		ReadParametersFromFile(DataSet, Args->ParameterInFileName);
 		WriteParametersToDatabase(DataSet, Args->ParameterOutFileName, Args->Exename);
 	}
 	else if(Args->Mode == IncaviewRunMode_ExportParameters)
 	{
-		//TODO: Should be deprecated
+		std::cout << "WARNING: The export_parameters command is deprecated and will be removed in the future. Use convert_parameters instead." << std::endl;
 		ReadParametersFromDatabase(DataSet, Args->ParameterInFileName);
 		WriteParametersToFile(DataSet, Args->ParameterOutFileName);
 	}

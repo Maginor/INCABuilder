@@ -148,20 +148,20 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 	if(!CorrectUse)
 	{
 		INCA_PARTIAL_ERROR("Incorrect use of the executable. Correct use is one of: " << std::endl);
-		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
-		INCA_PARTIAL_ERROR(" <exename> convert_parameters <parameterfile(.db or .dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
-		INCA_PARTIAL_ERROR(" <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " convert_parameters <parameterfile(.db or .dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER
-		INCA_PARTIAL_ERROR(" <exename> run_optimizer <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <parameterfileout(.dat or .db or .json)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " run_optimizer <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <parameterfileout(.dat or .db or .json)>" << std::endl);
 #endif
 #if INCAVIEW_INCLUDE_GLUE
-		INCA_PARTIAL_ERROR(" <exename> run_glue <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " run_glue <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.db)>" << std::endl);
 #endif
 #if INCAVIEW_INCLUDE_MCMC
-		INCA_PARTIAL_ERROR(" <exename> run_mcmc <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" " << Args->Exename << " run_mcmc <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <calibrationresults(.dat)>" << std::endl);
 #endif
-		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
-		INCA_PARTIAL_ERROR(" (DEPRECATED) <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" (DEPRECATED) " << Args->Exename << " create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
+		INCA_PARTIAL_ERROR(" (DEPRECATED) " << Args->Exename << " export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
 		INCA_FATAL_ERROR("");
 	}
 }

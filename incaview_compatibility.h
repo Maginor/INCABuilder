@@ -151,6 +151,7 @@ ParseIncaviewCommandline(int argc, char **argv, incaview_commandline_arguments *
 		INCA_PARTIAL_ERROR(" <exename> run <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> create_parameter_database <parameterfile(.dat)> <parameterfile(.db)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> export_parameters <parameterfile(.db)> <parameterfile(.dat)>" << std::endl);
+		INCA_PARTIAL_ERROR(" <exename> convert_parameters <parameterfile(.db or .dat or .json)> <parameterfile(.db or .dat or .json)>" << std::endl);
 		INCA_PARTIAL_ERROR(" <exename> fill_parameter_file <parameterfilein(.dat)> <parameterfileout(.dat)>" << std::endl);
 #if INCAVIEW_INCLUDE_OPTIMIZER
 		INCA_PARTIAL_ERROR(" <exename> run_optimizer <inputfile(.dat or .json)> <parameterfile(.db or .dat or .json)> <calibrationscript(.dat)> <parameterfileout(.dat or .db or .json)>" << std::endl);
@@ -303,7 +304,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 #if INCAVIEW_INCLUDE_OPTIMIZER
 	else if(Args->Mode == IncaviewRunMode_RunOptimization)
 	{
-		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName)
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
 		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		optimization_setup Setup;
@@ -317,13 +318,13 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 		
 		WriteOptimalParametersToDataSet(DataSet, &Setup, Result);
 		
-		WriteParametersToFile_Ext(DataSet, Args->ParameterOutFileName);
+		WriteParametersToFile_Ext(DataSet, Args->ParameterOutFileName, Args->Exename);
 	}
 #endif
 #if INCAVIEW_INCLUDE_GLUE
 	else if(Args->Mode == IncaviewRunMode_RunGLUE)
 	{
-		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName)
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
 		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		glue_setup Setup;
@@ -343,7 +344,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 #if INCAVIEW_INCLUDE_MCMC
 	if(Args->Mode == IncaviewRunMode_RunMCMC)
 	{
-		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName)
+		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
 		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);
 		
 		mcmc_setup Setup = {};

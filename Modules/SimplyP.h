@@ -302,6 +302,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return 0.0;
 	)
 	
+	// In-stream hydrology equations
+	
 	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MmPerDay);
 	SetSolver(Model, ReachFlowInput, SimplyPSolver);
 	
@@ -315,10 +317,12 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	SetInitialValue(Model, ReachFlow, InitialReachFlow);
 	SetSolver(Model, ReachFlow, SimplyPSolver);
 	
-	auto DailyMeanReachFlow = RegisterEquationODE(Model, "Reach flow (daily mean)", MmPerDay);
+	auto DailyMeanReachFlow = RegisterEquationODE(Model, "Reach flow (daily mean, mm/day)", MmPerDay);
 	SetInitialValue(Model, DailyMeanReachFlow, 0.0);
 	SetSolver(Model, DailyMeanReachFlow, SimplyPSolver);
 	ResetEveryTimestep(Model, DailyMeanReachFlow);
+	
+	auto DailyMeanReachFlowCumecs = RegisterEquation(Model, "Reach flow (daily mean, cumecs)", M3PerSecond)
 	
 	EQUATION(Model, ReachFlowInput,
 		double upstreamflow = 0.0;
@@ -365,6 +369,10 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	EQUATION(Model, DailyMeanReachFlow,
 		//NOTE: Since DailyMeanReachFlow is reset to start at 0 every timestep and since its derivative is the reach flow, its value becomes the integral of the reach flow over the timestep, i.e. the daily mean value.
 		return RESULT(ReachFlow);
+	)
+	
+	EQUATION(Model, DailyMeanReachFlowCumecs,
+		return ConvertMmPerDayToM3PerSecond(RESULT(DailyMeanReachFlow), PARAMETER(CatchmentArea));
 	)
 }
 
@@ -423,7 +431,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	auto SimplyPSolver = GetSolverHandle(Model, "SimplyP solver");
 	
 	auto ReachFlow          = GetEquationHandle(Model, "Reach flow (end-of-day)");
-	auto DailyMeanReachFlow = GetEquationHandle(Model, "Reach flow (daily mean)");
+	auto DailyMeanReachFlow = GetEquationHandle(Model, "Reach flow (daily mean, mm/day)");
 	auto ReachVolume        = GetEquationHandle(Model, "Reach volume");
 	
 	auto TimeDependentVegetationCoverFactor = RegisterEquation(Model, "Time dependent vegetation cover factor", Dimensionless);
@@ -549,6 +557,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 static void
 AddSimplyPPhosphorusModule(inca_model *Model)
 {
+	// UNITS
 	auto Dimensionless  = RegisterUnit(Model);
 	auto Kg             = RegisterUnit(Model, "kg");
 	auto Mm             = RegisterUnit(Model, "mm");
@@ -560,13 +569,15 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto KgPerDay       = RegisterUnit(Model, "kg/day");
 	auto KgPerMm        = RegisterUnit(Model, "kg/mm");
 	
-	// Indexers
+	// INDEXERS
 	auto Reach = GetIndexSetHandle(Model, "Reaches");
 	
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
 	auto Arable             = RequireIndex(Model, LandscapeUnits, "Arable");
 	auto ImprovedGrassland  = RequireIndex(Model, LandscapeUnits, "Improved grassland");
-	auto Seminatural        = RequireIndex(Model, LandscapeUnits, "Semi-natural");	
+	auto Seminatural        = RequireIndex(Model, LandscapeUnits, "Semi-natural");
+	
+	// PARAMETERS
 	
 	// Phosphorus params that don't vary by sub-catchment/reach or land class
 	auto Phosphorous = RegisterParameterGroup(Model, "Phosphorous");
@@ -582,6 +593,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	// Phosphorus parameters that vary by sub-catchment/reach
 	auto PhosphorousReach = RegisterParameterGroup(Model, "Phosphorous reach", Reach);
 	auto EffluentTDP                    = RegisterParameterDouble(Model, PhosphorousReach, "Reach effluent TDP inputs", KgPerDay, 0.1, 0.0, 10.0);
+	auto NCType                         = RegisterParameterUInt(Model, Phosphorous, "Newly-converted type", Dimensionless, 2, 0, 2, "0=Agricultural (from semi-natural), 2=Semi-natural (from agricultural), anything else=None");
 	
 	// Phorphorus parameters that vary by land class
 	auto PhosphorousLand = RegisterParameterGroup(Model, "Phosphorous land", LandscapeUnits);
@@ -590,11 +602,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	// Params that vary by reach and land class (add to existing group)
 	auto SubcatchmentGeneral = GetParameterGroupHandle(Model, "Subcatchment characteristics by land class");
-	
 	auto LandUseProportionsNC = RegisterParameterDouble(Model, SubcatchmentGeneral, "Land use proportions from newly-converted", Dimensionless, 0.0, 0.0, 1.0);
-
-	// NC type added to global P params group	
-	auto NCType                         = RegisterParameterUInt(Model, Phosphorous, "Newly-converted type", Dimensionless, 2, 0, 2, "0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None"); //Note: probably not the best group for this param?
 
 	// Add to global system parameter group
 	auto System = GetParameterGroupHandle(Model, "System");
@@ -606,7 +614,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto LandUseProportions          = GetParameterDoubleHandle(Model, "Land use proportions");
 	auto BaseflowIndex               = GetParameterDoubleHandle(Model, "Baseflow index");
 	
-	// Start equations
+	
+	// START EQUATIONS
 	auto SimplyPSolver               = GetSolverHandle(Model, "SimplyP solver");
 	
 	// Equations defined in other modules
@@ -617,7 +626,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto SeminaturalSoilWaterFlow    = GetEquationHandle(Model, "Semi-natural soil water flow");
 	auto ReachVolume                 = GetEquationHandle(Model, "Reach volume");
 	auto ReachFlow                   = GetEquationHandle(Model, "Reach flow (end-of-day)");
-	auto DailyMeanReachFlow          = GetEquationHandle(Model, "Reach flow (daily mean)");
+	auto DailyMeanReachFlow          = GetEquationHandle(Model, "Reach flow (daily mean, mm/day)");
 	auto GroundwaterFlow             = GetEquationHandle(Model, "Groundwater flow");
 	auto ReachSedimentInputCoefficient  = GetEquationHandle(Model, "Sediment input coefficient");
 	
@@ -1076,7 +1085,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	
 	auto IsInputToWaterBody = RegisterParameterBool(Model, WaterBody, "Is input to water body", false, "Whether or not the flow and various fluxes from this reach should be summed up in the calculation of inputs to a water body or lake");
 	
-	auto DailyMeanReachFlow = GetEquationHandle(Model, "Reach flow (daily mean)");
+	auto DailyMeanReachFlow = GetEquationHandle(Model, "Reach flow (daily mean, mm/day)");
 	auto DailyMeanSuspendedSedimentFlux = GetEquationHandle(Model, "Daily mean suspended sediment flux");
 	auto DailyMeanTDPFlux = GetEquationHandle(Model, "Daily mean stream TDP flux");
 	auto DailyMeanPPFlux  = GetEquationHandle(Model, "Daily mean stream PP flux");

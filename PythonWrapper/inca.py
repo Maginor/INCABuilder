@@ -495,7 +495,7 @@ class DataSet :
 		
 	def get_equation_list(self) :
 		'''
-		Get the name of all the equations in the model as a list of pairs of strings, each string being the name of a equation and its type.
+		Get the name of all the equations in the model as a list of pairs of strings, each string being the name of an equation and its type.
 		'''
 		num = incadll.DllGetAllResultsCount(self.datasetptr)
 		check_dll_error()

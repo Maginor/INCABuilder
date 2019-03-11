@@ -503,7 +503,7 @@ SetIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::vector<
 	if(!Spec.RequiredIndexes.empty())
 	{
 		bool Correct = true;
-		if(Spec.RequiredIndexes.size() != IndexNames.size()) Correct = false;
+		if(Spec.RequiredIndexes.size() > IndexNames.size()) Correct = false;
 		else
 		{
 			for(size_t IdxIdx = 0; IdxIdx < Spec.RequiredIndexes.size(); ++IdxIdx)
@@ -518,7 +518,7 @@ SetIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::vector<
 
 		if(!Correct)
 		{
-			INCA_PARTIAL_ERROR("ERROR: The model requires the following indexes to be the indexes for the index set " << Spec.Name << ":" << std::endl);
+			INCA_PARTIAL_ERROR("ERROR: The model requires the following indexes to be the first indexes for the index set " << Spec.Name << ":" << std::endl);
 			for(const char *IndexName :  Spec.RequiredIndexes)
 			{
 				INCA_PARTIAL_ERROR("\"" << IndexName << "\" ");

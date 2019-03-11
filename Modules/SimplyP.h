@@ -322,7 +322,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	SetSolver(Model, DailyMeanReachFlow, SimplyPSolver);
 	ResetEveryTimestep(Model, DailyMeanReachFlow);
 	
-	auto DailyMeanReachFlowCumecs = RegisterEquation(Model, "Reach flow (daily mean, cumecs)", M3PerSecond)
+	auto DailyMeanReachFlowCumecs = RegisterEquation(Model, "Reach flow (daily mean, cumecs)", M3PerSecond);
 	
 	EQUATION(Model, ReachFlowInput,
 		double upstreamflow = 0.0;

@@ -342,7 +342,7 @@ RunDatasetAsSpecifiedByIncaviewCommandline(inca_data_set *DataSet, incaview_comm
 	}
 #endif
 #if INCAVIEW_INCLUDE_MCMC
-	if(Args->Mode == IncaviewRunMode_RunMCMC)
+	else if(Args->Mode == IncaviewRunMode_RunMCMC)
 	{
 		ReadParametersFromFile_Ext(DataSet, Args->ParameterInFileName);
 		ReadInputsFromFile_Ext(DataSet, Args->InputFileName);

@@ -94,10 +94,10 @@ def initialize(dllname) :
 	incadll.DllGetResultUnit.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetResultUnit.restype = ctypes.c_char_p
 	
-	incadll.DllGetAllParametersCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetAllParametersCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetAllParametersCount.restype = ctypes.c_uint64
 	
-	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
+	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.c_char_p]
 	
 	incadll.DllGetAllResultsCount.argtypes = [ctypes.c_void_p]
 	incadll.DllGetAllResultsCount.restype = ctypes.c_uint64
@@ -481,15 +481,18 @@ class DataSet :
 		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
-	def get_parameter_list(self) :
+	def get_parameter_list(self, groupname = '') :
 		'''
 		Get the name of all the parameters in the model as a list of pairs of strings, each string being the name of a parameter and its type.
+		
+		Keyword arguments:
+			groupname       -- string. (optional) Only list the parameters belonging to this parameter group.
 		'''
-		num = incadll.DllGetAllParametersCount(self.datasetptr)
+		num = incadll.DllGetAllParametersCount(self.datasetptr, _CStr(groupname))
 		check_dll_error()
 		namearray = (ctypes.c_char_p * num)()
 		typearray = (ctypes.c_char_p * num)()
-		incadll.DllGetAllParameters(self.datasetptr, namearray, typearray)
+		incadll.DllGetAllParameters(self.datasetptr, namearray, typearray, _CStr(groupname))
 		check_dll_error()
 		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
 		

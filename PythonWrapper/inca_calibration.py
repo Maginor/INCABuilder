@@ -158,11 +158,11 @@ def print_goodness_of_fit(dataset, objective):
 	
 	nashsutcliffe = 1 - sumsquare / np.nansum(np.square(obs - meanob))
 	
-	print('Goodness of fit for %s [%s] vs %s [%s]:' % (simname, ', '.join(simindexes), obsname, ', '.join(obsindexes)))
+	print('\nGoodness of fit for %s [%s] vs %s [%s]:' % (simname, ', '.join(simindexes), obsname, ', '.join(obsindexes)))
 	print('Mean error (bias): %f' % bias)
 	print('Mean absolute error: %f' % meanabs)
 	print('Mean square error: %f' % meansquare)
-	print('Nash-Sutcliffe coefficient: %f' % nashsutcliffe)
+	print('Nash-Sutcliffe coefficient: %f\n' % nashsutcliffe)
 	
 	
 	

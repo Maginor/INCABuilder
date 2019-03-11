@@ -506,12 +506,27 @@ DllGetInputIndexSets(void *DataSetPtr, char *InputName, const char **NamesOut)
 }
 
 DLLEXPORT u64
-DllGetAllParametersCount(void *DataSetPtr)
+DllGetAllParametersCount(void *DataSetPtr, const char *GroupName)
 {
 	CHECK_ERROR_BEGIN
 	
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
-	return (u64)(DataSet->Model->FirstUnusedParameterHandle - 1);
+	const inca_model *Model = DataSet->Model;
+	
+	parameter_group_h Group = {0};
+	if(GroupName && strlen(GroupName) > 0)
+	{
+		Group = GetParameterGroupHandle(Model, GroupName);
+	}
+	
+	u64 Count = 0;
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	{
+		const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+		if(!IsValid(Group) || Group == Spec.Group) ++Count;
+	}
+	
+	return Count;
 	
 	CHECK_ERROR_END
 	
@@ -519,17 +534,30 @@ DllGetAllParametersCount(void *DataSetPtr)
 }
 
 DLLEXPORT void
-DllGetAllParameters(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+DllGetAllParameters(void *DataSetPtr, const char **NamesOut, const char **TypesOut, const char *GroupName)
 {
 	CHECK_ERROR_BEGIN
 	
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
-	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedParameterHandle - 1; ++Idx)
+	const inca_model *Model = DataSet->Model;
+	
+	parameter_group_h Group = {0};
+	if(GroupName && strlen(GroupName) > 0)
 	{
-		entity_handle Handle = Idx + 1;
-		const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
-		NamesOut[Idx] = Spec.Name;
-		TypesOut[Idx] = GetParameterTypeName(Spec.Type);
+		Group = GetParameterGroupHandle(Model, GroupName);
+	}
+	
+	size_t Idx = 0;
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	{
+		const parameter_spec &Spec = DataSet->Model->ParameterSpecs[ParameterHandle];
+		if(!IsValid(Group) || Group == Spec.Group)
+		{
+			NamesOut[Idx] = Spec.Name;
+			TypesOut[Idx] = GetParameterTypeName(Spec.Type);
+			
+			++Idx;
+		}
 	}
 	
 	CHECK_ERROR_END

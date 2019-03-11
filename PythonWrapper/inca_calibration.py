@@ -5,12 +5,9 @@ import numdifftools as nd
 from scipy.stats import norm
 import pandas as pd
 import datetime as dt
-<<<<<<< HEAD
 #import dlib
-=======
-import dlib
 import matplotlib.pyplot as plt
->>>>>>> 9fe4fcbab2d2bd3ca63ee7cf1a92d5bec13b2734
+
 
 #from emcee.utils import MPIPool
 

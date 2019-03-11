@@ -496,6 +496,8 @@ EndModelDefinition(inca_model *Model)
 	{
 		equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
 		
+		bool isc = (strcmp(Spec.Name, "Control")==0);
+		
 		if(IsValid(Spec.Solver))
 		{
 			//TODO: Instead of always pushing this at the end, could we try to insert it earlier if it is possible to place it next to another batch with the same index set dependencies?
@@ -533,11 +535,6 @@ EndModelDefinition(inca_model *Model)
 				//if(DependOnBatch) std::cout << SolverSpec.Name << " depend on " << BatchIdx << std::endl;
 				if(DependOnBatch) break; //We have to enter after this batch.
 			}
-			
-			//if(strcmp(SolverSpec.Name, "Reach solver")==0)
-			//{
-			//	std::cout << "earliest suitable " << EarliestSuitableBatchIdx << std::endl;
-			//}
 			
 			if(EarliestSuitableBatchIdx == (s32)BatchBuild.size())
 			{
@@ -579,25 +576,23 @@ EndModelDefinition(inca_model *Model)
 			else if(EarliestSuitableIsSolver)
 			{
 				//This equation does not belong to a solver, so we can not add it to the solver batch. Try to add it immediately after, either by adding it to the next batch if it is suitable or by creating a new batch.
-				if(EarliestSuitableBatchIdx == (s32)BatchBuild.size())
-				{
-					PushNewBatch = true;
-				}
-				else
+				bool CouldInsertInNext = false;
+				if(EarliestSuitableBatchIdx + 1 != (s32)BatchBuild.size())
 				{
 					equation_batch_template &NextBatch = BatchBuild[EarliestSuitableBatchIdx + 1];
 					if(NextBatch.IndexSetDependencies == Spec.IndexSetDependencies)
 					{
 						NextBatch.Equations.push_back(Equation);
 					}
-					else
-					{
-						equation_batch_template Batch = {};
-						Batch.Type = BatchType_Regular;
-						Batch.Equations.push_back(Equation);
-						Batch.IndexSetDependencies = Spec.IndexSetDependencies;
-						BatchBuild.insert(BatchBuild.begin() + EarliestSuitableBatchIdx + 1, Batch);
-					}
+				}
+				
+				if(!CouldInsertInNext)
+				{
+					equation_batch_template Batch = {};
+					Batch.Type = BatchType_Regular;
+					Batch.Equations.push_back(Equation);
+					Batch.IndexSetDependencies = Spec.IndexSetDependencies;
+					BatchBuild.insert(BatchBuild.begin() + EarliestSuitableBatchIdx + 1, Batch);
 				}
 			}
 			else

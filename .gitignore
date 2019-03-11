@@ -7,3 +7,7 @@ sqlite3/sqlite3ext.h
 *.exe
 *.db
 json/json.hpp
+.ipynb_checkpoints
+*.pyc
+*.dll
+*.o

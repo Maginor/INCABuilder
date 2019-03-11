@@ -123,6 +123,14 @@ enum equation_type
 	EquationType_Cumulative,
 };
 
+inline const char *
+GetEquationTypeName(equation_type Type)
+{
+	//NOTE: It is important that this matches the above enum:
+	const char *Typenames[4] = {"basic", "ode", "initialvalue", "cumulative"};
+	return Typenames[(size_t)Type];
+}
+
 //TODO: See if we could unionize some of the data below. Not everything is needed by every type of equation.
 struct equation_spec
 {

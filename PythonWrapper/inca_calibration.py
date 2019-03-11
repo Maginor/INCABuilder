@@ -5,7 +5,7 @@ import numdifftools as nd
 from scipy.stats import norm
 import pandas as pd
 import datetime as dt
-import dlib
+#import dlib
 
 #from emcee.utils import MPIPool
 
@@ -131,6 +131,33 @@ def plot_objective(dataset, objective, filename):
 	ax = df.plot(figsize=(20,10))
 	ax.set_ylabel('$%s$' % unit)
 	ax.figure.savefig(filename)
+	
+def print_goodness_of_fit(dataset, objective):
+	
+	#TODO: Could probably factor the computation and printout into different functions.
+	
+	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+
+	sim = dataset.get_result_series(simname, simindexes)
+	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+	
+	residuals = sim - obs
+	nonnan = np.count_nonzero(~np.isnan(residuals))
+	
+	bias = np.nansum(residuals) / nonnan
+	meanabs = np.nansum(np.abs(residuals)) / nonnan
+	sumsquare = np.nansum(np.square(residuals))
+	meansquare = sumsquare / nonnan
+	
+	meanob = np.nansum(obs) / nonnan
+	
+	nashsutcliffe = 1 - sumsquare / np.nansum(np.square(obs - meanob))
+	
+	print('Goodness of fit for %s [%s] vs %s [%s]:' % (simname, ', '.join(simindexes), obsname, ', '.join(obsindexes)))
+	print('Mean error (bias): %f' % bias)
+	print('Mean absolute error: %f' % meanabs)
+	print('Mean square error: %f' % meansquare)
+	print('Nash-Sutcliffe coefficient: %f' % nashsutcliffe)
 	
 	
 	

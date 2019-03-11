@@ -535,4 +535,33 @@ DllGetAllParameters(void *DataSetPtr, const char **NamesOut, const char **TypesO
 	CHECK_ERROR_END
 }
 
+DLLEXPORT u64
+DllGetAllResultsCount(void *DataSetPtr)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return (u64)(DataSet->Model->FirstUnusedEquationHandle - 1);
+	
+	CHECK_ERROR_END
+	
+	return 0;
+}
+
+DLLEXPORT void
+DllGetAllResults(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedEquationHandle - 1; ++Idx)
+	{
+		entity_handle Handle = Idx + 1;
+		const equation_spec &Spec = DataSet->Model->EquationSpecs[Handle];
+		NamesOut[Idx] = Spec.Name;
+		TypesOut[Idx] = GetEquationTypeName(Spec.Type);
+	}
+	
+	CHECK_ERROR_END
+}
 

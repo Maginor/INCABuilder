@@ -18,8 +18,7 @@ calibration = [
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
-
-
+	
 initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
 initial_guess.append(0.5)
 
@@ -30,8 +29,7 @@ constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min an
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (log_likelyhood, 'Reach flow (daily mean)', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
-
+objective = (log_likelyhood, 'Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', [], skiptimesteps)
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)
 #param_est = param_est[0]
@@ -55,8 +53,9 @@ print_matrix(inv_hess)
 set_values(dataset, param_est, calibration)
 dataset.write_parameters_to_file('optimal_parameters.dat')
 
-# NOTE: Run the model one more time with the optimal parameters and plot them
+# NOTE: Run the model one more time with the optimal parameters to get the correct values in the dataset, the print goodness of fit and plot.
 dataset.run_model()
+print_goodness_of_fit(dataset, objective)
 plot_objective(dataset, objective, "simplyp_plots\\optimizer_MAP.png")
 
 

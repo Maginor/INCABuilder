@@ -98,6 +98,11 @@ def initialize(dllname) :
 	incadll.DllGetAllParametersCount.restype = ctypes.c_uint64
 	
 	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DllGetAllResultsCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetAllResultsCount.restype = ctypes.c_uint64
+	
+	incadll.DllGetAllResults.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
 
 def _CStr(string):
 	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
@@ -478,7 +483,7 @@ class DataSet :
 		
 	def get_parameter_list(self) :
 		'''
-		Get the name of all the parameters in the model as a list of strings, each string being the name of a parameter.
+		Get the name of all the parameters in the model as a list of pairs of strings, each string being the name of a parameter and its type.
 		'''
 		num = incadll.DllGetAllParametersCount(self.datasetptr)
 		check_dll_error()
@@ -488,5 +493,15 @@ class DataSet :
 		check_dll_error()
 		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
 		
-		
+	def get_equation_list(self) :
+		'''
+		Get the name of all the equations in the model as a list of pairs of strings, each string being the name of a equation and its type.
+		'''
+		num = incadll.DllGetAllResultsCount(self.datasetptr)
+		check_dll_error()
+		namearray = (ctypes.c_char_p * num)()
+		typearray = (ctypes.c_char_p * num)()
+		incadll.DllGetAllResults(self.datasetptr, namearray, typearray)
+		check_dll_error()
+		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
 		

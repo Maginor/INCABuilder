@@ -1068,6 +1068,12 @@ GetResultSeries(inca_data_set *DataSet, const char *Name, const char* const* Ind
 	
 	equation_h Equation = GetEquationHandle(Model, Name);
 	
+	const equation_spec &Spec = Model->EquationSpecs[Equation.Handle];
+	if(Spec.Type == EquationType_InitialValue)
+	{
+		INCA_FATAL_ERROR("ERROR: Can not get the result series of the equation " << Name << ", which is an initial value equation." << std::endl);
+	}
+	
 	size_t StorageUnitIndex = DataSet->ResultStorageStructure.UnitForHandle[Equation.Handle];
 	std::vector<storage_unit_specifier> &Units = DataSet->ResultStorageStructure.Units;
 	std::vector<index_set_h> &IndexSets = Units[StorageUnitIndex].IndexSets;

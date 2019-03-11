@@ -5,7 +5,12 @@ import numdifftools as nd
 from scipy.stats import norm
 import pandas as pd
 import datetime as dt
+<<<<<<< HEAD
 #import dlib
+=======
+import dlib
+import matplotlib.pyplot as plt
+>>>>>>> 9fe4fcbab2d2bd3ca63ee7cf1a92d5bec13b2734
 
 #from emcee.utils import MPIPool
 
@@ -112,7 +117,7 @@ def log_likelyhood(params, dataset, calibration, objective):
 	
 	return like	
 		
-def plot_objective(dataset, objective, filename):
+def plot_objective(dataset, objective, filename, return_fig=0):
 
 	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 
@@ -127,10 +132,13 @@ def plot_objective(dataset, objective, filename):
 	df.set_index('Date', inplace=True)
 
 	unit = dataset.get_result_unit(simname) # Assumes that the unit is the same for obs and sim
-
-	ax = df.plot(figsize=(20,10))
+	
+	fig, ax = plt.subplots()
+	df.plot(figsize=(20,10), ax=ax)
 	ax.set_ylabel('$%s$' % unit)
 	ax.figure.savefig(filename)
+	if return_fig==1:
+		return fig, ax
 	
 def print_goodness_of_fit(dataset, objective):
 	

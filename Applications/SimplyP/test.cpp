@@ -37,7 +37,7 @@ int main()
 	AllocateParameterStorage(DataSet);
 	WriteParametersToFile(DataSet, "newparams.dat");
 #else
-	ReadParametersFromFile(DataSet, "tarlandparameters_new.dat");
+	ReadParametersFromFile(DataSet, "tarlandparameters.dat");
 
 	ReadInputsFromFile(DataSet, "tarlandinputs.dat");
 	

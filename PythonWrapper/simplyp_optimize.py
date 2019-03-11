@@ -30,7 +30,7 @@ constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min an
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (log_likelyhood, 'Reach flow (daily mean)', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
+objective = (log_likelyhood, 'Reach flow (daily mean, mm/day)', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
 
 
 param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)

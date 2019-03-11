@@ -7,6 +7,7 @@ import pandas as pd
 import datetime as dt
 #import dlib
 import matplotlib.pyplot as plt
+import itertools
 
 
 #from emcee.utils import MPIPool
@@ -163,6 +164,21 @@ def print_goodness_of_fit(dataset, objective):
 	print('Mean absolute error: %f' % meanabs)
 	print('Mean square error: %f' % meansquare)
 	print('Nash-Sutcliffe coefficient: %f\n' % nashsutcliffe)
+	
+	
+def calibration_of_group(dataset, groupname):
+	params = dataset.get_parameter_list(groupname)
+	
+	parnames = (par[0] for par in params)
+	
+	cal = []
+	for parname in parnames :
+		index_sets = dataset.get_parameter_index_sets(parname)
+		index_combinations = list(itertools.product(*[dataset.get_indexes(index_set) for index_set in index_sets]))
+		parcal = [(parname, index_combination) for index_combination in index_combinations]
+		cal.extend(parcal)
+		
+	return cal
 	
 	
 	

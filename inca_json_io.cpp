@@ -100,7 +100,11 @@ WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
 		if(Spec.Type == EquationType_InitialValue) continue;
 		
 		std::vector<std::string> Dep;
-		for(index_set_h IndexSet : Spec.IndexSetDependencies)
+	
+		size_t UnitIdx = DataSet->ResultStorageStructure.UnitForHandle[EquationHandle];
+		storage_unit_specifier &Unit = DataSet->ResultStorageStructure.Units[UnitIdx];
+		
+		for(index_set_h IndexSet : Unit.IndexSets)
 		{
 			Dep.push_back(GetName(Model, IndexSet));
 		}

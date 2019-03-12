@@ -169,7 +169,7 @@ def print_goodness_of_fit(dataset, objective):
 def calibration_of_group(dataset, groupname):
 	params = dataset.get_parameter_list(groupname)
 	
-	parnames = (par[0] for par in params)
+	parnames = (par[0] for par in params if par[1] == 'double')  #NOTE: No support for calibration of integer or bool parameters currently.
 	
 	cal = []
 	for parname in parnames :

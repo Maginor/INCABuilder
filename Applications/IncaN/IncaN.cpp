@@ -11,11 +11,6 @@
 #include "../../Modules/WaterTemperature.h"
 #include "../../Modules/INCA-N.h"
 
-//NOTE: You should probably not turn the following flags on unless you are Magnus or Magnus has shown you how to set up the libraries you need for correct compilation.
-#define INCAVIEW_INCLUDE_OPTIMIZER 0
-#define INCAVIEW_INCLUDE_GLUE 0
-#define INCAVIEW_INCLUDE_MCMC 0
-
 #include "../../incaview_compatibility.h"
 
 int main(int argc, char **argv)

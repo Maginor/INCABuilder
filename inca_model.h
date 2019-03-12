@@ -155,7 +155,7 @@ struct equation_spec
 	solver_h Solver;
 	
 	//NOTE: These are built during EndModelDefinition:
-	std::set<index_set_h> IndexSetDependencies;
+	std::set<index_set_h> IndexSetDependencies;          //NOTE: If the equation is run on a solver, the final index set dependencies of the equation will be those of the solver.
 	std::set<entity_handle>  ParameterDependencies;
 	std::set<input_h>     InputDependencies;
 	std::set<equation_h>  DirectResultDependencies;

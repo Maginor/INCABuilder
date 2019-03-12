@@ -84,7 +84,7 @@ AddINCASedModel(inca_model *Model)
 	
 	auto TotalSedimentDeliveryToReach         = RegisterEquationCumulative(Model, "Total sediment delivery to reach", AreaScaledSedimentDeliveryToReach, LandscapeUnits);
 	
-	auto SoilMassInTheOAHorizon               = RegisterEquation(Model, "Soil mass in the O/A horizon", KgPerKm2);
+	auto SoilMassInTheOAHorizon               = RegisterEquationODE(Model, "Soil mass in the O/A horizon", KgPerKm2);
 	SetSolver(Model, SoilMassInTheOAHorizon, IncaSolver);
 	//SetInitialValue(Model, SoilMassInTheOAHorizon)
 	

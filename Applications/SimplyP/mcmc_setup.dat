@@ -71,7 +71,7 @@ parameter_calibration :
 
 
 objectives:
-"Reach flow (daily mean)" {"Tarland1"}     "observed Q mm/d" {}     ll_proportional_normal
+"Reach flow (daily mean, cumecs)" {"Tarland1"}     "observed Q" {}     ll_proportional_normal
 
 
 

@@ -48,7 +48,7 @@ parameter_calibration :
 
 
 objectives:
-"Reach flow (daily mean)" {"Tarland1"}     "observed Q mm/d" {}     mean_absolute_error
+"Reach flow (daily mean, cumecs)" {"Tarland1"}     "observed Q" {}     mean_absolute_error
 
 
 

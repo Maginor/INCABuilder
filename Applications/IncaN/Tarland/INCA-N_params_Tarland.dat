@@ -1,4 +1,4 @@
-# Parameter file generated for INCA-N V0.1 at 2019-03-05 10:22:42
+# Parameter file generated for INCA-N V0.1 at 2019-03-12 12:49:50
 
 index_sets:
 "Landscape units" : {"SemiNatural" "Agricultural"}
@@ -59,76 +59,76 @@ parameters:
 "Initial soil temperature" :     #(°C) [-1.79769313486232e+308, 1.79769313486232e+308]
 5 5
 
-"Direct runoff initial nitrate concentration" :     #(mg/l) [0, 10]
+"Direct runoff initial nitrate concentration" :     #(mg/l) [0, 100] Initial nitrate concentration in quick flow
 0 0
 
-"Direct runoff initial ammonium concentration" :     #(mg/l) [0, 2]
+"Direct runoff initial ammonium concentration" :     #(mg/l) [0, 100] Initial ammonium concentration in quick flow
 0 0
 
-"Soil water initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Soil water initial nitrate concentration" :     #(mg/l) [0, 100] Initial nitrate concentration in soil water
 0.1 8
 
-"Soil water initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Soil water initial ammonium concentration" :     #(mg/l) [0, 100] Initial ammonium concentration in soil water
 0 0
 
-"Growth curve offset" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Growth curve offset" :     #(dimensionless) [0, 10] Vertical shift in the sine curve describing the seasonal N uptake coefficient. Must be greater than growth curve amplitude
 0.6 0.6
 
-"Growth curve amplitude" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Growth curve amplitude" :     #(dimensionless) [0, 5] Amplitude of sine curve describing the seasonal N uptake coefficient
 0.5 0.5
 
-"Plant growth start day" :     #(Julian day) [1, 365] Day of year when plant growth begins
+"Plant growth start day" :     #(Julian day) [1, 365] Day of year when N uptake begins, and also the horizontal shift in the seasonal plant N uptake coefficient
 50 50
 
 "Plant growth period" :     #(Julian day) [0, 365] Length of plant growth period in days
 365 365
 
-"Nitrate plant uptake rate" :     #(m/day) [0, 162] Rate at which NO3 is taken up by plants.
+"Nitrate plant uptake rate" :     #(m/day) [0, 100] Coefficient to scale the NO3 plant uptake rate
 0.03 0.03
 
-"Soil water denitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Soil water denitrification rate" :     #(m/day) [0, 100] Rate coefficient to scale the loss of nitrate from the system by denitrification
 0 0
 
-"Ammonium nitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Ammonium nitrification rate" :     #(m/day) [0, 100] Coefficient to scale the rate of conversion of ammonium to nitrate via nitrification in the soil water
 0 0
 
-"Nitrogen fixation rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Nitrogen fixation rate" :     #(kg/Ha/day) [0, 100] Coefficient to scale the rate of NO3 inputs to soilwater via N2 fixation
 0 0
 
-"Maximum nitrogen uptake" :     #(kg/Ha/year) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Maximum nitrogen uptake" :     #(kg/Ha/year) [0, 5000] Maximum annual nitrate plus ammonium plant uptake from the soilwater, above which uptake ceases
 30 140
 
-"Fertilizer addition start day" :     #(Julian day) [1, 365] Day of year when fertiliser application begins.
+"Fertilizer addition start day" :     #(Julian day) [1, 365] Day of year when fertiliser application begins
 1 50
 
-"Fertilizer addition period" :     #(Julian day) [0, 365] Length of fertiliser addition period in days.
+"Fertilizer addition period" :     #(Julian day) [0, 365] Length of fertiliser addition period in days
 365 315
 
-"Fertilizer nitrate addition rate" :     #(kg/Ha/day) [0, 100] Amount of nitrate added as fertiliser on each day of fertiliser addition period.
+"Fertilizer nitrate addition rate" :     #(kg/Ha/day) [0, 100] Amount of nitrate added as fertiliser on each day of fertiliser addition period
 0 0.4
 
-"Fertilizer ammonium addition rate" :     #(kg/Ha/day) [0, 100] Amount of ammonium added as fertiliser on each day of fertiliser addition period.
+"Fertilizer ammonium addition rate" :     #(kg/Ha/day) [0, 100] Amount of ammonium added as fertiliser on each day of fertiliser addition period
 0 0
 
-"Ammonium plant uptake rate" :     #(m/day) [0, 162] Rate at which NH4 is taken up by plants.
+"Ammonium plant uptake rate" :     #(m/day) [0, 100] Rate coefficient to scale the rate of NH4 plant uptake
 0 0
 
-"Ammonium immobilisation rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Ammonium immobilisation rate" :     #(m/day) [0, 100] Coefficient to scale the rate of ammonium loss from the soil water via immobilisation
 0 0
 
-"Ammonium mineralisation rate" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Ammonium mineralisation rate" :     #(kg/Ha/day) [0, 100] Coefficient to scale the rate of ammonium input to the soil water via mineralisation
 0 0
 
-"Zero rate depth" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Zero rate depth" :     #(mm) [0, 9999] Soil water depth at which N processing rates are 0 due to soil moisture limitation. Should be less than the Max rate depth parameter
 0 0
 
-"Max rate depth" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Max rate depth" :     #(mm) [0, 9999] Soil water depth above which N processing rates are no longer moisture-limited. The soil retained water depth is likely appropriate
 0 0
 
-"Response to a 10° soil temperature change" :     #(dimensionless) [0, 10] Response to a 10° soil temperature change for each process.
+"Response to a 10° soil temperature change" :     #(dimensionless) [0, 20] Rate response to a 10°C soil temperature change for all processes
 10 10
 
-"Base temperature at which response is 1" :     #(°C) [0, 50] Base temperature for each process at which the response is 1.
+"Base temperature at which response is 1" :     #(°C) [-10, 50] Base temperature for all processes at which the rate response is 1
 15 15
 
 ###################### "Landscape units" "Soils" "Soils" ######################
@@ -154,8 +154,8 @@ false false false
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :     #(mm) [0, 9999] The initial depth of water in a box at the start of a simulation
 0 0
-300 300
-8100 8100
+280 280
+8030 8100
 
 "Relative area index" :     #(dimensionless) [0, 1] The areal fraction of the simulation covered by a box, typical INCA-type simulations will use a value of 1.0
 1 1
@@ -167,9 +167,9 @@ false false false
 100 100
 100 100
 
-"Retained water depth" :     #(mm) [0, 9999] The depth of water in a box which does not contribute to runoff generation but can still contribute to evapotranspiration. For the soil water box, this is similar to the field capacity
+"Retained water depth" :     #(mm) [0, 100000] The depth of water in a box which does not contribute to runoff but can contribute to evapotranspiration and to diluting nutrient inputs to the box. For the soil water box, this is similar to the field capacity
 0 0
-300 250
+300 300
 8000 8000
 
 "Drought runoff fraction" :     #(dimensionless) [0, 0.5] The fraction of water entering a box which contributes to runoff generation when the depth of water is below the retained water depth
@@ -261,43 +261,43 @@ true
 "Water temperature lag factor" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 3
 
-"Groundwater initial nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Groundwater initial nitrate concentration" :     #(mg/l) [0, 100] Initial nitrate concentration in groundwater
 4.5
 
-"Groundwater initial ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Groundwater initial ammonium concentration" :     #(mg/l) [0, 100] Initial ammonium concentration in groundwater
 0
 
-"Groundwater denitrification rate" :     #(m/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Groundwater denitrification rate" :     #(m/day) [0, 1000] Groundwater denitrification rate
 0
 
-"Nitrate dry deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Nitrate dry deposition" :     #(kg/Ha/day) [0, 1] Daily nitrate dry deposition rate
 0
 
-"Nitrate wet deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Nitrate wet deposition" :     #(kg/Ha/day) [0, 1] Daily nitrate wet deposition rate
 0.0181
 
-"Ammonium dry deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Ammonium dry deposition" :     #(kg/Ha/day) [0, 1] Daily ammonium dry deposition rate
 0
 
-"Ammonium wet deposition" :     #(kg/Ha/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Ammonium wet deposition" :     #(kg/Ha/day) [0, 1] Daily ammonium wet deposition rate
 0
 
-"Reach denitrification rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Reach denitrification rate" :     #(/day) [0, 100] Coefficient to scale loss of nitrate from the reach via denitrification
 0.3
 
-"Reach nitrification rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Reach nitrification rate" :     #(/day) [0, 100] Coefficient to scale reach nitrification (conversion of ammonium to nitrate)
 0.5
 
-"Reach effluent nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Reach effluent nitrate concentration" :     #(mg/l) [0, 1000] Concentration of nitrate in effluent inputs to reach
 0
 
-"Reach effluent ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Reach effluent ammonium concentration" :     #(mg/l) [0, 1000] Concentration of ammonium in effluent inputs to reach
 30
 
-"Initial stream nitrate concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Initial stream nitrate concentration" :     #(mg/l) [0, 1000] Initial stream nitrate concentration
 0
 
-"Initial stream ammonium concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+"Initial stream ammonium concentration" :     #(mg/l) [0, 1000] Initial stream ammonium concentration
 0.1
 
 ###################### "Reaches" "Landscape units" ######################

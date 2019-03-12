@@ -97,8 +97,14 @@ WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
 	{
 		const equation_spec &Spec = Model->EquationSpecs[EquationHandle];
 		
+		if(Spec.Type == EquationType_InitialValue) continue;
+		
 		std::vector<std::string> Dep;
-		for(index_set_h IndexSet : Spec.IndexSetDependencies)
+	
+		size_t UnitIdx = DataSet->ResultStorageStructure.UnitForHandle[EquationHandle];
+		storage_unit_specifier &Unit = DataSet->ResultStorageStructure.Units[UnitIdx];
+		
+		for(index_set_h IndexSet : Unit.IndexSets)
 		{
 			Dep.push_back(GetName(Model, IndexSet));
 		}
@@ -129,7 +135,11 @@ WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
 	//index_t CurrentIndexes[256];
 	for(entity_handle EquationHandle = 1; EquationHandle < Model->FirstUnusedEquationHandle; ++EquationHandle)
 	{
-		const char *EquationName = GetName(Model, equation_h {EquationHandle});
+		const equation_spec &Spec = Model->EquationSpecs[EquationHandle];
+		
+		if(Spec.Type == EquationType_InitialValue) continue;
+		
+		const char *EquationName = Spec.Name;
 		
 		ForeachResultInstance(DataSet, EquationName,
 			[DataSet, Timesteps, EquationName, &Json](const char * const *IndexNames, size_t IndexesCount)

@@ -583,6 +583,7 @@ EndModelDefinition(inca_model *Model)
 					if(NextBatch.IndexSetDependencies == Spec.IndexSetDependencies)
 					{
 						NextBatch.Equations.push_back(Equation);
+						CouldInsertInNext = true;
 					}
 				}
 				

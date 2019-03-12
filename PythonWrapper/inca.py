@@ -94,10 +94,28 @@ def initialize(dllname) :
 	incadll.DllGetResultUnit.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetResultUnit.restype = ctypes.c_char_p
 	
-	incadll.DllGetAllParametersCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetAllParametersCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 	incadll.DllGetAllParametersCount.restype = ctypes.c_uint64
 	
-	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
+	incadll.DllGetAllParameters.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p), ctypes.c_char_p]
+	
+	incadll.DllGetAllResultsCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetAllResultsCount.restype = ctypes.c_uint64
+	
+	incadll.DllGetAllResults.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DllGetAllInputsCount.argtypes = [ctypes.c_void_p]
+	incadll.DllGetAllInputsCount.restype = ctypes.c_uint64
+	
+	incadll.DllGetAllInputs.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.c_char_p)]
+	
+	incadll.DllInputWasProvided.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_uint64]
+	incadll.DllInputWasProvided.restype = ctypes.c_bool
+	
+	incadll.DllGetBranchInputsCount.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
+	incadll.DllGetBranchInputsCount.restype = ctypes.c_uint64
+	
+	incadll.DllGetBranchInputs.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 
 def _CStr(string):
 	return string.encode('utf-8')   #TODO: We should figure out what encoding is best to use here.
@@ -476,17 +494,75 @@ class DataSet :
 		check_dll_error()
 		return [string.decode('utf-8') for string in array]
 		
-	def get_parameter_list(self) :
+	def get_parameter_list(self, groupname = '') :
 		'''
-		Get the name of all the parameters in the model as a list of strings, each string being the name of a parameter.
+		Get the name and type of all the parameters in the model as a list of pairs of strings.
+		
+		Keyword arguments:
+			groupname       -- string. (optional) Only list the parameters belonging to this parameter group.
 		'''
-		num = incadll.DllGetAllParametersCount(self.datasetptr)
+		num = incadll.DllGetAllParametersCount(self.datasetptr, _CStr(groupname))
 		check_dll_error()
 		namearray = (ctypes.c_char_p * num)()
 		typearray = (ctypes.c_char_p * num)()
-		incadll.DllGetAllParameters(self.datasetptr, namearray, typearray)
+		incadll.DllGetAllParameters(self.datasetptr, namearray, typearray, _CStr(groupname))
 		check_dll_error()
 		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
 		
+	def get_equation_list(self) :
+		'''
+		Get the name and type of all the equations in the model as a list of pairs of strings.
+		'''
+		num = incadll.DllGetAllResultsCount(self.datasetptr)
+		check_dll_error()
+		namearray = (ctypes.c_char_p * num)()
+		typearray = (ctypes.c_char_p * num)()
+		incadll.DllGetAllResults(self.datasetptr, namearray, typearray)
+		check_dll_error()
+		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
 		
+	def get_input_list(self) :
+		'''
+		Get the name and type of all the equations in the model as a list of pairs of strings.
+		'''
+		num = incadll.DllGetAllInputsCount(self.datasetptr)
+		check_dll_error()
+		namearray = (ctypes.c_char_p * num)()
+		typearray = (ctypes.c_char_p * num)()
+		incadll.DllGetAllInputs(self.datasetptr, namearray, typearray)
+		check_dll_error()
+		return [(name.decode('utf-8'), type.decode('utf-8')) for name, type in zip(namearray, typearray)]
+		
+	def input_was_provided(self, name, indexes):
+		'''
+		Find out if a particular input timeseries was provided in the input file (or set maually using set_input_series), or if it is missing.
+		
+		Keyword arguments:
+			name             -- string. The name of the input series. Example : "Air temperature"
+			indexes          -- list of strings. A list of index names to identify the particular input series. Example : ["Langtjern"] or ["Langtjern", "Forest"]
+			
+		Returns:
+			a boolean
+		'''
+		value = incadll.DllInputWasProvided(self.datasetptr, _CStr(name), _PackIndexes(indexes), len(indexes))
+		check_dll_error()
+		return value
+		
+	def get_branch_inputs(self, indexsetname, indexname):
+		'''
+		Get the branch inputs of an index in a branched index set.
+		
+		Keyword arguments:
+			indexsetname     -- string. The name of an index set. This index set has to be branched.
+			indexname        -- string. The name of an index in this index set.
+			
+		Returns:
+			a list of strings containing the names of the indexes that are branch inputs to the given index.
+		'''
+		num = incadll.DllGetBranchInputsCount(self.datasetptr, _CStr(indexsetname), _CStr(indexname))
+		check_dll_error()
+		namearray = (ctypes.c_char_p * num)()
+		incadll.DllGetBranchInputs(self.datasetptr, _CStr(indexsetname), _CStr(indexname), namearray)
+		check_dll_error()
+		return [name.decode('utf-8') for name in namearray]
 		

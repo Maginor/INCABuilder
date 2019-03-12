@@ -506,12 +506,27 @@ DllGetInputIndexSets(void *DataSetPtr, char *InputName, const char **NamesOut)
 }
 
 DLLEXPORT u64
-DllGetAllParametersCount(void *DataSetPtr)
+DllGetAllParametersCount(void *DataSetPtr, const char *GroupName)
 {
 	CHECK_ERROR_BEGIN
 	
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
-	return (u64)(DataSet->Model->FirstUnusedParameterHandle - 1);
+	const inca_model *Model = DataSet->Model;
+	
+	parameter_group_h Group = {0};
+	if(GroupName && strlen(GroupName) > 0)
+	{
+		Group = GetParameterGroupHandle(Model, GroupName);
+	}
+	
+	u64 Count = 0;
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	{
+		const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+		if(!IsValid(Group) || Group == Spec.Group) ++Count;
+	}
+	
+	return Count;
 	
 	CHECK_ERROR_END
 	
@@ -519,20 +534,148 @@ DllGetAllParametersCount(void *DataSetPtr)
 }
 
 DLLEXPORT void
-DllGetAllParameters(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+DllGetAllParameters(void *DataSetPtr, const char **NamesOut, const char **TypesOut, const char *GroupName)
 {
 	CHECK_ERROR_BEGIN
 	
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
-	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedParameterHandle - 1; ++Idx)
+	const inca_model *Model = DataSet->Model;
+	
+	parameter_group_h Group = {0};
+	if(GroupName && strlen(GroupName) > 0)
 	{
-		entity_handle Handle = Idx + 1;
-		const parameter_spec &Spec = DataSet->Model->ParameterSpecs[Handle];
-		NamesOut[Idx] = Spec.Name;
-		TypesOut[Idx] = GetParameterTypeName(Spec.Type);
+		Group = GetParameterGroupHandle(Model, GroupName);
+	}
+	
+	size_t Idx = 0;
+	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	{
+		const parameter_spec &Spec = DataSet->Model->ParameterSpecs[ParameterHandle];
+		if(!IsValid(Group) || Group == Spec.Group)
+		{
+			NamesOut[Idx] = Spec.Name;
+			TypesOut[Idx] = GetParameterTypeName(Spec.Type);
+			
+			++Idx;
+		}
 	}
 	
 	CHECK_ERROR_END
 }
 
+DLLEXPORT u64
+DllGetAllResultsCount(void *DataSetPtr)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return (u64)(DataSet->Model->FirstUnusedEquationHandle - 1);
+	
+	CHECK_ERROR_END
+	
+	return 0;
+}
+
+DLLEXPORT void
+DllGetAllResults(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedEquationHandle - 1; ++Idx)
+	{
+		entity_handle Handle = Idx + 1;
+		const equation_spec &Spec = DataSet->Model->EquationSpecs[Handle];
+		NamesOut[Idx] = Spec.Name;
+		TypesOut[Idx] = GetEquationTypeName(Spec.Type);
+	}
+	
+	CHECK_ERROR_END
+}
+
+DLLEXPORT u64
+DllGetAllInputsCount(void *DataSetPtr)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return (u64)(DataSet->Model->FirstUnusedInputHandle - 1);
+	
+	CHECK_ERROR_END
+	
+	return 0;
+}
+
+DLLEXPORT void
+DllGetAllInputs(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedInputHandle - 1; ++Idx)
+	{
+		entity_handle Handle = Idx + 1;
+		const input_spec &Spec = DataSet->Model->InputSpecs[Handle];
+		NamesOut[Idx] = Spec.Name;
+		TypesOut[Idx] = Spec.IsAdditional ? "additional" : "required";
+	}
+	
+	CHECK_ERROR_END
+}
+
+DLLEXPORT bool
+DllInputWasProvided(void *DataSetPtr, const char *Name, char **IndexNames, u64 IndexCount)
+{
+	CHECK_ERROR_BEGIN
+	
+	return InputSeriesWasProvided((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount);
+	
+	CHECK_ERROR_END
+	
+	return false;
+}
+
+DLLEXPORT u64
+DllGetBranchInputsCount(void *DataSetPtr, const char *IndexSetName, const char *IndexName)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	index_set_h IndexSet = GetIndexSetHandle(DataSet->Model, IndexSetName);
+	
+	const index_set_spec &Spec = DataSet->Model->IndexSetSpecs[IndexSet.Handle];
+	
+	if(Spec.Type != IndexSetType_Branched)
+	{
+		INCA_FATAL_ERROR("Tried to read branch inputs from the index set " << IndexSetName << ", but that is not a branched index set." << std::endl);
+	}
+	
+	index_t Index = GetIndex(DataSet, IndexSet, IndexName);
+	
+	return (u64)DataSet->BranchInputs[IndexSet.Handle][Index].Count;
+	
+	CHECK_ERROR_END
+	
+	return 0;
+}
+
+DLLEXPORT void
+DllGetBranchInputs(void *DataSetPtr, const char *IndexSetName, const char *IndexName, const char **BranchInputsOut)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	index_set_h IndexSet = GetIndexSetHandle(DataSet->Model, IndexSetName);
+	
+	index_t Index = GetIndex(DataSet, IndexSet, IndexName);
+	
+	size_t Count = DataSet->BranchInputs[IndexSet.Handle][Index].Count;
+	for(size_t Idx = 0; Idx < Count; ++Idx)
+	{
+		index_t IdxIdx = DataSet->BranchInputs[IndexSet.Handle][Index].Inputs[Idx];
+		BranchInputsOut[Idx] = DataSet->IndexNames[IndexSet.Handle][IdxIdx];
+	}
+	
+	CHECK_ERROR_END
+}
 

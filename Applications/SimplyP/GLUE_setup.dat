@@ -55,5 +55,5 @@ objectives:
 
 #"Reach flow" {"Tveitvatn"}    "Discharge" {"Tveitvatn"}        nash_sutcliffe     0.0       1.0
 
-"Reach flow (daily mean)" {"Tarland1"}     "observed Q mm/d" {}     mean_absolute_error 0.01 0.0
+"Reach flow (daily mean, cumecs)" {"Tarland1"}     "observed Q" {}     mean_absolute_error 0.01 0.0
 

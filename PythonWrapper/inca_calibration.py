@@ -5,8 +5,10 @@ import numdifftools as nd
 from scipy.stats import norm
 import pandas as pd
 import datetime as dt
-import dlib
+#import dlib
 import matplotlib.pyplot as plt
+import itertools
+
 
 #from emcee.utils import MPIPool
 
@@ -113,7 +115,7 @@ def log_likelyhood(params, dataset, calibration, objective):
 	
 	return like	
 		
-def plot_objective(dataset, objective, filename, return_fig):
+def plot_objective(dataset, objective, filename, return_fig=0):
 
 	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 
@@ -133,9 +135,50 @@ def plot_objective(dataset, objective, filename, return_fig):
 	df.plot(figsize=(20,10), ax=ax)
 	ax.set_ylabel('$%s$' % unit)
 	ax.figure.savefig(filename)
-	
 	if return_fig==1:
 		return fig, ax
+	
+def print_goodness_of_fit(dataset, objective):
+	
+	#TODO: Could probably factor the computation and printout into different functions.
+	
+	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+
+	sim = dataset.get_result_series(simname, simindexes)
+	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+	
+	residuals = sim - obs
+	nonnan = np.count_nonzero(~np.isnan(residuals))
+	
+	bias = np.nansum(residuals) / nonnan
+	meanabs = np.nansum(np.abs(residuals)) / nonnan
+	sumsquare = np.nansum(np.square(residuals))
+	meansquare = sumsquare / nonnan
+	
+	meanob = np.nansum(obs) / nonnan
+	
+	nashsutcliffe = 1 - sumsquare / np.nansum(np.square(obs - meanob))
+	
+	print('\nGoodness of fit for %s [%s] vs %s [%s]:' % (simname, ', '.join(simindexes), obsname, ', '.join(obsindexes)))
+	print('Mean error (bias): %f' % bias)
+	print('Mean absolute error: %f' % meanabs)
+	print('Mean square error: %f' % meansquare)
+	print('Nash-Sutcliffe coefficient: %f\n' % nashsutcliffe)
+	
+	
+def calibration_of_group(dataset, groupname):
+	params = dataset.get_parameter_list(groupname)
+	
+	parnames = [par[0] for par in params if par[1] == 'double']  #NOTE: No support for calibration of integer or bool parameters currently.
+	
+	cal = []
+	for parname in parnames :
+		index_sets = dataset.get_parameter_index_sets(parname)
+		index_combinations = list(itertools.product(*[dataset.get_indexes(index_set) for index_set in index_sets]))
+		parcal = [(parname, index_combination) for index_combination in index_combinations]
+		cal.extend(parcal)
+		
+	return cal
 	
 	
 	

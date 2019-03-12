@@ -19,6 +19,8 @@ calibration = [
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
 	
+print(dataset.get_branch_inputs('Reaches', 'Tarland1'))
+	
 initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
 initial_guess.append(0.5)
 

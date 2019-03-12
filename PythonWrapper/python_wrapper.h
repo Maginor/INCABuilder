@@ -593,3 +593,89 @@ DllGetAllResults(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
 	CHECK_ERROR_END
 }
 
+DLLEXPORT u64
+DllGetAllInputsCount(void *DataSetPtr)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	return (u64)(DataSet->Model->FirstUnusedInputHandle - 1);
+	
+	CHECK_ERROR_END
+	
+	return 0;
+}
+
+DLLEXPORT void
+DllGetAllInputs(void *DataSetPtr, const char **NamesOut, const char **TypesOut)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	for(size_t Idx = 0; Idx < DataSet->Model->FirstUnusedInputHandle - 1; ++Idx)
+	{
+		entity_handle Handle = Idx + 1;
+		const input_spec &Spec = DataSet->Model->InputSpecs[Handle];
+		NamesOut[Idx] = Spec.Name;
+		TypesOut[Idx] = Spec.IsAdditional ? "additional" : "required";
+	}
+	
+	CHECK_ERROR_END
+}
+
+DLLEXPORT bool
+DllInputWasProvided(void *DataSetPtr, const char *Name, char **IndexNames, u64 IndexCount)
+{
+	CHECK_ERROR_BEGIN
+	
+	return InputSeriesWasProvided((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount);
+	
+	CHECK_ERROR_END
+	
+	return false;
+}
+
+DLLEXPORT u64
+DllGetBranchInputsCount(void *DataSetPtr, const char *IndexSetName, const char *IndexName)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	index_set_h IndexSet = GetIndexSetHandle(DataSet->Model, IndexSetName);
+	
+	const index_set_spec &Spec = DataSet->Model->IndexSetSpecs[IndexSet.Handle];
+	
+	if(Spec.Type != IndexSetType_Branched)
+	{
+		INCA_FATAL_ERROR("Tried to read branch inputs from the index set " << IndexSetName << ", but that is not a branched index set." << std::endl);
+	}
+	
+	index_t Index = GetIndex(DataSet, IndexSet, IndexName);
+	
+	return (u64)DataSet->BranchInputs[IndexSet.Handle][Index].Count;
+	
+	CHECK_ERROR_END
+	
+	return 0;
+}
+
+DLLEXPORT void
+DllGetBranchInputs(void *DataSetPtr, const char *IndexSetName, const char *IndexName, const char **BranchInputsOut)
+{
+	CHECK_ERROR_BEGIN
+	
+	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
+	index_set_h IndexSet = GetIndexSetHandle(DataSet->Model, IndexSetName);
+	
+	index_t Index = GetIndex(DataSet, IndexSet, IndexName);
+	
+	size_t Count = DataSet->BranchInputs[IndexSet.Handle][Index].Count;
+	for(size_t Idx = 0; Idx < Count; ++Idx)
+	{
+		index_t IdxIdx = DataSet->BranchInputs[IndexSet.Handle][Index].Inputs[Idx];
+		BranchInputsOut[Idx] = DataSet->IndexNames[IndexSet.Handle][IdxIdx];
+	}
+	
+	CHECK_ERROR_END
+}
+

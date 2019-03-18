@@ -677,11 +677,6 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 							token_string UnitName = Stream.ExpectQuotedString().Copy(); //TODO: Leaks.
 							Unit = RegisterUnit(Model, UnitName.Data);
 						}
-						else
-						{
-							Stream.PrintErrorHeader();
-							INCA_FATAL_ERROR("Unrecognized command word: " << Token.StringValue << std::endl);
-						}
 					}
 					RegisterInput(Model, InputName.Data, Unit, true);
 				}

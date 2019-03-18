@@ -233,7 +233,7 @@ AddSimplyHydrologyModule(inca_model *Model)
 	auto SoilWaterFlowToReach = RegisterEquation(Model, "Soil water flow to reach", M3PerSecond); //Units m3/s so that can sum over LU classes
 	SetSolver(Model, SoilWaterFlowToReach, SimplySolver);
 	
-	auto TotalSoilwaterFlowToReach = RegisterEquationCumulative(Model, "Total soilwater runoff to reach", SoilWaterFlowToReach, LandscapeUnits); //Sum over LU
+	auto TotalSoilwaterFlowToReach = RegisterEquationCumulative(Model, "Total soilwater flow to reach from all land classes", SoilWaterFlowToReach, LandscapeUnits); //Sum over LU
 		
 	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MmPerDay);
 	SetSolver(Model, ReachFlowInput, SimplySolver);

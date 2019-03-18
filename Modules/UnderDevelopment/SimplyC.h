@@ -27,6 +27,7 @@ AddSimplyCModel(inca_model *Model)
 	auto KgPerDay	= RegisterUnit(Model, "kg/day");
 	auto Dimensionless = RegisterUnit(Model);
 	auto MgPerL		 = RegisterUnit(Model, "mg/l");
+	auto PerDegreesCPerDay = RegisterUnit(Model, "1/ degreesC day");
 
 	// Set up indexers
 	auto Reach          = GetIndexSetHandle(Model, "Reaches"); //Defined in SimplyHydrol.h
@@ -42,12 +43,12 @@ AddSimplyCModel(inca_model *Model)
 
 	// Carbon params that don't vary with land class, sub-catchment/reach
 	auto CarbonParamsGlobal = RegisterParameterGroup(Model, "Carbon global");
-	auto SoilDOCcoefficient = RegisterParameterDouble(Model, CarbonParamsGlobal, "Soil water DOC coefficient", Dimensionless, 1.0);
+	auto SoilDOCcoefficient = RegisterParameterDouble(Model, CarbonParamsGlobal, "Soil water DOC coefficient describing the soil water DOC response to changing soil temperature", PerDegreesCPerDay, 1.0);
 	auto DeepSoilDOCConcentration = RegisterParameterDouble(Model, CarbonParamsGlobal, "Mineral soil/groundwater DOC concentration", MgPerL, 0.0);
 
 	// Carbon params that vary with land class
 	auto CarbonParamsLand = RegisterParameterGroup(Model, "Carbon land", LandscapeUnits);
-	auto BaselineSoilDOCConcentration = RegisterParameterDouble(Model, CarbonParamsLand, "Baseline soil water DOC concentratoin", MgPerL, 10.0);
+	auto BaselineSoilDOCConcentration = RegisterParameterDouble(Model, CarbonParamsLand, "Baseline soil water DOC concentration", MgPerL, 10.0, 6.0, 30.0);
 
 	// EQUATIONS
 
@@ -65,25 +66,32 @@ AddSimplyCModel(inca_model *Model)
 
 	// Terrestrial carbon equations
 
+	auto InitialSoilwaterCarbonMass = RegisterEquationInitialValue(Model, "Initial soil water carbon mass", Kg);
+	auto SoilwaterCarbonMass = RegisterEquationODE(Model, "Soil water carbon mass", Kg);
+	SetInitialValue(Model, SoilwaterCarbonMass, InitialSoilwaterCarbonMass);
+	SetSolver(Model, SoilwaterCarbonMass, SimplySolver);
+	
 	auto SoilwaterCarbonFluxToReach = RegisterEquation(Model, "Soil water carbon flux", KgPerDay);
 	SetSolver(Model, SoilwaterCarbonFluxToReach, SimplySolver);
 
-	auto SoilwaterCarbonMass = RegisterEquationODE(Model, "Soil water carbon mass", Kg);
-	SetInitialValue(Model, SoilwaterCarbonMass, 0.0); //Default 0  if don't provide this
-	SetSolver(Model, SoilwaterCarbonMass, SimplySolver);
+	EQUATION(Model, InitialSoilwaterCarbonMass,
+		auto InitialConc = ConvertMgPerLToKgPerMm(PARAMETER(BaselineSoilDOCConcentration), PARAMETER(CatchmentArea))
+		return InitialConc * RESULT(SoilWaterVolume);
+		)
+	
+	EQUATION(Model, SoilwaterCarbonMass,
+		return
+			PARAMETER(CatchmentArea) * PARAMETER(SoilDOCcoefficient)
+			* RESULT(SoilTemperature) * PARAMETER(BaselineSoilDOCConcentration)
+			- RESULT(SoilwaterCarbonFluxToReach);
+			)
 
 	EQUATION(Model, SoilwaterCarbonFluxToReach,
 		return
 			(RESULT(SoilwaterCarbonMass)/ RESULT(SoilWaterVolume))
 			* (1.0-PARAMETER(BaseflowIndex))*RESULT(SoilWaterFlow) + RESULT(InfiltrationExcess) ;
-			)
-
-	EQUATION(Model, SoilwaterCarbonMass,
-		return
-			PARAMETER(SoilDOCcoefficient) * RESULT(SoilTemperature) * PARAMETER(BaselineSoilDOCConcentration)
-			- RESULT(SoilwaterCarbonFluxToReach);
-			)
-
+		)
+			
 	// Instream equations
 
 	auto StreamDOCMass = RegisterEquationODE(Model, "Stream DOC mass", Kg);

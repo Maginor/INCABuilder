@@ -84,10 +84,10 @@ parameters:
 0.5 0.5
 
 "SOC fast pool rate constant in the organic layer" :     #(dimensionless) [0, 5000] Constant used to determine the rate of exchange between the fast and slow pools of SOC.
-50 50
+0.01 0.01
 
 "SOC fast pool rate constant in the mineral layer" :     #(dimensionless) [0, 5000] Constant used to determine the rate of exchange between the fast and slow pools of SOC.
-50 50
+0.01 0.01
 
 "Soil temperature rate multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1.1 1.1

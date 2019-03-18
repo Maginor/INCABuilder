@@ -1,5 +1,7 @@
 
 
+#if !defined(INCA_MATH_H)
+
 inline double
 LinearInterpolate(double X, double MinX, double MaxX, double MinY, double MaxY)
 {
@@ -40,3 +42,14 @@ InverseGammaResponse(double X, double MinX, double MaxX, double MinY, double Max
 	
 	return MinY + (MaxY - MinY) * T;
 }
+
+inline double
+SafeDivide(double A, double B)
+{
+	if(B == 0.0) return 0.0;     //TODO: Do we need to check if |B| < epsilon instead?
+	return A / B;
+}
+
+
+#define INCA_MATH_H
+#endif

@@ -59,13 +59,6 @@ GetTimerMilliseconds(timer *Timer)
 	return u64;
 }
 
-inline double
-SafeDivide(double A, double B)
-{
-	if(B == 0.0) return 0.0;     //TODO: Do we need to check if |B| < epsilon instead?
-	return A / B;
-}
-
 inline bool
 IsLeapYear(int Year)
 {

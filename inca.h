@@ -73,7 +73,7 @@ typedef size_t index_t;
 	exit(1);}
 #endif
 
-
+#include "inca_math.h"
 #include "inca_util.h"
 #include "inca_model.h"
 #include "inca_data_set.cpp"

@@ -69,12 +69,6 @@ ActivationControl(double X, double Threshold, double RelativeActivationDistance)
 	return ActivationControl0( (X - Threshold) / Dist );
 }
 
-inline double
-LinInterp(double X, double X0, double X1, double Y0, double Y1)
-{
-	return Y0 + (Y1 - Y0)*(X - X0) / (X1 - X0);
-}
-
 static void
 AddSimplyPHydrologyModule(inca_model *Model)
 {
@@ -486,8 +480,8 @@ AddSimplyPSedimentModule(inca_model *Model)
 				double C_season;
 				if(dayNo >= d_start && dayNo <= d_end)
 				{
-					if(dayNo < d_mid) C_season = LinInterp(dayNo, d_start, d_mid, C_cover, 1.0);
-					else              C_season = LinInterp(dayNo, d_mid,   d_end, 1.0, C_cover);
+					if(dayNo < d_mid) C_season = LinearInterpolate(dayNo, d_start, d_mid, C_cover, 1.0);
+					else              C_season = LinearInterpolate(dayNo, d_mid,   d_end, 1.0, C_cover);
 				}
 				else C_season = C_cover - E_risk_period*(1.0 - C_cover)/(2.0*(DAYS_THIS_YEAR()-E_risk_period));
 				

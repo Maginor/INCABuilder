@@ -238,15 +238,8 @@ AddIncaNModel(inca_model *Model)
 		double depth = RESULT(WaterDepth, Soilwater);
 		double maxratedepth = PARAMETER(MaxRateDepth);
 		double zeroratedepth = PARAMETER(ZeroRateDepth);
-	
-		if(depth > maxratedepth ) return 1.0;
 		
-		if(depth > zeroratedepth )
-		{
-			return (depth - zeroratedepth) / (maxratedepth - zeroratedepth);
-		}
-		
-		return 0.0;
+		return LinearResponse(depth, zeroratedepth, maxratedepth, 0.0, 1.0); //TODO: Maybe replace with one of the more smooth response functions in inca_math.h
 	)
 
 	EQUATION(Model, SeasonalGrowthFactor,

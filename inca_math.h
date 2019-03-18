@@ -29,13 +29,14 @@ SCurveResponse(double X, double MinX, double MaxX, double MinY, double MaxY)
 inline double
 InverseGammaResponse(double X, double MinX, double MaxX, double MinY, double MaxY)
 {
-	const double GammaMin = 1.461632144968362341262;
+	const double GammaMinX = 1.461632144968362341262;
+	const double GammaMin  = 0.885603194410888;
 	
 	if(X <= MinX) return MinY;
 	
 	double XX = (X - MinX) / (MaxX - MinX);
 	
-	double T = 1.0 / tgamma(XX * GammaMin);
+	double T = GammaMin / tgamma(XX * GammaMinX);
 	
 	return MinY + (MaxY - MinY) * T;
 }

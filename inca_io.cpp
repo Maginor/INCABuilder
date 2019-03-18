@@ -534,6 +534,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 				
 				token Token = Stream.PeekToken();
 				
+				bool Store = true;
 				if(Token.Type == TokenType_QuotedString)
 				{
 					s64 Date = Stream.ExpectDate();
@@ -542,8 +543,9 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					
 					if(CurTimestep < 0 || CurTimestep >= (s64)Timesteps)
 					{
-						Stream.PrintErrorHeader();
-						INCA_FATAL_ERROR("The date " << Token.StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
+						//Stream.PrintErrorHeader();
+						//INCA_FATAL_ERROR("The date " << Token.StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
+						Store = false;
 					}
 				}
 				else if(Token.Type == TokenType_UnquotedString)
@@ -565,7 +567,11 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					INCA_FATAL_ERROR("Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl);
 				}
 				
-				*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Stream.ExpectDouble();
+				double Value = Stream.ExpectDouble();
+				if(Store)
+				{
+					*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Value;
+				}
 			}
 		}
 	}

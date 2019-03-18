@@ -773,16 +773,19 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 					int RgtOfHandle = RunningLft++;
 					int IDOfHandle  = RunningID++;
 					const char *Name;
+					unit_h UnitH = {0};
 					if(Mode == 0)
-						Name = GetName(Model, equation_h {Handle});
-					else
-						Name = GetName(Model, input_h {Handle});
-					
-					const char *Unit = 0;
-					if(Mode == 0 && IsValid(Model->EquationSpecs[Handle].Unit))
 					{
-						Unit = GetName(Model, Model->EquationSpecs[Handle].Unit);
+						Name = GetName(Model, equation_h {Handle});
+						UnitH = Model->EquationSpecs[Handle].Unit;
 					}
+					else
+					{
+						Name = GetName(Model, input_h {Handle});
+						UnitH = Model->InputSpecs[Handle].Unit;
+					}
+					const char *Unit = 0;
+					if(IsValid(UnitH)) Unit = GetName(Model, UnitH);
 					
 					WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt + 2, Unit, false, false);
 					WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, CurrentLevel + 1, StartDate, Step, Timesteps);
@@ -807,16 +810,19 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				int RgtOfHandle = RunningLft++;
 				int IDOfHandle  = RunningID++;
 				const char *Name;
+				unit_h UnitH = {0};
 				if(Mode == 0)
-					Name = GetName(DataSet->Model, equation_h {Handle});
-				else
-					Name = GetName(DataSet->Model, input_h {Handle});
-				
-				const char *Unit = 0;
-				if(Mode == 0 && IsValid(Model->EquationSpecs[Handle].Unit))
 				{
-					Unit = GetName(Model, Model->EquationSpecs[Handle].Unit);
+					Name = GetName(Model, equation_h {Handle});
+					UnitH = Model->EquationSpecs[Handle].Unit;
 				}
+				else
+				{
+					Name = GetName(Model, input_h {Handle});
+					UnitH = Model->InputSpecs[Handle].Unit;
+				}
+				const char *Unit = 0;
+				if(IsValid(UnitH)) Unit = GetName(Model, UnitH);
 				
 				WriteStructureEntryToDatabase(Db, InsertStructureStatement, IDOfHandle, Name, LftOfHandle, RgtOfHandle, Dpt, Unit, false, false);
 				WriteValuesToDatabase(DataSet, StorageStructure, Data, Db, InsertValueStatement, IDOfHandle, Handle, Indexes, 0, StartDate, Step, Timesteps);

@@ -110,8 +110,8 @@ AddPersistModel(inca_model *Model)
 	SetInitialValue(Model, SnowAsWaterEquivalent, InitialSnowDepth);
 	
 	
-	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation");
-	auto AirTemperature      = RegisterInput(Model, "Air temperature");
+	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation", MmPerDay);
+	auto AirTemperature      = RegisterInput(Model, "Air temperature", DegreesCelsius);
 	
 	
 	EQUATION(Model, SnowFall,

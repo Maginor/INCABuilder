@@ -3,7 +3,7 @@ start_date : "1970-01-01"
 timesteps : 15706
 
 additional_timeseries :
-"Discharge"
+"Discharge" unit "m3/s"
 "DOC"
 
 
@@ -45678,6 +45678,7 @@ inputs :
 end_timeseries #Discharge
 
 "DOC" :
+#"1970-01-01" to "1970-12-31" 100.0
 "1986-01-06"	9.2										
 "1986-01-12"	10.1										
 "1986-01-19"	10.1										

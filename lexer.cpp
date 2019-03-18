@@ -163,7 +163,7 @@ token_stream::ExpectToken(token_type Type)
 	if(Token.Type != Type)
 	{
 		PrintErrorHeader();
-		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a " << TokenNames[Token.Type]);
+		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a(n) " << TokenNames[Token.Type]);
 		if(Token.Type == TokenType_QuotedString || Token.Type == TokenType_UnquotedString)
 		{
 			INCA_PARTIAL_ERROR(" (" << Token.StringValue << ")");

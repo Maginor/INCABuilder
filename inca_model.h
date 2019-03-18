@@ -193,7 +193,7 @@ struct input_spec
 {
 	const char *Name;
 	
-	unit_h Unit; //NOTE: Not currently used.
+	unit_h Unit;
 	
 	bool IsAdditional;
 	
@@ -767,7 +767,7 @@ SetParentGroup(inca_model *Model, parameter_group_h Child, parameter_group_h Par
 }
 
 inline input_h
-RegisterInput(inca_model *Model, const char *Name, bool IsAdditional = false)
+RegisterInput(inca_model *Model, const char *Name, unit_h Unit = {0}, bool IsAdditional = false)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -776,6 +776,7 @@ RegisterInput(inca_model *Model, const char *Name, bool IsAdditional = false)
 	
 	input_spec &Spec = Model->InputSpecs[Input.Handle];
 	Spec.IsAdditional = IsAdditional;
+	Spec.Unit = Unit;
 	
 	return Input;
 }

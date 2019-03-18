@@ -397,19 +397,21 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		
 		token_string Section = Stream.ExpectUnquotedString();
-		Stream.ExpectToken(TokenType_Colon);
 
 		if(Section.Equals("timesteps"))
 		{
+			Stream.ExpectToken(TokenType_Colon);
 			Timesteps = Stream.ExpectUInt();
 		}
 		else if(Section.Equals("start_date"))
 		{
+			Stream.ExpectToken(TokenType_Colon);
 			DataSet->InputDataStartDate = Stream.ExpectDate();
 			DataSet->InputDataHasSeparateStartDate = true;
 		}
 		else if(Section.Equals("inputs"))
 		{
+			Stream.ExpectToken(TokenType_Colon);
 			break;
 		}
 		else if(Section.Equals("index_set_dependencies") || Section.Equals("additional_timeseries"))
@@ -418,7 +420,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			while(true)
 			{
 				Token = Stream.PeekToken();
-				if(Token.Type == TokenType_UnquotedString) break; //We hit a new section;
+				if(Token.Type == TokenType_UnquotedString && !Token.StringValue.Equals("unit")) break; //We hit a new section;
 				Stream.ReadToken(); //Otherwise consume the token and ignore it.
 			}
 		}
@@ -534,19 +536,13 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 				
 				token Token = Stream.PeekToken();
 				
-				bool Store = true;
 				if(Token.Type == TokenType_QuotedString)
 				{
 					s64 Date = Stream.ExpectDate();
 					
 					CurTimestep = DayOffset(StartDate, Date); //NOTE: Only one-day timesteps currently supported.
 					
-					if(CurTimestep < 0 || CurTimestep >= (s64)Timesteps)
-					{
-						//Stream.PrintErrorHeader();
-						//INCA_FATAL_ERROR("The date " << Token.StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
-						Store = false;
-					}
+					
 				}
 				else if(Token.Type == TokenType_UnquotedString)
 				{
@@ -567,11 +563,51 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					INCA_FATAL_ERROR("Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl);
 				}
 				
-				double Value = Stream.ExpectDouble();
-				if(Store)
+				Token = Stream.PeekToken();
+				if(Token.Type == TokenType_UnquotedString)
 				{
-					*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Value;
+					Stream.ReadToken();
+					s64 EndDateRange = Stream.ExpectDate();
+					s64 EndTimestepRange = DayOffset(StartDate, EndDateRange); //NOTE: Only one-day timesteps currently supported.
+					
+					if(EndTimestepRange < CurTimestep)
+					{
+						Stream.PrintErrorHeader();
+						INCA_FATAL_ERROR("The end of the date range is earlier than the beginning.");
+					}
+					
+					double Value = Stream.ExpectDouble();
+					for(s64 Timestep = CurTimestep; Timestep <= EndTimestepRange; ++Timestep)
+					{
+						if(Timestep >= 0 && Timestep < (s64)Timesteps)
+						{
+							*(WriteTo + ((size_t)Timestep)*DataSet->InputStorageStructure.TotalCount) = Value;
+						}
+						else
+						{
+							//NOTE: Should we log if this happens and print a warning?
+						}
+					}
 				}
+				else if(Token.Type == TokenType_Numeric)
+				{
+					double Value = Stream.ExpectDouble();
+					if(CurTimestep >= 0 && CurTimestep < (s64)Timesteps)
+					{
+						*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Value;
+					}
+					else
+					{
+						//NOTE: Should we log if this happens and print a warning?
+					}
+				}
+				else
+				{
+					Stream.PrintErrorHeader();
+					INCA_FATAL_ERROR("Expected either a 'to' or a number.");
+				}
+				
+				
 			}
 		}
 	}
@@ -630,7 +666,24 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 				{
 					Token = Stream.ReadToken();
 					token_string InputName = Token.StringValue.Copy(); //TODO: Leaks.
-					RegisterInput(Model, InputName.Data, true);
+					
+					unit_h Unit = {0};
+					Token = Stream.PeekToken();
+					if(Token.Type == TokenType_UnquotedString)
+					{
+						if(Token.StringValue.Equals("unit"))
+						{
+							Stream.ReadToken();
+							token_string UnitName = Stream.ExpectQuotedString().Copy(); //TODO: Leaks.
+							Unit = RegisterUnit(Model, UnitName.Data);
+						}
+						else
+						{
+							Stream.PrintErrorHeader();
+							INCA_FATAL_ERROR("Unrecognized command word: " << Token.StringValue << std::endl);
+						}
+					}
+					RegisterInput(Model, InputName.Data, Unit, true);
 				}
 				else break;
 			}

@@ -2,19 +2,19 @@ start_date : "1981-01-01"
 timesteps : 10957
 
 additional_timeseries :
-"observed Q"
-"observed Q mm/d"
-"observed SS"
-"observed TDP"
-"observed PP"
-"Python Qr"
-"Python SS_mgl"
-"Python TDP_mgl"
-"Python PP_mgl"
-"Python VsA"
-"Python QsA"
-"Python Vg"
-"Python Qg"
+"observed Q"        unit "m^3/s"
+"observed Q mm/d"   unit "mm/day"
+"observed SS"       unit "mg/l"
+"observed TDP"      unit "mg/l"
+"observed PP"       unit "mg/l"
+"Python Qr"         unit "mm/day"
+"Python SS_mgl"     unit "mg/l"
+"Python TDP_mgl"    unit "mg/l"
+"Python PP_mgl"     unit "mg/l"
+"Python VsA"        unit "mm"
+"Python QsA"        unit "mm/day"
+"Python Vg"         unit "mm"
+"Python Qg"         unit "mm/day"
 
 inputs :
 

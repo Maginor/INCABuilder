@@ -87,6 +87,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto M3PerSecond       = RegisterUnit(Model, "m^3/s");
 	auto Km2               = RegisterUnit(Model, "km^2");
 	auto M                 = RegisterUnit(Model, "m");
+	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	
 	// Set up index sets
 	auto Reach = RegisterIndexSetBranched(Model, "Reaches");
@@ -138,8 +139,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto LandUseProportions   = RegisterParameterDouble(Model, SubcatchmentGeneral, "Land use proportions", Dimensionless, 0.5, 0.0, 1.0);
 	
 	// Inputs
-	auto Precipitation  = RegisterInput(Model, "Precipitation");
-	auto AirTemperature = RegisterInput(Model, "Air temperature");
+	auto Precipitation  = RegisterInput(Model, "Precipitation", MmPerDay);
+	auto AirTemperature = RegisterInput(Model, "Air temperature", Degrees);
 	
 	// Start equations
 	
@@ -178,7 +179,7 @@ AddSimplyPHydrologyModule(inca_model *Model)
 		return RESULT(SnowMelt) + RESULT(PrecipitationFallingAsRain);
 	)
 	
-	auto PotentialEvapoTranspiration = RegisterInput(Model, "Potential evapotranspiration");
+	auto PotentialEvapoTranspiration = RegisterInput(Model, "Potential evapotranspiration", MmPerDay);
 	
 	auto InfiltrationExcess = RegisterEquation(Model, "Infiltration excess", MmPerDay);
 	auto Infiltration       = RegisterEquation(Model, "Infiltration", MmPerDay);

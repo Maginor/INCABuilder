@@ -22,7 +22,7 @@ DailyExtraTerrestrialRadiation(double Latitude, s32 DayOfYear)
 	
 	double SunsetHourAngle = acos(-tan(LatitudeRad)*tan(SolarDecimation));
 	
-	return (24.0 * 60.0 / Pi) * SolarConstant * InverseRelativeDistanceEarthSun * (SunsetHourAngle * sin(LatitudeRad) * sin(SolarDecimation) + cos(LatitudeRad) * sin(SolarDecimation) * sin(SunsetHourAngle));
+	return (24.0 * 60.0 / Pi) * SolarConstant * InverseRelativeDistanceEarthSun * (SunsetHourAngle * sin(LatitudeRad) * sin(SolarDecimation) + cos(LatitudeRad) * cos(SolarDecimation) * sin(SunsetHourAngle));
 }
 
 static void
@@ -31,10 +31,25 @@ ComputeSolarRadiation(inca_data_set *DataSet)
 	//NOTE: It would be a little nonsensical to have more than one solar radiation timeseries unless you have a REeeeaAAAaaaaaLLLllYyYyyYYY long river going north-south (or opposite). OR if you have actual data in which case you don't use this precomputation.
 	// We will only allow for one Latitude and one Elevation for now. If this is a problem, contact us...
 	
+	//NOTE: It is not strictly necessary to have this as a preprocessing step. It could be done in-model. Lets see what works out best.
+	
+	bool AnyNeedProcessing = false;
+	ForeachInputInstance(DataSet, "Solar radiation", 
+		[DataSet, &AnyNeedProcessing](const char * const *IndexNames, size_t IndexesCount)
+		{
+			if(!InputSeriesWasProvided(DataSet, "Solar radiation", IndexNames, IndexesCount))
+			{
+				AnyNeedProcessing = true;
+			}
+		}
+	);
+	
+	if(!AnyNeedProcessing) return;
+	
 	double Latitude = GetParameterDouble(DataSet, "Latitude", {});
 	double Elevation = GetParameterDouble(DataSet, "Elevation", {});
 	
-	u64 Timesteps = GetInputTimesteps(DataSet);
+	u64 Timesteps = DataSet->InputDataTimesteps;
 	s64 StartDate = GetInputStartDate(DataSet);
 	
 	std::vector<double> SolarRad(Timesteps);
@@ -50,15 +65,18 @@ ComputeSolarRadiation(inca_data_set *DataSet)
 		double DETR = DailyExtraTerrestrialRadiation(Latitude, DOY);
 		double SWR  = ShortWaveRadiationOnAClearSkyDay(Elevation, DETR);
 		
-		SolarRad[Timestep] = SWR;
+		SolarRad[Timestep] = SWR * 11.5740741;  //NOTE: Converting MJ/m2/day to W/m2
 		
 		Date += 86400;
 	}
 	
 	ForeachInputInstance(DataSet, "Solar radiation",
 		[DataSet, &SolarRad](const char * const *IndexNames, size_t IndexesCount)
-		{			
-			SetInputSeries(DataSet, "Solar radiation", IndexNames, IndexesCount, SolarRad.data(), SolarRad.size());
+		{
+			if(!InputSeriesWasProvided(DataSet, "Solar radiation", IndexNames, IndexesCount))
+			{
+				SetInputSeries(DataSet, "Solar radiation", IndexNames, IndexesCount, SolarRad.data(), SolarRad.size());
+			}
 		}
 	);
 }

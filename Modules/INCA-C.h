@@ -2,10 +2,23 @@
 
 //NOTE NOTE NOTE: This is still in development and is not finished.
 
+#include "Preprocessing/SolarRadiation.h"
+
+
 static void
 AddINCACModel(inca_model *Model)
 {
 	//NOTE: Uses PERSiST, SoilTemperature
+	
+	AddPreprocessingStep(Model, ComputeSolarRadiation);
+	
+	auto Degrees        = RegisterUnit(Model, "°");
+	auto Metres         = RegisterUnit(Model, "m");
+	
+	auto System = GetParameterGroupHandle(Model, "System");
+	
+	auto Latitude  = RegisterParameterDouble(Model, System, "Latitude", Degrees, 60.0, -90.0, 90.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data");
+	auto Elevation = RegisterParameterDouble(Model, System, "Elevation", Metres, 0.0, 0.0, 8848.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data");
 	
 	auto Dimensionless  = RegisterUnit(Model);
 	auto Mm             = RegisterUnit(Model, "mm");
@@ -13,13 +26,13 @@ AddINCACModel(inca_model *Model)
 	auto GPerM2PerDay   = RegisterUnit(Model, "g/m^2/day");
 	auto JulianDay      = RegisterUnit(Model, "Julian day");
 	auto Days           = RegisterUnit(Model, "day");
-	auto kWPerM2        = RegisterUnit(Model, "kW/m^2");
 	auto DegreesCelsius = RegisterUnit(Model, "°C");
 	auto KgPerM3        = RegisterUnit(Model, "kg/m^3");
 	auto MPerDay        = RegisterUnit(Model, "m/day");
 	auto KgPerDay       = RegisterUnit(Model, "kg/day");
 	auto PerDay         = RegisterUnit(Model, "/day");
 	auto Kg             = RegisterUnit(Model, "kg");
+	auto WattPerM2      = RegisterUnit(Model, "W/m^2");
 	
 	auto Soils          = GetIndexSetHandle(Model, "Soils");
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
@@ -482,7 +495,7 @@ AddINCACModel(inca_model *Model)
 	auto ReachDICLossRate                       = RegisterParameterDouble(Model, Reaches, "Reach DIC loss rate", PerDay, 0.1);
 	auto MicrobialMineralisationBaseRate        = RegisterParameterDouble(Model, Reaches, "Aquatic DOC microbial mineralisation base rate", PerDay, 0.1);
 	
-	auto SolarRadiation = RegisterInput(Model, "Solar radiation");
+	auto SolarRadiation = RegisterInput(Model, "Solar radiation", WattPerM2);
 	
 	auto ReachSolver = GetSolverHandle(Model, "Reach solver"); //NOTE: Defined in PERSiST
 	

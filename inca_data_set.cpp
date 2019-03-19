@@ -237,7 +237,7 @@ OffsetForHandle(storage_structure &Structure, entity_handle Handle)
 // NOTE: Returns the storage index of a value corresponding to this Handle with the given index set indexes.
 // CurrentIndexes must be set up so that for any index set with handle IndexSetHandle, CurrentIndexes[IndexSetHandle] is the current index of that index set. (Typically ValueSet->CurrentIndexes)
 // IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
-static size_t
+inline size_t
 OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
@@ -270,7 +270,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 //
 // WARNING: There is no error checking at all to see if IndexesCount is the same as the number of index set dependencies. If this is wrong, the program could crash, though this access function is mostly used by wrappers that do such error checks themselves.
 // TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
-static size_t
+inline size_t
 OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t IndexesCount, const size_t *IndexCounts, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;

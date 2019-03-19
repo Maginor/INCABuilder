@@ -6,13 +6,16 @@ static void
 AddPersistModel(inca_model *Model)
 {
 	auto Mm                = RegisterUnit(Model, "mm");
-	auto Cm                = RegisterUnit(Model, "cm");
 	auto MmPerDay          = RegisterUnit(Model, "mm/day");
 	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
 	auto MmSWE             = RegisterUnit(Model, "mm SWE");
 	auto Dimensionless     = RegisterUnit(Model);
 	auto Days              = RegisterUnit(Model, "days");
+	
+	auto MetresCubedPerSecond = RegisterUnit(Model, "m3/s");
+	auto MetersCubed          = RegisterUnit(Model, "m3");
+	auto MetresPerSecond      = RegisterUnit(Model, "m/s");
 	
 	auto System = GetParameterGroupHandle(Model, "System");
 	
@@ -291,10 +294,9 @@ AddPersistModel(inca_model *Model)
 	)
 
     
-
-	auto MetresCubedPerSecond = RegisterUnit(Model, "m3/s");
-	auto MetersCubed = RegisterUnit(Model, "m3");
-	auto MetresPerSecond = RegisterUnit(Model, "m/s");
+	auto AbstractionTimeseries = RegisterInput(Model, "Abstraction flow", MetresCubedPerSecond);
+	auto EffluentTimeseries    = RegisterInput(Model, "Effluent flow", MetresCubedPerSecond);
+	auto LandUseTimeseries     = RegisterInput(Model, "%", PercentU);
 
 	auto IncaSolver = RegisterSolver(Model, "Reach solver", 0.1, IncaDascru);
 	
@@ -324,26 +326,44 @@ AddPersistModel(inca_model *Model)
 	auto ReachVelocity = RegisterEquation(Model, "Reach velocity", MetresPerSecond);
 	auto ReachDepth    = RegisterEquation(Model, "Reach depth", Meters);
 	
+	
+	
+	
 	// Stream flow (m3/s) = Catchment Area (km2)
 	//                      * Landscape unit proportion (% / 100)
 	//                      * Runoff (mm/d)
 	//                      * 1e6 m2/km2 * 1e-3 m/mm * 1/86400 d/s
 	EQUATION(Model, DiffuseFlowOutput,
-		return (PARAMETER(TerrestrialCatchmentArea) * (PARAMETER(Percent) / 100.0) * RESULT(TotalRunoffToReach) * 1000000.0 * 0.001 * (1.0 / 86400.0));
+		double percent = PARAMETER(Percent);
+		double percentin = INPUT(LandUseTimeseries);
+		if(INPUT_WAS_PROVIDED(LandUseTimeseries)) percent = percentin;
+	
+		return (PARAMETER(TerrestrialCatchmentArea) * (percent / 100.0) * RESULT(TotalRunoffToReach) * 1000000.0 * 0.001 * (1.0 / 86400.0));
 	)
 
 	EQUATION(Model, ReachFlowInput,
 		double reachInput = RESULT(TotalDiffuseFlowOutput);
-		double effluentInput = PARAMETER(EffluentFlow);
+		double effluent   = PARAMETER(EffluentFlow);
+		double effluentin = INPUT(EffluentTimeseries);
+		if(INPUT_WAS_PROVIDED(EffluentTimeseries))
+		{
+			effluent = effluentin;
+		}
+		
 		FOREACH_INPUT(Reach,
 			reachInput += RESULT(ReachFlow, *Input);
 		)
-		if(PARAMETER(ReachHasEffluentInput)) reachInput += effluentInput;
+		if(PARAMETER(ReachHasEffluentInput)) reachInput += effluent;
 		return reachInput;
 	)
 	
 	EQUATION(Model, ReachAbstraction,
-		double abstraction = Min(PARAMETER(AbstractionFlow), RESULT(ReachVolume)/86400.0);
+		double abstraction = PARAMETER(AbstractionFlow);
+		double abstractionin = INPUT(AbstractionTimeseries);
+		if(INPUT_WAS_PROVIDED(AbstractionTimeseries)) abstraction = abstractionin;
+		
+		//TODO: This is not really a good comparison as we could allow abstraction if there is enough effluent + other inputs
+		abstraction = Min(abstraction, RESULT(ReachVolume)/86400.0);
 		if(PARAMETER(ReachHasAbstraction))
 		{
 			return abstraction;

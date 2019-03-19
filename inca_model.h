@@ -1120,7 +1120,8 @@ AddInputIndexSetDependency(inca_model *Model, input_h Input, index_set_h IndexSe
 #define INPUT(InputH) (ValueSet__->Running ? GetCurrentInput(ValueSet__, InputH) : RegisterInputDependency(ValueSet__, InputH))
 #define RESULT(ResultH, ...) (ValueSet__->Running ? GetCurrentResult(ValueSet__, ResultH, ##__VA_ARGS__) : RegisterResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
 #define LAST_RESULT(ResultH, ...) (ValueSet__->Running ? GetLastResult(ValueSet__, ResultH, ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
-#define EARLIER_RESULT(ResultH, StepBack, ...) (ValueSet__->Running ? GetEarlierResult(ValueSet__, ResultH, (StepBack), ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__)) 
+#define EARLIER_RESULT(ResultH, StepBack, ...) (ValueSet__->Running ? GetEarlierResult(ValueSet__, ResultH, (StepBack), ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
+#define INPUT_WAS_PROVIDED(InputH) (ValueSet__->Running ? GetIfInputWasProvided(ValueSet__, InputH) : RegisterInputDependency(ValueSet__, InputH))
 
 #define CURRENT_DAY_OF_YEAR() (ValueSet__->DayOfYear)
 #define DAYS_THIS_YEAR() (ValueSet__->DaysThisYear)
@@ -1164,6 +1165,7 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool_h Parameter)
 //NOTE: This does NOT do error checking to see if we provided too many override indexes or if they were out of bounds! We could maybe add an option to do that
 // that is compile-out-able?
 size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle);
+size_t OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, entity_handle Handle);
 
 
 template<typename... T> double
@@ -1255,6 +1257,14 @@ GetCurrentInput(value_set_accessor *ValueSet, input_h Input)
 }
 
 
+inline bool
+GetIfInputWasProvided(value_set_accessor * ValueSet, input_h Input)
+{
+	//TODO: This should be optimized
+	inca_data_set *DataSet = ValueSet->DataSet;
+	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Input.Handle);
+	return DataSet->InputTimeseriesWasProvided[Offset];
+}
 
 
 

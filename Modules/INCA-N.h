@@ -75,21 +75,21 @@ AddIncaNModel(inca_model *Model)
 	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream nitrate concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream nitrate concentration");
 	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream ammonium concentration");
 	
+	//NOTE: So far we have not got around to implementing the usage of all of these!
+	auto NitrateFertilizerTimeseries = RegisterInput(Model, "Fertilizer nitrate", KgPerHectarePerDay);
+	auto AmmoniumFertilizerTimeseries = RegisterInput(Model, "Fertilizer ammonium", KgPerHectarePerDay);
+	auto NitrateWetDepositionTimeseries = RegisterInput(Model, "Nitrate wet deposition", KgPerHectarePerDay);
+	auto NitrateDryDepositionTimeseries = RegisterInput(Model, "Nitrate dry deposition", KgPerHectarePerDay);
+	auto AmmoniumWetDepositionTimeseries = RegisterInput(Model, "Ammonium wet deposition", KgPerHectarePerDay);
+	auto AmmoniumDryDepositionTimeseries = RegisterInput(Model, "Ammonium dry deposition", KgPerHectarePerDay);
+	auto NitrateEffluentConcentrationTimeseries = RegisterInput(Model, "Effluent nitrate concentration", MgPerL);
+	auto AmmoniumEffluentConcentrationTimeseries = RegisterInput(Model, "Effluent ammonium concentration", MgPerL);
+	//NOTE: Also: multiple growth periods! But how to do that? Is this a feature that is being used?
 	
-	//Needs optional timeseries:
-	/*
-	N03 Fertilizer
-	NH4 Fertilizer
-	Deposition       Both nitrate and ammonium?
-	Effluent         Is this water flow or nitrate flux?
-	Abstraction      Is this water flow or nitrate flux?
-	Multiple growth periods
-	Land use periods
-	*/
-	
-	
-	
-	
+	auto AbstractionTimeseries = GetInputHandle(Model, "Abstraction flow");
+	auto EffluentTimeseries    = GetInputHandle(Model, "Effluent flow");
+	auto LandUseTimeseries     = GetInputHandle(Model, "%");
+
 	
 	
 	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);
@@ -102,7 +102,6 @@ AddIncaNModel(inca_model *Model)
 	
 	//NOTE: These are from PERSiST:
 	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation is subtracted.
-	auto WaterDepth4           = GetEquationHandle(Model, "Water depth 4"); //NOTE: This is right before runoff is subtracted.
 	auto WaterDepth            = GetEquationHandle(Model, "Water depth");   //NOTE: This is after everything is subtracted.
 	auto RunoffToReach         = GetEquationHandle(Model, "Runoff to reach");
 	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
@@ -473,6 +472,7 @@ AddIncaNModel(inca_model *Model)
 	auto ReachSolver = GetSolverHandle(Model, "Reach solver"); //NOTE: from persist
 	auto ReachFlow   = GetEquationHandle(Model, "Reach flow");
 	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
+	auto ReachAbstraction = GetEquationHandle(Model, "Reach abstraction");
 	
 	auto ReachNitrateOutput = RegisterEquation(Model, "Reach nitrate output", KgPerDay);
 	SetSolver(Model, ReachNitrateOutput, ReachSolver);
@@ -484,6 +484,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachUpstreamNitrate = RegisterEquation(Model, "Reach upstream nitrate", KgPerDay);
 	auto ReachEffluentNitrate = RegisterEquation(Model, "Reach effluent nitrate", KgPerDay);
 	auto ReachTotalNitrateInput = RegisterEquation(Model, "Reach total nitrate input", KgPerDay);
+	auto ReachNitrateAbstraction = RegisterEquation(Model, "Reach nitrate abstraction", KgPerDay);
+	SetSolver(Model, ReachNitrateAbstraction, ReachSolver);
 	auto ReachNitrateInitialValue = RegisterEquationInitialValue(Model, "Reach nitrate initial value", Kg);
 	auto ReachNitrate = RegisterEquationODE(Model, "Reach nitrate", Kg);
 	SetSolver(Model, ReachNitrate, ReachSolver);
@@ -491,6 +493,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachUpstreamAmmonium = RegisterEquation(Model, "Reach upstream ammonium", KgPerDay);
 	auto ReachEffluentAmmonium = RegisterEquation(Model, "Reach effluent ammonium", KgPerDay);
 	auto ReachTotalAmmoniumInput = RegisterEquation(Model, "Reach total ammonium input", KgPerDay);
+	auto ReachAmmoniumAbstraction = RegisterEquation(Model, "Reach ammonium abstraction", KgPerDay);
+	SetSolver(Model, ReachAmmoniumAbstraction, ReachSolver);
 	auto ReachAmmoniumOutput = RegisterEquation(Model, "Reach ammonium output", KgPerDay);
 	SetSolver(Model, ReachAmmoniumOutput, ReachSolver);
 	auto ReachAmmoniumInitialValue = RegisterEquationInitialValue(Model, "Reach ammmonium initial value", Kg);
@@ -534,13 +538,26 @@ AddIncaNModel(inca_model *Model)
 	auto ReachHasEffluentInput = GetParameterBoolHandle(Model, "Reach has effluent input");
 	
 	EQUATION(Model, ReachEffluentNitrate,
-		double effluentnitrate = PARAMETER(EffluentFlow) * PARAMETER(ReachEffluentNitrateConcentration) * 86.4;
+		double effluentflow = PARAMETER(EffluentFlow);
+		double effluentflowin = INPUT(EffluentTimeseries);
+		if(INPUT_WAS_PROVIDED(EffluentTimeseries)) effluentflow = effluentflowin;
+		
+		double effluentnitrateconc = PARAMETER(ReachEffluentNitrateConcentration);
+		double effluentnitrateconcin = INPUT(NitrateEffluentConcentrationTimeseries);
+		if(INPUT_WAS_PROVIDED(NitrateEffluentConcentrationTimeseries)) effluentnitrateconc = effluentnitrateconcin;
+		
+		double effluentnitrate = effluentflow * effluentnitrateconc * 86.4;
+		
 		if(!PARAMETER(ReachHasEffluentInput)) effluentnitrate = 0.0;
 		return effluentnitrate;
 	)
 	
 	EQUATION(Model, ReachTotalNitrateInput,
 		return RESULT(ReachUpstreamNitrate) + RESULT(TotalDiffuseNitrateOutput) + RESULT(ReachEffluentNitrate);
+	)
+	
+	EQUATION(Model, ReachNitrateAbstraction,
+		return RESULT(ReachNitrate) * SafeDivide(RESULT(ReachAbstraction) * 86400.0, RESULT(ReachVolume)); 
 	)
 	
 	EQUATION(Model, ReachNitrateInitialValue,
@@ -552,8 +569,8 @@ AddIncaNModel(inca_model *Model)
 			  RESULT(ReachTotalNitrateInput)
 			- RESULT(ReachNitrateOutput)
 			- RESULT(ReachDenitrification)
-			+ RESULT(ReachNitrification);
-			//-RESULT(ReachNitrateAbstraction);
+			+ RESULT(ReachNitrification)
+			- RESULT(ReachNitrateAbstraction);
 	)
 	
 	EQUATION(Model, ReachUpstreamAmmonium,
@@ -565,7 +582,16 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachEffluentAmmonium,
-		double effluentammonium = PARAMETER(EffluentFlow) * PARAMETER(ReachEffluentAmmoniumConcentration) * 86.4;
+		double effluentflow = PARAMETER(EffluentFlow);
+		double effluentflowin = INPUT(EffluentTimeseries);
+		if(INPUT_WAS_PROVIDED(EffluentTimeseries)) effluentflow = effluentflowin;
+		
+		double effluentammoniumconc = PARAMETER(ReachEffluentNitrateConcentration);
+		double effluentammoniumconcin = INPUT(NitrateEffluentConcentrationTimeseries);
+		if(INPUT_WAS_PROVIDED(NitrateEffluentConcentrationTimeseries)) effluentammoniumconc = effluentammoniumconcin;
+		
+		double effluentammonium = effluentflow * effluentammoniumconc * 86.4;
+
 		if(!PARAMETER(ReachHasEffluentInput)) effluentammonium = 0.0;
 		return effluentammonium;
 	)
@@ -578,12 +604,20 @@ AddIncaNModel(inca_model *Model)
 		return RESULT(ReachAmmonium) * SafeDivide(RESULT(ReachFlow) * 86400.0, RESULT(ReachVolume));
 	)
 	
+	EQUATION(Model, ReachAmmoniumAbstraction,
+		return RESULT(ReachAmmonium) * SafeDivide(RESULT(ReachAbstraction) * 86400.0, RESULT(ReachVolume)); 
+	)
+	
 	EQUATION(Model, ReachAmmoniumInitialValue,
 		return PARAMETER(InitialStreamAmmoniumConcentration) * RESULT(ReachVolume) / 1000.0;
 	)
 	
 	EQUATION(Model, ReachAmmonium,
-		return RESULT(ReachTotalAmmoniumInput) - RESULT(ReachAmmoniumOutput) - RESULT(ReachNitrification); //-RESULT(ReachAmmoniumAbstraction);
+		return
+			  RESULT(ReachTotalAmmoniumInput)
+			- RESULT(ReachAmmoniumOutput)
+			- RESULT(ReachNitrification)
+			- RESULT(ReachAmmoniumAbstraction);
 	)
 	
 	//NOTE: Added this for easier calibration - MDN

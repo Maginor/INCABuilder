@@ -76,6 +76,22 @@ AddIncaNModel(inca_model *Model)
 	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream ammonium concentration");
 	
 	
+	//Needs optional timeseries:
+	/*
+	N03 Fertilizer
+	NH4 Fertilizer
+	Deposition       Both nitrate and ammonium?
+	Effluent         Is this water flow or nitrate flux?
+	Abstraction      Is this water flow or nitrate flux?
+	Multiple growth periods
+	Land use periods
+	*/
+	
+	
+	
+	
+	
+	
 	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);
 	
 	auto Soils = GetIndexSetHandle(Model, "Soils");

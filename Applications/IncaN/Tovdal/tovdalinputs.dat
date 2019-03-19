@@ -2,8 +2,8 @@ start_date : "1996-1-1"
 timesteps : 2922
 
 additional_timeseries :
-"Discharge"
-"Nitrate"
+"Discharge" unit "m3/s"
+"Nitrate"   unit "mg/l"
 
 index_set_dependencies :
 "Air temperature" : {"Reaches"}
@@ -14,7 +14,7 @@ index_set_dependencies :
 
 inputs :
 
-"Air temperature" {"Tveitvatn"} :
+"Air temperature" {"Tveitvatn"}:
 -8.26
 -12.56
 -19.56

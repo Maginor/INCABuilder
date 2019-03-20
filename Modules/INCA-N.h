@@ -75,13 +75,13 @@ AddIncaNModel(inca_model *Model)
 	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream nitrate concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream nitrate concentration");
 	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream ammonium concentration");
 	
-	//NOTE: So far we have not got around to implementing the usage of all of these!
+
 	auto NitrateFertilizerTimeseries             = RegisterInput(Model, "Fertilizer nitrate", KgPerHectarePerDay);
 	auto AmmoniumFertilizerTimeseries            = RegisterInput(Model, "Fertilizer ammonium", KgPerHectarePerDay);
 	auto NitrateWetDepositionTimeseries          = RegisterInput(Model, "Nitrate wet deposition", KgPerHectarePerDay);
 	auto NitrateDryDepositionTimeseries          = RegisterInput(Model, "Nitrate dry deposition", KgPerHectarePerDay);
 	auto AmmoniumWetDepositionTimeseries         = RegisterInput(Model, "Ammonium wet deposition", KgPerHectarePerDay);
-	auto AmmoniumDryDepositionTimeseries         = RegisterInput(Model, "Ammonium dry deposition", KgPerHectarePerDay); //NOTE:Not currently in use
+	auto AmmoniumDryDepositionTimeseries         = RegisterInput(Model, "Ammonium dry deposition", KgPerHectarePerDay);
 	auto NitrateEffluentConcentrationTimeseries  = RegisterInput(Model, "Effluent nitrate concentration", MgPerL);
 	auto AmmoniumEffluentConcentrationTimeseries = RegisterInput(Model, "Effluent ammonium concentration", MgPerL);
 	auto GrowthCurveOffsetTimeseries             = RegisterInput(Model, "Growth curve offset", Dimensionless);
@@ -89,7 +89,7 @@ AddIncaNModel(inca_model *Model)
 	
 	auto AbstractionTimeseries = GetInputHandle(Model, "Abstraction flow");
 	auto EffluentTimeseries    = GetInputHandle(Model, "Effluent flow");
-	auto LandUseTimeseries     = GetInputHandle(Model, "%");                                                            //NOTE:Not currently in use
+	auto LandUseTimeseries     = GetInputHandle(Model, "%");
 	
 	auto ActualPrecipitation   = GetInputHandle(Model, "Actual precipitation");
 
@@ -370,12 +370,12 @@ AddIncaNModel(inca_model *Model)
 		double start = LAST_RESULT(CurrentPlantGrowthStartDay);
 		double startparam = (double)PARAMETER(PlantGrowthStartDay);
 		
-		if(!INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries)) start = startparam;
-		
 		if(LAST_RESULT(CurrentGrowthCurveAmplitude) != RESULT(CurrentGrowthCurveAmplitude))
 		{
 			start = (double)CURRENT_DAY_OF_YEAR();
 		}
+		
+		if(!INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries)) start = startparam;
 		
 		return start;
 	)
@@ -711,9 +711,9 @@ AddIncaNModel(inca_model *Model)
 		double effluentflowin = INPUT(EffluentTimeseries);
 		if(INPUT_WAS_PROVIDED(EffluentTimeseries)) effluentflow = effluentflowin;
 		
-		double effluentammoniumconc = PARAMETER(ReachEffluentNitrateConcentration);
-		double effluentammoniumconcin = INPUT(NitrateEffluentConcentrationTimeseries);
-		if(INPUT_WAS_PROVIDED(NitrateEffluentConcentrationTimeseries)) effluentammoniumconc = effluentammoniumconcin;
+		double effluentammoniumconc = PARAMETER(ReachEffluentAmmoniumConcentration);
+		double effluentammoniumconcin = INPUT(AmmoniumEffluentConcentrationTimeseries);
+		if(INPUT_WAS_PROVIDED(AmmoniumEffluentConcentrationTimeseries)) effluentammoniumconc = effluentammoniumconcin;
 		
 		double effluentammonium = effluentflow * effluentammoniumconc * 86.4;
 

@@ -332,21 +332,14 @@ AddPersistModel(inca_model *Model)
 	//                      * Runoff (mm/d)
 	//                      * 1e6 m2/km2 * 1e-3 m/mm * 1/86400 d/s
 	EQUATION(Model, DiffuseFlowOutput,
-		double percent = PARAMETER(Percent);
-		double percentin = INPUT(LandUseTimeseries);
-		if(INPUT_WAS_PROVIDED(LandUseTimeseries)) percent = percentin;
+		double percent = IF_INPUT_ELSE_PARAMETER(LandUseTimeseries, Percent);
 	
 		return (PARAMETER(TerrestrialCatchmentArea) * (percent / 100.0) * RESULT(TotalRunoffToReach) * 1000000.0 * 0.001 * (1.0 / 86400.0));
 	)
 
 	EQUATION(Model, ReachFlowInput,
 		double reachInput = RESULT(TotalDiffuseFlowOutput);
-		double effluent   = PARAMETER(EffluentFlow);
-		double effluentin = INPUT(EffluentTimeseries);
-		if(INPUT_WAS_PROVIDED(EffluentTimeseries))
-		{
-			effluent = effluentin;
-		}
+		double effluent   = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow);
 		
 		FOREACH_INPUT(Reach,
 			reachInput += RESULT(ReachFlow, *Input);
@@ -356,9 +349,7 @@ AddPersistModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachAbstraction,
-		double abstraction = PARAMETER(AbstractionFlow);
-		double abstractionin = INPUT(AbstractionTimeseries);
-		if(INPUT_WAS_PROVIDED(AbstractionTimeseries)) abstraction = abstractionin;
+		double abstraction = IF_INPUT_ELSE_PARAMETER(AbstractionTimeseries, AbstractionFlow);
 		
 		//TODO: This is not really a good comparison as we could allow abstraction if there is enough effluent + other inputs
 		abstraction = Min(abstraction, RESULT(ReachVolume)/86400.0);

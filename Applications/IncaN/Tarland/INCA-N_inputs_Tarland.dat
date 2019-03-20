@@ -11,6 +11,11 @@ additional_timeseries :
 
 inputs :
 
+"Effluent flow" :
+"2004-01-01" to "2005-01-01" 0.01
+"2005-01-02" to "2011-01-01" 0.02
+end_timeseries
+
 "Air temperature" :
 2.91
 4.37

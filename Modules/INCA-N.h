@@ -261,9 +261,7 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, NitrateDryDepositionToSoil,
 		double storage = LAST_RESULT(NitrateDryStorage);
-		double deposition = PARAMETER(NitrateDryDeposition);
-		double depositionin = INPUT(NitrateDryDepositionTimeseries);
-		if(INPUT_WAS_PROVIDED(NitrateDryDepositionTimeseries)) deposition = depositionin;
+		double deposition = IF_INPUT_ELSE_PARAMETER(NitrateDryDepositionTimeseries, NitrateDryDeposition);
 		
 		if(INPUT(ActualPrecipitation) > 0.0)
 		{
@@ -274,7 +272,7 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, NitrateDryStorage,
 		double storage = LAST_RESULT(NitrateDryStorage);
-		double deposition = PARAMETER(NitrateDryDeposition);
+		double deposition = IF_INPUT_ELSE_PARAMETER(NitrateDryDepositionTimeseries, NitrateDryDeposition);
 		if(INPUT(ActualPrecipitation) == 0.0)
 		{
 			return storage + deposition;
@@ -284,9 +282,7 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, AmmoniumDryDepositionToSoil,
 		double storage = LAST_RESULT(AmmoniumDryStorage);
-		double deposition = PARAMETER(AmmoniumDryDeposition);
-		double depositionin = INPUT(AmmoniumDryDepositionTimeseries);
-		if(INPUT_WAS_PROVIDED(AmmoniumDryDepositionTimeseries)) deposition = depositionin;
+		double deposition = IF_INPUT_ELSE_PARAMETER(AmmoniumDryDepositionTimeseries, AmmoniumDryDeposition);
 		
 		if(INPUT(ActualPrecipitation) > 0.0)
 		{
@@ -297,7 +293,7 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, AmmoniumDryStorage,
 		double storage = LAST_RESULT(AmmoniumDryStorage);
-		double deposition = PARAMETER(AmmoniumDryDeposition);
+		double deposition = IF_INPUT_ELSE_PARAMETER(AmmoniumDryDepositionTimeseries, AmmoniumDryDeposition);
 		if(INPUT(ActualPrecipitation) == 0.0)
 		{
 			return storage + deposition;
@@ -308,13 +304,10 @@ AddIncaNModel(inca_model *Model)
 	EQUATION(Model, NitrateFertilizerAddition,
 		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
 		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);
-		double additionrate = PARAMETER(FertilizerNitrateAdditionRate);
-		double additionratein = INPUT(NitrateFertilizerTimeseries);
-		if(INPUT_WAS_PROVIDED(NitrateFertilizerTimeseries))
-		{
-			additionrate = additionratein;
-		}
-		else if((double)CURRENT_DAY_OF_YEAR() < startday || (double)CURRENT_DAY_OF_YEAR() > endday)
+		double currentday = (double)CURRENT_DAY_OF_YEAR();
+		double additionrate = IF_INPUT_ELSE_PARAMETER(NitrateFertilizerTimeseries, FertilizerNitrateAdditionRate);
+		
+		if(!INPUT_WAS_PROVIDED(NitrateFertilizerTimeseries) && (currentday < startday || currentday > endday))
 		{
 			additionrate = 0.0;
 		}
@@ -324,13 +317,10 @@ AddIncaNModel(inca_model *Model)
 	EQUATION(Model, AmmoniumFertilizerAddition,
 		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
 		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);
-		double additionrate = PARAMETER(FertilizerAmmoniumAdditionRate);
-		double additionratein = INPUT(AmmoniumFertilizerTimeseries);
-		if(INPUT_WAS_PROVIDED(AmmoniumFertilizerTimeseries))
-		{
-			additionrate = additionratein;
-		}
-		else if((double)CURRENT_DAY_OF_YEAR() < startday || (double)CURRENT_DAY_OF_YEAR() > endday)
+		double currentday = (double)CURRENT_DAY_OF_YEAR();
+		double additionrate = IF_INPUT_ELSE_PARAMETER(AmmoniumFertilizerTimeseries, FertilizerAmmoniumAdditionRate);
+		
+		if(!INPUT_WAS_PROVIDED(AmmoniumFertilizerTimeseries) && (currentday < startday || currentday > endday))
 		{
 			additionrate = 0.0;
 		}
@@ -347,21 +337,13 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, CurrentGrowthCurveOffset,
-		double growthcurveoffset = PARAMETER(GrowthCurveOffset);
-		double growthcurveoffsetin = INPUT(GrowthCurveOffsetTimeseries);
-		if(INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries))
-		{
-			growthcurveoffset = growthcurveoffsetin;
-		}
+		double growthcurveoffset = IF_INPUT_ELSE_PARAMETER(GrowthCurveOffsetTimeseries, GrowthCurveOffset);
 		if(std::isnan(growthcurveoffset)) return 0.0;
 		return growthcurveoffset;
 	)
 	
 	EQUATION(Model, CurrentGrowthCurveAmplitude,
-		double growthcurveamplitude = PARAMETER(GrowthCurveAmplitude);
-		double growthcurveamplitudein = INPUT(GrowthCurveAmplitudeTimeseries);
-		if(INPUT_WAS_PROVIDED(GrowthCurveAmplitudeTimeseries)) growthcurveamplitude = growthcurveamplitudein;
-			
+		double growthcurveamplitude = IF_INPUT_ELSE_PARAMETER(GrowthCurveAmplitudeTimeseries, GrowthCurveAmplitude);
 		if(std::isnan(growthcurveamplitude)) return 0.0;
 		return growthcurveamplitude;
 	)
@@ -457,9 +439,7 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterNitrateInput,
-		double wetdeposition = PARAMETER(NitrateWetDeposition);  //TODO: This is incorrect! Wet deposition should be spread out according to precipitation
-		double wetdepositionin = INPUT(NitrateWetDepositionTimeseries);
-		if(INPUT_WAS_PROVIDED(NitrateWetDepositionTimeseries)) wetdeposition = wetdepositionin;
+		double wetdeposition = IF_INPUT_ELSE_PARAMETER(NitrateWetDepositionTimeseries, NitrateWetDeposition);  //TODO: This is incorrect! Wet deposition if provided as a parameter should be spread out according to precipitation
 	
 		return 100.0 * (
 			  RESULT(NitrateFertilizerAddition)
@@ -509,9 +489,7 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterAmmoniumInput,
-		double wetdeposition = PARAMETER(AmmoniumWetDeposition);  //TODO: This is incorrect! Wet deposition should be spread out according to precipitation
-		double wetdepositionin = INPUT(AmmoniumWetDepositionTimeseries);
-		if(INPUT_WAS_PROVIDED(AmmoniumWetDepositionTimeseries)) wetdeposition = wetdepositionin;
+		double wetdeposition = IF_INPUT_ELSE_PARAMETER(AmmoniumWetDepositionTimeseries, AmmoniumWetDeposition);  //TODO: This is incorrect! Wet deposition if provided as a parameter should be spread out according to precipitation
 	
 		return 100.0 * (
 			  RESULT(AmmoniumFertilizerAddition)
@@ -571,10 +549,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DiffuseNitrate,
-		double percent = PARAMETER(Percent);
-		double percentin = INPUT(LandUseTimeseries);
-		if(INPUT_WAS_PROVIDED(LandUseTimeseries)) percent = percentin;
-	
+		double percent = IF_INPUT_ELSE_PARAMETER(LandUseTimeseries, Percent);
 		return RESULT(TotalNitrateToStream) * PARAMETER(TerrestrialCatchmentArea) * percent / 100.0;
 	)
 	
@@ -586,9 +561,7 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DiffuseAmmonium,
-		double percent = PARAMETER(Percent);
-		double percentin = INPUT(LandUseTimeseries);
-		if(INPUT_WAS_PROVIDED(LandUseTimeseries)) percent = percentin;
+		double percent = IF_INPUT_ELSE_PARAMETER(LandUseTimeseries, Percent);
 		return RESULT(TotalAmmoniumToStream) * PARAMETER(TerrestrialCatchmentArea) * percent / 100.0;
 	)
 	
@@ -663,13 +636,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachHasEffluentInput = GetParameterBoolHandle(Model, "Reach has effluent input");
 	
 	EQUATION(Model, ReachEffluentNitrate,
-		double effluentflow = PARAMETER(EffluentFlow);
-		double effluentflowin = INPUT(EffluentTimeseries);
-		if(INPUT_WAS_PROVIDED(EffluentTimeseries)) effluentflow = effluentflowin;
-		
-		double effluentnitrateconc = PARAMETER(ReachEffluentNitrateConcentration);
-		double effluentnitrateconcin = INPUT(NitrateEffluentConcentrationTimeseries);
-		if(INPUT_WAS_PROVIDED(NitrateEffluentConcentrationTimeseries)) effluentnitrateconc = effluentnitrateconcin;
+		double effluentflow        = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow);
+		double effluentnitrateconc = IF_INPUT_ELSE_PARAMETER(NitrateEffluentConcentrationTimeseries, ReachEffluentNitrateConcentration);
 		
 		double effluentnitrate = effluentflow * effluentnitrateconc * 86.4;
 		
@@ -707,13 +675,8 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachEffluentAmmonium,
-		double effluentflow = PARAMETER(EffluentFlow);
-		double effluentflowin = INPUT(EffluentTimeseries);
-		if(INPUT_WAS_PROVIDED(EffluentTimeseries)) effluentflow = effluentflowin;
-		
-		double effluentammoniumconc = PARAMETER(ReachEffluentAmmoniumConcentration);
-		double effluentammoniumconcin = INPUT(AmmoniumEffluentConcentrationTimeseries);
-		if(INPUT_WAS_PROVIDED(AmmoniumEffluentConcentrationTimeseries)) effluentammoniumconc = effluentammoniumconcin;
+		double effluentflow = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow);
+		double effluentammoniumconc = IF_INPUT_ELSE_PARAMETER(AmmoniumEffluentConcentrationTimeseries, ReachEffluentAmmoniumConcentration);
 		
 		double effluentammonium = effluentflow * effluentammoniumconc * 86.4;
 

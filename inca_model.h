@@ -1126,6 +1126,8 @@ AddInputIndexSetDependency(inca_model *Model, input_h Input, index_set_h IndexSe
 #define LAST_RESULT(ResultH, ...) (ValueSet__->Running ? GetLastResult(ValueSet__, ResultH, ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
 #define EARLIER_RESULT(ResultH, StepBack, ...) (ValueSet__->Running ? GetEarlierResult(ValueSet__, ResultH, (StepBack), ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
 #define INPUT_WAS_PROVIDED(InputH) (ValueSet__->Running ? GetIfInputWasProvided(ValueSet__, InputH) : RegisterInputDependency(ValueSet__, InputH))
+#define IF_INPUT_ELSE_PARAMETER(InputH, ParameterH) (ValueSet__->Running ? GetCurrentInputOrParameter(ValueSet__, InputH, ParameterH) : RegisterInputAndParameterDependency(ValueSet__, InputH, ParameterH))
+
 
 #define CURRENT_DAY_OF_YEAR() (ValueSet__->DayOfYear)
 #define DAYS_THIS_YEAR() (ValueSet__->DaysThisYear)
@@ -1264,11 +1266,14 @@ GetCurrentInput(value_set_accessor *ValueSet, input_h Input)
 inline bool
 GetIfInputWasProvided(value_set_accessor * ValueSet, input_h Input)
 {
-	//TODO: This should be optimized
-	//inca_data_set *DataSet = ValueSet->DataSet;
-	//size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Input.Handle);
-	//return DataSet->InputTimeseriesWasProvided[Offset];
 	return ValueSet->CurInputWasProvided[Input.Handle];
+}
+
+inline double
+GetCurrentInputOrParameter(value_set_accessor *ValueSet, input_h Input, parameter_double_h Parameter)
+{
+	if(GetIfInputWasProvided(ValueSet, Input)) return GetCurrentInput(ValueSet, Input);
+	return GetCurrentParameter(ValueSet, Parameter);
 }
 
 
@@ -1305,7 +1310,15 @@ inline double
 RegisterInputDependency(value_set_accessor *ValueSet, input_h Input)
 {
 	ValueSet->InputDependencies.push_back({Input.Handle, 0});
-	//ValueSet->InputDependency[Input.Handle]++;
+	return 0.0;
+}
+
+inline double
+RegisterInputAndParameterDependency(value_set_accessor *ValueSet, input_h Input, parameter_double_h Parameter)
+{
+	RegisterInputDependency(ValueSet, Input);
+	RegisterParameterDependency(ValueSet, Parameter);
+
 	return 0.0;
 }
 

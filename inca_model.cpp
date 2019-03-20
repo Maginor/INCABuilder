@@ -1060,6 +1060,8 @@ INNER_LOOP_BODY(RunInnerLoop)
 			size_t Offset = *ValueSet->AtInputLookup;
 			++ValueSet->AtInputLookup;
 			ValueSet->CurInputs[Input.Handle] = ValueSet->AllCurInputsBase[Offset];
+			ValueSet->CurInputWasProvided[Input.Handle] = DataSet->InputTimeseriesWasProvided[Offset];
+		
 		}
 		for(equation_h Result : IterationData.ResultsToRead)
 		{
@@ -1450,6 +1452,16 @@ RunModel(inca_data_set *DataSet)
 		{
 			size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ParameterHandle);
 			ValueSet.CurParameters[ParameterHandle] = DataSet->ParameterData[Offset];
+		}
+	}
+	
+	//NOTE: Similarly we have to set which of the unindexed inputs were provided.
+	if(!DataSet->InputStorageStructure.Units.empty() && DataSet->InputStorageStructure.Units[0].IndexSets.empty())
+	{
+		for(entity_handle InputHandle : DataSet->InputStorageStructure.Units[0].Handles)
+		{
+			size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, InputHandle);
+			ValueSet.CurInputWasProvided[InputHandle] = DataSet->InputTimeseriesWasProvided[Offset];
 		}
 	}
 	

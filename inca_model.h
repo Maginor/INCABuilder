@@ -468,9 +468,10 @@ struct value_set_accessor
 
 	//NOTE: For use during model execution		
 	parameter_value *CurParameters;
-	double          *CurInputs;
 	double          *CurResults;
 	double          *LastResults;
+	double          *CurInputs;
+	bool            *CurInputWasProvided;
 	
 	index_t *CurrentIndexes; //NOTE: Contains the current index of each index set during execution.	
 	
@@ -522,6 +523,7 @@ struct value_set_accessor
 		CurResults     = AllocClearedArray(double, Model->FirstUnusedEquationHandle);
 		LastResults    = AllocClearedArray(double, Model->FirstUnusedEquationHandle);
 		CurrentIndexes = AllocClearedArray(index_t, Model->FirstUnusedIndexSetHandle);
+		CurInputWasProvided = AllocClearedArray(bool, Model->FirstUnusedInputHandle);
 		
 		DayOfYear = 0;
 		DaysThisYear = 365;
@@ -534,6 +536,7 @@ struct value_set_accessor
 		{
 			free(CurParameters);
 			free(CurInputs);
+			free(CurInputWasProvided);
 			free(CurResults);
 			free(LastResults);
 			free(CurrentIndexes);
@@ -547,6 +550,7 @@ struct value_set_accessor
 		{
 			memset(CurParameters,  0, sizeof(parameter_value)*Model->FirstUnusedParameterHandle);
 			memset(CurInputs,      0, sizeof(double)*Model->FirstUnusedInputHandle);
+			memset(CurInputWasProvided,      0, sizeof(bool)*Model->FirstUnusedInputHandle);
 			memset(CurResults,     0, sizeof(double)*Model->FirstUnusedEquationHandle);
 			memset(LastResults,    0, sizeof(double)*Model->FirstUnusedEquationHandle);
 			memset(CurrentIndexes, 0, sizeof(index_t)*Model->FirstUnusedIndexSetHandle);
@@ -1261,9 +1265,10 @@ inline bool
 GetIfInputWasProvided(value_set_accessor * ValueSet, input_h Input)
 {
 	//TODO: This should be optimized
-	inca_data_set *DataSet = ValueSet->DataSet;
-	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Input.Handle);
-	return DataSet->InputTimeseriesWasProvided[Offset];
+	//inca_data_set *DataSet = ValueSet->DataSet;
+	//size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, Input.Handle);
+	//return DataSet->InputTimeseriesWasProvided[Offset];
+	return ValueSet->CurInputWasProvided[Input.Handle];
 }
 
 

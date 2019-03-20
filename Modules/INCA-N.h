@@ -104,7 +104,7 @@ AddIncaNModel(inca_model *Model)
 	auto Groundwater  = RequireIndex(Model, Soils, "Groundwater");
 	
 	//NOTE: These are from PERSiST:
-	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation is subtracted.
+	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation and runoff is subtracted.
 	auto WaterDepth            = GetEquationHandle(Model, "Water depth");   //NOTE: This is after everything is subtracted.
 	auto RunoffToReach         = GetEquationHandle(Model, "Runoff to reach");
 	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
@@ -180,7 +180,13 @@ AddIncaNModel(inca_model *Model)
 	SetInitialValue(Model, GroundwaterAmmonium, GroundwaterInitialAmmonium);
 	
 	auto SoilwaterNitrateConcentration = RegisterEquation(Model, "Soil water nitrate concentration", MgPerL);
+	SetSolver(Model, SoilwaterNitrateConcentration, IncaSolver);
 	auto GroundwaterNitrateConcentration = RegisterEquation(Model, "Groundwater nitrate concentration", MgPerL);
+	SetSolver(Model, GroundwaterNitrateConcentration, IncaSolver);
+	auto SoilwaterAmmoniumConcentration = RegisterEquation(Model, "Soil water ammonium concentration", MgPerL);
+	SetSolver(Model, SoilwaterAmmoniumConcentration, IncaSolver);
+	auto GroundwaterAmmoniumConcentration = RegisterEquation(Model, "Groundwater ammonium concentration", MgPerL);
+	SetSolver(Model, GroundwaterAmmoniumConcentration, IncaSolver);
 	
 	
 	EQUATION(Model, DirectRunoffInitialNitrate,
@@ -225,6 +231,14 @@ AddIncaNModel(inca_model *Model)
 	
 	EQUATION(Model, GroundwaterNitrateConcentration,
 		return SafeDivide(RESULT(GroundwaterNitrate), RESULT(GroundwaterVolume)) * 1000.0;
+	)
+	
+	EQUATION(Model, SoilwaterAmmoniumConcentration,
+		return SafeDivide(RESULT(SoilwaterAmmonium), RESULT(SoilwaterVolume)) * 1000.0;
+	)
+	
+	EQUATION(Model, GroundwaterAmmoniumConcentration,
+		return SafeDivide(RESULT(GroundwaterAmmonium), RESULT(GroundwaterVolume)) * 1000.0;
 	)
 	
 	
@@ -403,11 +417,10 @@ AddIncaNModel(inca_model *Model)
 		double nitrateuptake = 
 			  PARAMETER(NitratePlantUptakeRate) 
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterNitrate)
+			* RESULT(SoilwaterNitrateConcentration)
 			* RESULT(DrynessFactor)
 			* RESULT(SeasonalGrowthFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 
 		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) return 0.0;
 		
@@ -418,20 +431,18 @@ AddIncaNModel(inca_model *Model)
 		return
 			  PARAMETER(SoilwaterDenitrificationRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterNitrate)
+			* RESULT(SoilwaterNitrateConcentration)
 			* RESULT(DrynessFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 	)
 	
 	EQUATION(Model, Nitrification,
 		return
 			  PARAMETER(AmmoniumNitrificationRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterAmmonium)
+			* RESULT(SoilwaterAmmoniumConcentration)
 			* RESULT(DrynessFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 	)
   
 	EQUATION(Model, Fixation,
@@ -463,11 +474,10 @@ AddIncaNModel(inca_model *Model)
 		double uptake =
 			  PARAMETER(AmmoniumPlantUptakeRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterAmmonium)
+			* RESULT(SoilwaterAmmoniumConcentration)
 			* RESULT(DrynessFactor)
 			* RESULT(SeasonalGrowthFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 			
 		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) uptake = 0.0;
 		
@@ -478,10 +488,9 @@ AddIncaNModel(inca_model *Model)
 		return
 			  PARAMETER(AmmoniumImmobilisationRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterAmmonium)
+			* RESULT(SoilwaterAmmoniumConcentration)
 			* RESULT(DrynessFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 	)
 
 	EQUATION(Model, Mineralisation,

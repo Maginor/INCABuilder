@@ -381,7 +381,7 @@ Input files, like the file in Example \ref{ex:inputfile}, can or must have the f
 \item {\tt inputs :} (required) The actual input data. If you did not declare any index set dependencies for an input, you only provide one timeseries. Otherwise you provide one for each (combination of) index(es) in the index set(s) it depends on.
 \end{enumerate}
 
-You can completely omit providing data for a timeseries (i.e. don't type its name or any values for it). In that case it will be asumed to be equal to 0 for every timestep. This is usually not recommended. There are two formats you can choose.
+You can completely omit providing data for a timeseries (i.e. don't type its name or any values for it). In that case it will be asumed to be equal to 0 for every timestep. There are two formats you can choose.
 \begin{enumerate}[i]
 \item If you use the dense format, just list all the values after one another. If you use this format you have to provide exactly as many values as the number of timesteps you declared for the input data.
 \item If you use the sparse format, list pairs of dates (format "y-m-d") and values. If you use this format, dates in the start date - timesteps range that do not receive a value will be assigned NaN. This means that this format is mostly suitable for observation timeseries and not for model required inputs, since the model will most likely crash on getting a NaN value. The exception is if you fill in all the values (maybe using constant periods as described below). Every sparse timeseries has to be ended with a {\tt end\_timeseries} token. The dates do not have to be provided in order.
@@ -441,7 +441,7 @@ end_timeseries
 \end{lstlisting}
 \end{example}
 
-As in Example \ref{ex:constantperiods} you can declare that the timeseries should have a given constant value between two dates. Both the start date and end date is inclusive. Note that this otherwise counts as using the sparse format, that is missing dates will be given the NaN value. Moreover, the periods do not have to be declared in order. You can also combine these advanced features freely.
+As in Example \ref{ex:constantperiods} you can declare that the timeseries should have a given constant value between two dates. Both the start date and end date is inclusive. Note that this otherwise counts as using the sparse format, i.e. missing dates will be given the NaN value. Moreover, the periods do not have to be declared in order. You can also combine these advanced features freely as seen below.
 
 \begin{example}
 Combining various advanced formats.
@@ -496,6 +496,12 @@ and you want to put quotation marks around the dates. You can use Notepad++ macr
 \item Click the black square symbol to stop the recording.
 \item You can now click the triangle symbol to repeat these keystrokes for one line at a time, or the double triangle to do it for multiple lines.
 \end{enumerate}
+
+You can alternatively use the custom format in excel and specify the format string as 
+\begin{lstlisting}
+\"yyyy-mm-dd\";@
+\end{lstlisting}
+to get the quotes.
 
 \subsection{Error messages}
 

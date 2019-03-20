@@ -639,87 +639,90 @@ EndModelDefinition(inca_model *Model)
 	//TODO: Maaybe this could be done in the same pass as above, but I haven't figured out how. The problem is that while we are building the batches above, we don't know about any of the batches that will appear after the current batch we are building.
 
 #if 1
-	{	
-		size_t BatchIdx = 0;
-		for(equation_batch_template &Batch : BatchBuild)
-		{
-			if(Batch.Type != BatchType_Solver)
+	for(size_t It = 0; It < 2; ++It)    //NOTE: In the latest version of INCA-N we have to do this twice to get a good structure.
+	{
+		{	
+			size_t BatchIdx = 0;
+			for(equation_batch_template &Batch : BatchBuild)
 			{
-				s64 EquationIdx = Batch.Equations.size() - 1;
-				while(EquationIdx >= 0)
+				if(Batch.Type != BatchType_Solver)
 				{
-					equation_h ThisEquation = Batch.Equations[EquationIdx];
-					equation_spec &Spec = Model->EquationSpecs[ThisEquation.Handle];
-					
-					bool Continue = false;
-					for(size_t EquationBehind = EquationIdx + 1; EquationBehind < Batch.Equations.size(); ++EquationBehind)
+					s64 EquationIdx = Batch.Equations.size() - 1;
+					while(EquationIdx >= 0)
 					{
-						equation_h ResultBehind = Batch.Equations[EquationBehind];
-						equation_spec &SpecBehind = Model->EquationSpecs[ResultBehind.Handle];
-						//If somebody behind us in this batch depend on us, we are not allowed to move.
-						if(std::find(SpecBehind.DirectResultDependencies.begin(), SpecBehind.DirectResultDependencies.end(), ThisEquation) != SpecBehind.DirectResultDependencies.end())
+						equation_h ThisEquation = Batch.Equations[EquationIdx];
+						equation_spec &Spec = Model->EquationSpecs[ThisEquation.Handle];
+						
+						bool Continue = false;
+						for(size_t EquationBehind = EquationIdx + 1; EquationBehind < Batch.Equations.size(); ++EquationBehind)
 						{
-							Continue = true;
-							break;
+							equation_h ResultBehind = Batch.Equations[EquationBehind];
+							equation_spec &SpecBehind = Model->EquationSpecs[ResultBehind.Handle];
+							//If somebody behind us in this batch depend on us, we are not allowed to move.
+							if(std::find(SpecBehind.DirectResultDependencies.begin(), SpecBehind.DirectResultDependencies.end(), ThisEquation) != SpecBehind.DirectResultDependencies.end())
+							{
+								Continue = true;
+								break;
+							}
 						}
-					}
-					if(Continue)
-					{
-						EquationIdx--;
-						continue;
-					}
-					
-					size_t LastSuitableBatch = BatchIdx;
-					for(size_t BatchBehind = BatchIdx + 1; BatchBehind < BatchBuild.size(); ++BatchBehind)
-					{
-						equation_batch_template &NextBatch = BatchBuild[BatchBehind];
-						if(NextBatch.Type != BatchType_Solver && Spec.IndexSetDependencies == NextBatch.IndexSetDependencies) //This batch suits us
+						if(Continue)
 						{
-							LastSuitableBatch = BatchBehind;
+							EquationIdx--;
+							continue;
 						}
 						
-						bool BatchDependsOnUs = false;
-						FOR_ALL_BATCH_EQUATIONS(NextBatch,
-							equation_spec &CheckSpec = Model->EquationSpecs[Equation.Handle];
-							if(std::find(CheckSpec.DirectResultDependencies.begin(), CheckSpec.DirectResultDependencies.end(), ThisEquation) != CheckSpec.DirectResultDependencies.end())
-							{
-								BatchDependsOnUs = true;
-								break; //UGH, since this is a loop macro that loops over two things, this break does not always do the correct thing.
-							}
-						)
-
-						if(BatchBehind == BatchBuild.size() - 1 || BatchDependsOnUs)
+						size_t LastSuitableBatch = BatchIdx;
+						for(size_t BatchBehind = BatchIdx + 1; BatchBehind < BatchBuild.size(); ++BatchBehind)
 						{
-							if(LastSuitableBatch != BatchIdx)
+							equation_batch_template &NextBatch = BatchBuild[BatchBehind];
+							if(NextBatch.Type != BatchType_Solver && Spec.IndexSetDependencies == NextBatch.IndexSetDependencies) //This batch suits us
 							{
-								//Move to the front of that batch.
-								equation_batch_template &InsertToBatch = BatchBuild[LastSuitableBatch];
-								InsertToBatch.Equations.insert(InsertToBatch.Equations.begin(), ThisEquation);
-								Batch.Equations.erase(Batch.Equations.begin() + EquationIdx);
+								LastSuitableBatch = BatchBehind;
 							}
-							break;
+							
+							bool BatchDependsOnUs = false;
+							FOR_ALL_BATCH_EQUATIONS(NextBatch,
+								equation_spec &CheckSpec = Model->EquationSpecs[Equation.Handle];
+								if(std::find(CheckSpec.DirectResultDependencies.begin(), CheckSpec.DirectResultDependencies.end(), ThisEquation) != CheckSpec.DirectResultDependencies.end())
+								{
+									BatchDependsOnUs = true;
+									break; //UGH, since this is a loop macro that loops over two things, this break does not always do the correct thing.
+								}
+							)
+
+							if(BatchBehind == BatchBuild.size() - 1 || BatchDependsOnUs)
+							{
+								if(LastSuitableBatch != BatchIdx)
+								{
+									//Move to the front of that batch.
+									equation_batch_template &InsertToBatch = BatchBuild[LastSuitableBatch];
+									InsertToBatch.Equations.insert(InsertToBatch.Equations.begin(), ThisEquation);
+									Batch.Equations.erase(Batch.Equations.begin() + EquationIdx);
+								}
+								break;
+							}
 						}
+						
+						EquationIdx--;
 					}
-					
-					EquationIdx--;
 				}
+				
+				++BatchIdx;
 			}
-			
-			++BatchIdx;
 		}
-	}
-	
-	//NOTE: Erase Batch templates that got all their equations removed
-	{
-		s64 BatchIdx = BatchBuild.size()-1;
-		while(BatchIdx >= 0)
+		
+		//NOTE: Erase Batch templates that got all their equations removed
 		{
-			equation_batch_template &Batch = BatchBuild[BatchIdx];
-			if(Batch.Type != BatchType_Solver && Batch.Equations.empty())
+			s64 BatchIdx = BatchBuild.size()-1;
+			while(BatchIdx >= 0)
 			{
-				BatchBuild.erase(BatchBuild.begin() + BatchIdx);
+				equation_batch_template &Batch = BatchBuild[BatchIdx];
+				if(Batch.Type != BatchType_Solver && Batch.Equations.empty())
+				{
+					BatchBuild.erase(BatchBuild.begin() + BatchIdx);
+				}
+				--BatchIdx;
 			}
-			--BatchIdx;
 		}
 	}
 #endif

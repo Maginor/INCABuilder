@@ -139,8 +139,6 @@ AddPersistModel(inca_model *Model)
 	EQUATION(Model, SnowAsWaterEquivalent,
 		return LAST_RESULT(SnowAsWaterEquivalent) + RESULT(SnowFall) - RESULT(SnowMelt);
 	)
-	
-	
 
 	auto PercolationInput   = RegisterEquation(Model, "Percolation input", MmPerDay);
 	auto SaturationExcessInput = RegisterEquation(Model, "Saturation excess input", MmPerDay);

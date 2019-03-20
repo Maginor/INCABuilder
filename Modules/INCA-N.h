@@ -384,7 +384,13 @@ AddIncaNModel(inca_model *Model)
 		double startday = (double)RESULT(CurrentPlantGrowthStartDay);
 		double daysthisyear = (double)DAYS_THIS_YEAR();
 		double currentday   = (double)CURRENT_DAY_OF_YEAR();
-		return RESULT(CurrentGrowthCurveOffset) + RESULT(CurrentGrowthCurveAmplitude) * sin(2.0 * Pi * (currentday - startday) / daysthisyear );
+		double endday   = startday + (double)PARAMETER(PlantGrowthPeriod);
+		
+		double curve = RESULT(CurrentGrowthCurveOffset) + RESULT(CurrentGrowthCurveAmplitude) * sin(2.0 * Pi * (currentday - startday) / daysthisyear );
+		
+		if(!INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries) && (currentday < startday || currentday > endday)) return 0.0;
+		
+		return curve;
 	)
 	
 	EQUATION(Model, TemperatureFactor,
@@ -420,12 +426,6 @@ AddIncaNModel(inca_model *Model)
 			* RESULT(SeasonalGrowthFactor)
 			/ RESULT(SoilwaterVolume)
 			* 1000000.0;
-			
-		double currentday = (double)CURRENT_DAY_OF_YEAR();
-		double startday = (double)RESULT(CurrentPlantGrowthStartDay);
-		double endday   = startday + (double)PARAMETER(PlantGrowthPeriod);
-		
-		if(!INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries) && (currentday < startday || currentday > endday)) return 0.0;
 
 		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) return 0.0;
 		

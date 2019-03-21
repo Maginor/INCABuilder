@@ -34,8 +34,8 @@ AddSolarRadiationModule(inca_model *Model)
 	
 	auto System = GetParameterGroupHandle(Model, "System");
 	
-	auto Latitude  = RegisterParameterDouble(Model, System, "Latitude", Degrees, 60.0, -90.0, 90.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data");
-	auto Elevation = RegisterParameterDouble(Model, System, "Elevation", Metres, 0.0, 0.0, 8848.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data");
+	auto Latitude  = RegisterParameterDouble(Model, System, "Latitude", Degrees, 60.0, -90.0, 90.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data.");
+	auto Elevation = RegisterParameterDouble(Model, System, "Elevation", Metres, 0.0, 0.0, 8848.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data.");
 	
 	auto SolarRadiationTimeseries = RegisterInput(Model, "Solar radiation", WPerM2);
 	

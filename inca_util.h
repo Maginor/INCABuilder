@@ -59,6 +59,8 @@ GetTimerMilliseconds(timer *Timer)
 	return u64;
 }
 
+//NOTE: Apparently the c++ standard library can not do all the date processing we need until c++20, so we have to do it ourselves... (could use boost::ptime, but it has to be compiled separately, and that is asking a lot of the user...)
+
 inline bool
 IsLeapYear(int Year)
 {
@@ -71,6 +73,8 @@ IsLeapYear(int Year)
 inline int
 MonthOffset(int Year, int Month)
 {
+	//NOTE: Returns the number of the day of year (starting at january 1st = day 0) that this month starts on. The months are indexed from 0 in this context.
+	
 	int Offset[13] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 	int Days = Offset[Month];
 	if(Month >= 2 && IsLeapYear(Year)) Days += 1;
@@ -80,17 +84,20 @@ MonthOffset(int Year, int Month)
 inline int
 MonthLength(int Year, int Month)
 {
+	//NOTE: Returns the number of days in a month. The months are indexed from 0 in this context.
+	
 	int Length[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	int Days = Length[Month];
 	if(Month == 2 && IsLeapYear(Year)) Days += 1;
 	return Days;
 }
 
-//NOTE: Apparently the c++ standard library can not do this for us until c++20, so we have to do it ourselves... (could use boost::ptime, but it has to be compiled separately, and that is asking a lot of the user...)
-//NOTE: Does not account for leap seconds, but that should not be a problem.
 inline bool
 ParseSecondsSinceEpoch(const char *DateString, s64 *SecondsSinceEpochOut)
 {
+	//NOTE: Does not account for leap seconds, but that should not be a problem.
+	// Takes a string of the form "yyyy-mm-dd" and puts the number of seconds since "1970-01-01" in the SecondsSinceEpoch. Note that a negative value is computed for dates before "1970-01-01". Returns a bool saying if a correct date was provided.
+	
 	int Day, Month, Year;
 	
 	int Found = sscanf(DateString, "%d-%d-%d", &Year, &Month, &Day);
@@ -99,8 +106,8 @@ ParseSecondsSinceEpoch(const char *DateString, s64 *SecondsSinceEpochOut)
 		return false;
 	}
 	
-	if(Day < 0 || Day > 31) return false; //TODO: Should we test this more thoroughly depending on the month?
-	if(Month < 0 || Month > 12) return false;
+	if(Day < 1 || Day > 31) return false; //TODO: Should we test this more thoroughly depending on the month?
+	if(Month < 1 || Month > 12) return false;
 	
 	s64 Result = 0;
 	if(Year > 1970)
@@ -127,6 +134,10 @@ ParseSecondsSinceEpoch(const char *DateString, s64 *SecondsSinceEpochOut)
 inline s32
 DayOfYear(s64 SecondsSinceEpoch, s32* YearOut)
 {
+	//NOTE: Takes a number of seconds since epoch (1970-01-01) and computes the day of the year (starting at january 1st = day 0) and year this timestamp is in. NOTE: seconds since epoch can be negative for dates before 1970-01-01.
+	
+	//NOTE: Does not count leap seconds.
+	
 	s32 Year = 1970;
 	s32 DayOfYear = 0;
 	s64 SecondsLeft = SecondsSinceEpoch;
@@ -172,6 +183,9 @@ DayOfYear(s64 SecondsSinceEpoch, s32* YearOut)
 inline void
 YearMonthDay(s64 SecondsSinceEpoch, s32* YearOut, s32 *MonthOut, s32 *DayOut)
 {
+	//Computes the year, month and day (of month) for a seconds since epoch timestamp.
+	//In this context (unlike above), the months and days are indexed from 1 rather than 0.
+	
 	s32 Day = DayOfYear(SecondsSinceEpoch, YearOut);
 	
 	for(s32 Month = 0; Month < 12; ++Month)

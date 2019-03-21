@@ -9,16 +9,13 @@ TODOs:
 	- PrintPartialDependencyTrace gives incorrect information sometimes when a solver is involved twice.
 	- Better encapsulation of the ValueSet subsystem. Unify lookup systems for parameters, inputs, results, last_results
 	- Have to figure out if the initial value equation system we have currently is good.
-	- Give warning if not all input series received values?
 	- Clean up the input tokenizer. Maybe just use fscanf for reading numbers, but it is actually a little complicated since we have to figure out the type in any case.
-	- Register units with inputs too? They are after all expected to be in a certain unit.
 	- Allow the dependency system to be able to understand explicitly indexed lookups of results better.
-	- Standardize the input format. Includes finding a better format for dates.
 	- Pre-computed parameter values.
-	- Allow certain values to either be a parameter, input series or result, depending on model settings?
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
 	- Better convenience accessors for the DataSet so that io and application code does not have to understand the inner structure of the DataSet that much.
+	- Clean up the date module. Instead of passing SecondsSinceEpoch everywhere, wrap that in a struct and make functions that can advance it one day, extract, year, month, day etc.
 	*/
 
 

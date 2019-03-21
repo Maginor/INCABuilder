@@ -434,7 +434,7 @@ SetMultipleValuesForParameter(inca_data_set *DataSet, entity_handle ParameterHan
 
 
 
-static s64
+static datetime
 GetStartDate(inca_data_set *DataSet)
 {
 	const inca_model *Model = DataSet->Model;
@@ -447,10 +447,10 @@ GetStartDate(inca_data_set *DataSet)
 		return DataSet->ParameterData[Offset].ValTime; //TODO: Check that it was actually registered with the correct type and that it does not have any index set dependencies.
 	}
 	
-	return 0; //I.e. 1970-1-1
+	return datetime(); //I.e. 1970-1-1
 }
 
-inline s64
+inline datetime
 GetInputStartDate(inca_data_set *DataSet)
 {
 	if(DataSet->InputDataHasSeparateStartDate)
@@ -864,7 +864,8 @@ inline void
 SetParameterValue(inca_data_set *DataSet, const char *Name, const std::vector<const char *>& Indexes, const char *TimeValue)
 {
 	parameter_value Val;
-	bool ParseSuccess = ParseSecondsSinceEpoch(TimeValue, &Val.ValTime);
+	bool ParseSuccess;
+	Val.ValTime = datetime(TimeValue, &ParseSuccess);
 	
 	if(!ParseSuccess)
 	{
@@ -1011,14 +1012,14 @@ SetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 	
 	size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexCount, DataSet->IndexCounts, Input.Handle);
 	double *At = DataSet->InputData + Offset;
-	size_t TimestepOffset = 0;
+	s64 TimestepOffset = 0;
 	
 	if(AlignWithResults && DataSet->InputDataHasSeparateStartDate)
 	{
 		//NOTE: In case the user asked for a input timeseries that starts at the start of the modelrun rather than at the start of the input series.
-		s64 DataSetStartDate = GetStartDate(DataSet);
-		s64 InputStartDate   = DataSet->InputDataStartDate;
-		size_t TimestepOffset = DayOffset(InputStartDate, DataSetStartDate); //TODO: If we later allow for different lengths of timestep we have to update this!
+		datetime DataSetStartDate = GetStartDate(DataSet);
+		datetime InputStartDate   = DataSet->InputDataStartDate;
+		TimestepOffset = InputStartDate.DaysUntil(DataSetStartDate); //TODO: If we later allow for different lengths of timestep we have to update this!
 	}
 	
 	if(InputSeriesSize + TimestepOffset > DataSet->InputDataTimesteps)
@@ -1139,9 +1140,9 @@ GetInputSeries(inca_data_set *DataSet, const char *Name, const char * const *Ind
 	if(AlignWithResults && DataSet->InputDataHasSeparateStartDate)
 	{
 		//NOTE: In case the user asked for a input timeseries that starts at the start of the modelrun rather than at the start of the input series.
-		s64 DataSetStartDate = GetStartDate(DataSet);
-		s64 InputStartDate   = DataSet->InputDataStartDate;
-		size_t TimestepOffset = DayOffset(InputStartDate, DataSetStartDate); //TODO: If we later allow for different lengths of timestep we have to update this!
+		datetime DataSetStartDate = GetStartDate(DataSet);
+		datetime InputStartDate   = DataSet->InputDataStartDate;
+		s64 TimestepOffset = InputStartDate.DaysUntil(DataSetStartDate); //TODO: If we later allow for different lengths of timestep we have to update this!
 		Lookup += TimestepOffset * DataSet->InputStorageStructure.TotalCount;
 	}
 	

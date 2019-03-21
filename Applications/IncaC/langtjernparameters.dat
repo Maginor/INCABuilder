@@ -231,7 +231,7 @@ true false false false
 0.05
 
 "b" :     #(dimensionless) [0.001, 0.99] The flow velocity 'b' parameter V=aQ^b
-0.99
+0.5
 
 "Snow threshold temperature" :     #(°C) [-4, 4] The temperature at or below which precipitation will fall as snow in a subcatchment
 0

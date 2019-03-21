@@ -54,9 +54,7 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 		break;
 		
 		case ParameterType_Time:
-		//s32 Year, Month, Day;
-		//YearMonthDay(Value.ValTime, &Year, &Month, &Day);
-		fprintf(File, "\"%s\"", TimeString(Value.ValTime));
+		fprintf(File, "\"%s\"", Value.ValTime.ToString());
 		break;
 	}
 }
@@ -531,7 +529,7 @@ ReadInputSeries(inca_data_set *DataSet, token_stream &Stream)
 		}
 		else //FormatType == 1
 		{
-			s64 StartDate = DataSet->InputDataStartDate;
+			datetime StartDate = DataSet->InputDataStartDate;
 			
 			while(true)
 			{
@@ -541,9 +539,8 @@ ReadInputSeries(inca_data_set *DataSet, token_stream &Stream)
 				
 				if(Token.Type == TokenType_QuotedString)
 				{
-					s64 Date = Stream.ExpectDate();
-					
-					CurTimestep = DayOffset(StartDate, Date); //NOTE: Only one-day timesteps currently supported.
+					datetime Date = Stream.ExpectDate();
+					CurTimestep = StartDate.DaysUntil(Date); //NOTE: Only one-day timesteps currently supported.
 				}
 				else if(Token.Type == TokenType_UnquotedString)
 				{
@@ -568,8 +565,8 @@ ReadInputSeries(inca_data_set *DataSet, token_stream &Stream)
 				if(Token.Type == TokenType_UnquotedString)
 				{
 					Stream.ReadToken();
-					s64 EndDateRange = Stream.ExpectDate();
-					s64 EndTimestepRange = DayOffset(StartDate, EndDateRange); //NOTE: Only one-day timesteps currently supported.
+					datetime EndDateRange = Stream.ExpectDate();
+					s64 EndTimestepRange = StartDate.DaysUntil(EndDateRange); //NOTE: Only one-day timesteps currently supported.
 					
 					if(EndTimestepRange < CurTimestep)
 					{

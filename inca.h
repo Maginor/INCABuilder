@@ -15,7 +15,7 @@ TODOs:
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
 	- Better convenience accessors for the DataSet so that io and application code does not have to understand the inner structure of the DataSet that much.
-	- Clean up the date module. Instead of passing SecondsSinceEpoch everywhere, wrap that in a struct and make functions that can advance it one day, extract, year, month, day etc.
+	- Clean up the date module (i.e. the collection of functions in inca_util.h). Instead of passing SecondsSinceEpoch everywhere, wrap that in a struct and make functions that can advance it one day, extract, year, month, day etc.
 	*/
 
 
@@ -72,6 +72,7 @@ typedef size_t index_t;
 
 #include "inca_math.h"
 #include "inca_util.h"
+#include "datetime.h"
 #include "inca_model.h"
 #include "inca_data_set.cpp"
 #include "jacobian.cpp"

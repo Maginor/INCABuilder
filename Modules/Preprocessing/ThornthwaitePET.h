@@ -71,19 +71,20 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 	if(!AnyNeedProcessing) return;
 	
 	s32 Year, Month, Day;
-	s64 Date = GetInputStartDate(DataSet);
+	datetime Date = GetInputStartDate(DataSet);
 	
 	u64 Timesteps = DataSet->InputDataTimesteps;
 	
-	YearMonthDay(Date, &Year, &Month, &Day);
+	Date.YearMonthDay(&Year, &Month, &Day);
 	if(Month != 1 && Day != 1)
 	{
 		INCA_FATAL_ERROR("ERROR: To use the Thornthwaite PET module, the input data has to start at Jan. 1st." << std::endl);
 	}
 	s32 StartYear = Year;
 	
-	s64 Date2 = Date + Timesteps*86400 - 1;
-	YearMonthDay(Date2, &Year, &Month, &Day);
+	datetime Date2 = Date;
+	Date2.AdvanceDays((s32)Timesteps - 1);
+	Date2.YearMonthDay(&Year, &Month, &Day);
 	if(Month != 12 && Day != 31)
 	{
 		INCA_FATAL_ERROR("ERROR: To use the Thornthwaite PET module, the input data has to end at Dec. 31st. It ends on " << Year << "-" << Month << "-" << Day << std::endl);

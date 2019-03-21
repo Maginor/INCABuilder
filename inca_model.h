@@ -38,7 +38,9 @@ union parameter_value
 	double ValDouble;
 	u64 ValUInt;
 	u64 ValBool; //NOTE: Since this is a union we don't save space by making the bool smaller any way.
-	s64 ValTime; //NOTE: Seconds since 1/1/1970
+	datetime ValTime; //NOTE: From datetime.h
+	
+	parameter_value() : ValTime() {}; //NOTE: 0-initializes it.
 };
 
 
@@ -415,7 +417,7 @@ struct inca_data_set
 	double *InputData;
 	bool   *InputTimeseriesWasProvided;
 	storage_structure InputStorageStructure;
-	s64 InputDataStartDate;
+	datetime InputDataStartDate;
 	bool InputDataHasSeparateStartDate = false; //NOTE: Whether or not a start date was provided for the input data, which is potentially different from the start date of the model run.
 	u64 InputDataTimesteps;
 	
@@ -861,12 +863,16 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Time;
 	
-	bool ParseSuccess = true;
-	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Default, &Spec.Default.ValTime);
-	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Min, &Spec.Min.ValTime);
-	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Max, &Spec.Max.ValTime);
+	bool ParseSuccessAll = true;
+	bool ParseSuccess;
+	Spec.Default.ValTime = datetime(Default, &ParseSuccess);
+	ParseSuccessAll = ParseSuccessAll && ParseSuccess;
+	Spec.Min.ValTime = datetime(Min, &ParseSuccess);
+	ParseSuccessAll = ParseSuccessAll && ParseSuccess;
+	Spec.Max.ValTime = datetime(Max, &ParseSuccess);
+	ParseSuccessAll = ParseSuccessAll && ParseSuccess;
 	
-	if(!ParseSuccess)
+	if(!ParseSuccessAll)
 	{
 		INCA_FATAL_ERROR("ERROR: Unrecognized date format for default, min or max value when registering the parameter " << Name << std::endl);
 	}

@@ -2,6 +2,12 @@
 
 #if !defined(INCA_MATH_H)
 
+#define Min(A, B) ((A) < (B) ? (A) : (B))
+#define Max(A, B) ((A) > (B) ? (A) : (B))
+#define Square(A) ((A)*(A))
+
+#define Pi 3.141592653589793238462643383279502884
+
 inline double
 LinearInterpolate(double X, double MinX, double MaxX, double MinY, double MaxY)
 {

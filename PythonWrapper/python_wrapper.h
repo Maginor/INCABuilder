@@ -176,7 +176,8 @@ DllSetParameterTime(void *DataSetPtr, char *Name, char **IndexNames, u64 IndexCo
 	
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	parameter_value Value;
-	bool ParseSuccess = ParseSecondsSinceEpoch(Val, &Value.ValTime);
+	bool ParseSuccess;
+	Value.ValTime = datetime(Val, &ParseSuccess);
 	if(!ParseSuccess)
 	{
 		INCA_FATAL_ERROR("ERROR: Unrecognized date format provided for the value of the parameter " << Name << std::endl)
@@ -226,11 +227,11 @@ DLLEXPORT void
 DllGetParameterTime(void *DataSetPtr, const char *Name, char **IndexNames, u64 IndexCount, char *WriteTo)
 {
 	//IMPORTANT: This assumes that WriteTo is a char* buffer that is long enough (i.e. at least 11-12-ish bytes)
-	//IMPORTANT: This is NOT thread safe since TimeString is not thread safe.
+	//IMPORTANT: This is NOT thread safe since datetime::ToString is not thread safe.
 	CHECK_ERROR_BEGIN
 	
-	s64 SecondsSinceEpoch = GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_Time).ValTime;
-	char *TimeStr = TimeString(SecondsSinceEpoch);
+	datetime DateTime = GetParameterValue((inca_data_set *)DataSetPtr, Name, IndexNames, (size_t)IndexCount, ParameterType_Time).ValTime;
+	char *TimeStr = DateTime.ToString();
 	strcpy(WriteTo, TimeStr);
 	
 	CHECK_ERROR_END
@@ -326,7 +327,7 @@ DllGetInputStartDate(void *DataSetPtr, char *WriteTo)
 	//IMPORTANT: This is NOT thread safe since TimeString is not thread safe.
 	inca_data_set *DataSet = (inca_data_set *)DataSetPtr;
 	
-	char *TimeStr = TimeString(GetInputStartDate(DataSet));
+	char *TimeStr = GetInputStartDate(DataSet).ToString();
 	strcpy(WriteTo, TimeStr);
 	
 	CHECK_ERROR_END

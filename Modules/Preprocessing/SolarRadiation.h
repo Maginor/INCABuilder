@@ -50,24 +50,24 @@ ComputeSolarRadiation(inca_data_set *DataSet)
 	double Elevation = GetParameterDouble(DataSet, "Elevation", {});
 	
 	u64 Timesteps = DataSet->InputDataTimesteps;
-	s64 StartDate = GetInputStartDate(DataSet);
+	datetime StartDate = GetInputStartDate(DataSet);
 	
 	std::vector<double> SolarRad(Timesteps);
 	
-	s64 Date = StartDate;
+	datetime Date = StartDate;
 	
 	//NOTE: This could probably be optimized by reusing computations for one single year, but it probably does not matter that much.
 	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{
-		s32 Year;
-		s32 DOY = DayOfYear(Date, &Year);
+		s32 Year, DOY;
+		Date.DayOfYear(&DOY, &Year);
 		
 		double DETR = DailyExtraTerrestrialRadiation(Latitude, DOY);
 		double SWR  = ShortWaveRadiationOnAClearSkyDay(Elevation, DETR);
 		
 		SolarRad[Timestep] = SWR * 11.5740741;  //NOTE: Converting MJ/m2/day to W/m2
 		
-		Date += 86400;
+		Date.AdvanceDays(1);
 	}
 	
 	ForeachInputInstance(DataSet, "Solar radiation",

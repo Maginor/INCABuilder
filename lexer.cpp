@@ -93,10 +93,10 @@ struct token_stream
 	token PeekToken(size_t PeekAhead = 1);
 	token ExpectToken(token_type);
 	
-	double ExpectDouble();
-	u64    ExpectUInt();
-	bool   ExpectBool();
-	s64    ExpectDate();
+	double   ExpectDouble();
+	u64      ExpectUInt();
+	bool     ExpectBool();
+	datetime ExpectDate();
 	token_string ExpectQuotedString();
 	token_string ExpectUnquotedString();
 	
@@ -512,11 +512,11 @@ bool token_stream::ExpectBool()
 	return Token.BoolValue;
 }
 
-s64 token_stream::ExpectDate()
+datetime token_stream::ExpectDate()
 {
-	s64 Date;
 	token_string DateStr = ExpectQuotedString();
-	bool ParseSuccess = ParseSecondsSinceEpoch(DateStr.Data, &Date);
+	bool ParseSuccess;
+	datetime Date(DateStr.Data, &ParseSuccess);
 	if(!ParseSuccess)
 	{
 		PrintErrorHeader();

@@ -70,9 +70,9 @@ WriteParameterValueToDatabase(sqlite3 *Db, int ID, parameter_value Min, paramete
 	}
 	else if(Type == ParameterType_Time)
 	{
-		rc = sqlite3_bind_int64(Statement, 2, Min.ValTime);
-		rc = sqlite3_bind_int64(Statement, 3, Max.ValTime);
-		rc = sqlite3_bind_int64(Statement, 4, Value.ValTime);
+		rc = sqlite3_bind_int64(Statement, 2, Min.ValTime.SecondsSinceEpoch);
+		rc = sqlite3_bind_int64(Statement, 3, Max.ValTime.SecondsSinceEpoch);
+		rc = sqlite3_bind_int64(Statement, 4, Value.ValTime.SecondsSinceEpoch);
 	}
 	
 	rc = sqlite3_step(Statement);
@@ -482,7 +482,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 			}
 			else if(Types[i] == ParameterType_Time)
 			{
-				Value.ValTime = sqlite3_column_int64(Statement, 1);
+				Value.ValTime.SecondsSinceEpoch = sqlite3_column_int64(Statement, 1);
 			}
 			
 			IDToParameterValue[ID] = Value;
@@ -687,18 +687,18 @@ PrintStructureTreeRecursively(inca_model *Model, std::vector<database_structure_
 
 
 static void
-WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *Statement, int ID, entity_handle Handle, index_t *Indexes, size_t IndexesCount, s64 StartDate, s64 Step, u64 Timesteps)
+WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *Statement, int ID, entity_handle Handle, index_t *Indexes, size_t IndexesCount, datetime StartDate, s64 Step, u64 Timesteps)
 {
 	size_t Offset = OffsetForHandle(StorageStructure, Indexes, IndexesCount, DataSet->IndexCounts, Handle);
 	
 	int rc = sqlite3_bind_int(Statement, 3, ID);
 	
-	s64 AtTime = StartDate;
+	datetime AtTime = StartDate;
 	
 	for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
 	{	
 		double Value = Data[Offset];
-		rc = sqlite3_bind_int64(Statement, 1, AtTime);
+		rc = sqlite3_bind_int64(Statement, 1, AtTime.SecondsSinceEpoch);
 		
 		if(std::isnan(Value))
 		{
@@ -713,7 +713,7 @@ WriteValuesToDatabase(inca_data_set *DataSet, storage_structure &StorageStructur
 		rc = sqlite3_reset(Statement);
 		
 		Offset += StorageStructure.TotalCount;
-		AtTime += Step;
+		AtTime.SecondsSinceEpoch += Step;
 	}
 }
 
@@ -747,7 +747,7 @@ WriteStructureEntryToDatabase(sqlite3 *Db, sqlite3_stmt *Statement, int ID, cons
 }
 
 static void
-WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *InsertValueStatement, sqlite3_stmt *InsertStructureStatement, std::vector<database_structure_tree> &StructureTree, size_t CurrentLevel, int Dpt, int &RunningID, int &RunningLft, index_t *Indexes, s64 StartDate, s64 Step, u64 Timesteps, int Mode)
+WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &StorageStructure, double *Data, sqlite3 *Db, sqlite3_stmt *InsertValueStatement, sqlite3_stmt *InsertStructureStatement, std::vector<database_structure_tree> &StructureTree, size_t CurrentLevel, int Dpt, int &RunningID, int &RunningLft, index_t *Indexes, datetime StartDate, s64 Step, u64 Timesteps, int Mode)
 {
 	const inca_model *Model = DataSet->Model;
 	
@@ -927,7 +927,7 @@ WriteStorageToDatabase(inca_data_set *DataSet, storage_structure &StorageStructu
 	
 	s64 Step = 86400; //NOTE: The number of seconds in each timestep //TODO: Remember not to hard code this if we later allow for flexible time step.
 	
-	s64 StartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
+	datetime StartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	if(Mode == 1 && DataSet->InputDataHasSeparateStartDate)
 	{
 		StartDate = DataSet->InputDataStartDate;

@@ -1370,10 +1370,10 @@ RunModel(inca_data_set *DataSet)
 	
 	
 	u64 Timesteps      = GetTimesteps(DataSet);
-	s64 ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
+	datetime ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	
 #if INCA_PRINT_TIMING_INFO
-		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " timesteps, starting at " << TimeString(ModelStartTime) << std::endl;
+		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " timesteps, starting at " << ModelStartTime.ToString() << std::endl;
 #endif
 	
 	//NOTE: Allocate input storage in case it was not allocated during setup.
@@ -1383,7 +1383,8 @@ RunModel(inca_data_set *DataSet)
 		std::cout << "WARNING: No input values were specified, using input values of 0 only." << std::endl;
 	}
 	
-	s64 InputDataStartOffsetTimesteps = DayOffset(GetInputStartDate(DataSet), ModelStartTime); //NOTE: Only one-day timesteps currently supported.
+	datetime InputStartDate = GetInputStartDate(DataSet);
+	s64 InputDataStartOffsetTimesteps = InputStartDate.DaysUntil(ModelStartTime); //NOTE: Only one-day timesteps currently supported.
 	if(InputDataStartOffsetTimesteps < 0)
 	{
 		INCA_FATAL_ERROR("ERROR: The input data starts at a later date than the model run." << std::endl);
@@ -1469,8 +1470,8 @@ RunModel(inca_data_set *DataSet)
 	ValueSet.AllCurResultsBase = DataSet->ResultData;
 	
 	s32 Year;
-	ValueSet.DayOfYear = DayOfYear(ModelStartTime, &Year);
-	ValueSet.DaysThisYear = 365 + IsLeapYear(Year);
+	ModelStartTime.DayOfYear(&ValueSet.DayOfYear, &Year);
+	ValueSet.DaysThisYear = YearLength(Year);
 	
 	//NOTE: Set up initial values;
 	ValueSet.AtResult = ValueSet.AllCurResultsBase;

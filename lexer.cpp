@@ -28,13 +28,16 @@ const char *TokenNames[9] =
 
 struct token
 {
+	//TODO: putting these in a union breaks something. Can we find out what?
 	token_type Type;
 	token_string StringValue;
+	//union
+	//{
 	u64 UIntValue;
-	//s64 IntValue;
 	double DoubleValue;
-	bool IsUInt;
 	bool BoolValue;
+	//};
+	bool IsUInt;
 };
 
 struct token_stream

@@ -46,8 +46,11 @@ InverseGammaResponse(double X, double MinX, double MaxX, double MinY, double Max
 inline double
 SafeDivide(double A, double B)
 {
-	if(B == 0.0) return 0.0;     //TODO: Do we need to check if |B| < epsilon instead?
-	return A / B;
+	//NOTE: This function is mostly meant for computing concentration = SafeDivide(mass, watervolume). If the watervolume is 0, it is safe to treat the concentration as 0 as there would be no flow taking the concentration to another compartment anyway. Moreover, all chemical processes involving concentrations are usually turned off if the watervolume is 0.
+	
+	double Result = A / B;
+	if(std::isfinite(Result)) return Result;
+	return 0.0;
 }
 
 

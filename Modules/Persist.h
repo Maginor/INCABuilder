@@ -74,7 +74,7 @@ AddPersistModel(inca_model *Model)
 	auto ReachLength              = RegisterParameterDouble(Model, Reaches, "Reach length", Meters, 1000.0, 1.0, 999999.0, "The length of the main stem of the stream / reach in a subcatchment");
 	auto ReachWidth               = RegisterParameterDouble(Model, Reaches, "Reach width", Meters, 10.0, 0.1, 9999.0, "The average width of the main stem of the stream / reach in a subcatchment");
 	auto A                        = RegisterParameterDouble(Model, Reaches, "a", InverseMetersSquared, 0.4, 0.001, 1.0, "The flow velocity 'a' parameter V=aQ^b");
-	auto B                        = RegisterParameterDouble(Model, Reaches, "b", Dimensionless, 0.43, 0.001, 0.99, "The flow velocity 'b' parameter V=aQ^b");
+	auto B                        = RegisterParameterDouble(Model, Reaches, "b", Dimensionless, 0.43, 0.3, 0.5, "The flow velocity 'b' parameter V=aQ^b");
 	auto SnowThresholdTemperature = RegisterParameterDouble(Model, Reaches, "Snow threshold temperature", DegreesCelsius, 0.0, -4.0, 4.0, "The temperature at or below which precipitation will fall as snow in a subcatchment");
 	auto ReachSnowMultiplier = RegisterParameterDouble(Model, Reaches, "Reach snow multiplier", Dimensionless, 1.0, 0.5, 2.0, "The subcatchment-specific snow multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
 	auto ReachRainMultiplier = RegisterParameterDouble(Model, Reaches, "Reach rain multiplier", Dimensionless, 1.0, 0.5, 2.0, "The subcatchment specific rain multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");

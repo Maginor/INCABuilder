@@ -10,9 +10,7 @@
 #include "../../Modules/SoilTemperature.h"
 //#include "../../Modules/WaterTemperature.h"
 #include "../../Modules/INCA-C.h"
-
-
-//#include "../../inca_json_io.cpp"
+#include "../../Modules/SolarRadiation.h"
 
 
 int main()
@@ -30,6 +28,7 @@ int main()
 	
 	AddPersistModel(Model);
 	AddSoilTemperatureModel(Model);
+	AddSolarRadiationModule(Model);
 	AddINCACModel(Model);
 	
 	ReadInputDependenciesFromFile(Model, InputFile);

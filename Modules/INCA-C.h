@@ -2,23 +2,12 @@
 
 //NOTE NOTE NOTE: This is still in development and is not finished.
 
-#include "Preprocessing/SolarRadiation.h"
-
 
 static void
 AddINCACModel(inca_model *Model)
 {
-	//NOTE: Uses PERSiST, SoilTemperature
+	//NOTE: Uses PERSiST, SoilTemperature, SolarRadiation
 	
-	AddPreprocessingStep(Model, ComputeSolarRadiation);
-	
-	auto Degrees        = RegisterUnit(Model, "°");
-	auto Metres         = RegisterUnit(Model, "m");
-	
-	auto System = GetParameterGroupHandle(Model, "System");
-	
-	auto Latitude  = RegisterParameterDouble(Model, System, "Latitude", Degrees, 60.0, -90.0, 90.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data");
-	auto Elevation = RegisterParameterDouble(Model, System, "Elevation", Metres, 0.0, 0.0, 8848.0, "Used to compute solar radiation if no solar radiation timeseries was provided in the input data");
 	
 	auto Dimensionless  = RegisterUnit(Model);
 	auto Mm             = RegisterUnit(Model, "mm");
@@ -32,7 +21,6 @@ AddINCACModel(inca_model *Model)
 	auto KgPerDay       = RegisterUnit(Model, "kg/day");
 	auto PerDay         = RegisterUnit(Model, "/day");
 	auto Kg             = RegisterUnit(Model, "kg");
-	auto WattPerM2      = RegisterUnit(Model, "W/m^2");
 	
 	auto Soils          = GetIndexSetHandle(Model, "Soils");
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
@@ -495,7 +483,7 @@ AddINCACModel(inca_model *Model)
 	auto ReachDICLossRate                       = RegisterParameterDouble(Model, Reaches, "Reach DIC loss rate", PerDay, 0.1);
 	auto MicrobialMineralisationBaseRate        = RegisterParameterDouble(Model, Reaches, "Aquatic DOC microbial mineralisation base rate", PerDay, 0.1);
 	
-	auto SolarRadiation = RegisterInput(Model, "Solar radiation", WattPerM2);
+	auto SolarRadiation = GetEquationHandle(Model, "Solar radiation");
 	
 	auto ReachSolver = GetSolverHandle(Model, "Reach solver"); //NOTE: Defined in PERSiST
 	
@@ -539,7 +527,7 @@ AddINCACModel(inca_model *Model)
 	EQUATION(Model, PhotoMineralisationRate,
 		return
 			SafeDivide(
-			PARAMETER(DOCMineralisationSelfShadingMultiplier) * INPUT(SolarRadiation), 
+			PARAMETER(DOCMineralisationSelfShadingMultiplier) * RESULT(SolarRadiation), 
 			(PARAMETER(DOCMineralisationOffset) + SafeDivide(RESULT(DOCMassInReach), RESULT(ReachVolume)))
 			);
 	)

@@ -104,8 +104,9 @@ struct token_stream
 	
 	void PrintErrorHeader(bool CurrentColumn=false);
 
-private:
 	const char *Filename;
+
+private:
 	s32 StartLine;
 	s32 StartColumn;
 	s32 Line;

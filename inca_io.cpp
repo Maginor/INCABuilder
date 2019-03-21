@@ -378,84 +378,61 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 }
 
 static void
-ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
+ReadInputSeries(inca_data_set *DataSet, token_stream &Stream)
 {
 	const inca_model *Model = DataSet->Model;
-	
-	token_stream Stream(Filename);
-	
-	u64 Timesteps = 0;
-	
-	while(true)
-	{
-		token Token = Stream.PeekToken();
-		
-		if(Token.Type == TokenType_EOF)
-		{
-			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Expected one of the code words timesteps, start_date, inputs, additional_timeseries or index_set_dependencies" << std::endl);
-		}
-		
-		token_string Section = Stream.ExpectUnquotedString();
-
-		if(Section.Equals("timesteps"))
-		{
-			Stream.ExpectToken(TokenType_Colon);
-			Timesteps = Stream.ExpectUInt();
-		}
-		else if(Section.Equals("start_date"))
-		{
-			Stream.ExpectToken(TokenType_Colon);
-			DataSet->InputDataStartDate = Stream.ExpectDate();
-			DataSet->InputDataHasSeparateStartDate = true;
-		}
-		else if(Section.Equals("inputs"))
-		{
-			Stream.ExpectToken(TokenType_Colon);
-			break;
-		}
-		else if(Section.Equals("index_set_dependencies") || Section.Equals("additional_timeseries"))
-		{
-			//NOTE: These are handled in a separate call, so we have to skip through them here.
-			while(true)
-			{
-				Token = Stream.PeekToken();
-				if(Token.Type == TokenType_UnquotedString && !Token.StringValue.Equals("unit")) break; //We hit a new section;
-				Stream.ReadToken(); //Otherwise consume the token and ignore it.
-			}
-		}
-		else
-		{
-			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Input file parser does not recognize section type: " << Section << "." << std::endl);
-		}
-	}
-	
-	if(Timesteps == 0)
-	{
-		INCA_FATAL_ERROR("ERROR: Timesteps in the input file " << Filename << " is set to 0." << std::endl);
-	}
-	AllocateInputStorage(DataSet, Timesteps);
-	
-	if(!DataSet->InputDataHasSeparateStartDate)
-	{
-		DataSet->InputDataStartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
-	}
 	
 	while(true)
 	{
 		token Token = Stream.ReadToken();
 		if(Token.Type == TokenType_EOF)
 		{
-			break;
+			return;
 		}
-		if(Token.Type != TokenType_QuotedString)
+		
+		if(Token.Type == TokenType_UnquotedString)
 		{
-			//std::cout << "token type: " << TokenNames[Token.Type] << " " << Token.StringValue << std::endl;
-			
-			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Expected the quoted name of an input" << std::endl);
+			if(Token.StringValue.Equals("include_file"))
+			{
+				token_string Filename = Stream.ExpectQuotedString();
+				
+				//NOTE: The file path is given relatively to the current file, so we have to add any path of the current one in front.
+				
+				const char *ParentPath = Stream.Filename;
+				int LastSlash;
+				bool AnySlashAtAll = false;
+				for(LastSlash = strlen(ParentPath) - 1; LastSlash >= 0; --LastSlash)
+				{
+					char C = ParentPath[LastSlash];
+					if(C == '\\' || C == '/')
+					{
+						AnySlashAtAll = true;
+						break;
+					}
+				}
+				if(!AnySlashAtAll) LastSlash = -1;
+				
+				char NewPath[512]; //Umm, hope this is plenty???
+				sprintf(NewPath, "%.*s%.*s", LastSlash+1, ParentPath, Filename.Length, Filename.Data);
+				
+				token_stream SubStream(NewPath);
+				
+				ReadInputSeries(DataSet, SubStream);
+				
+				continue;
+			}
+			else
+			{
+				Stream.PrintErrorHeader();
+				INCA_FATAL_ERROR("Unexpected command word " << Token.StringValue);
+			}
 		}
+		else if(Token.Type != TokenType_QuotedString)
+		{
+			Stream.PrintErrorHeader();
+			INCA_FATAL_ERROR("Expected the quoted name of an input or an include_file directive" << std::endl);
+		}
+		
 		token_string InputName = Token.StringValue;
 		
 		input_h Input = GetInputHandle(Model, InputName);
@@ -506,9 +483,15 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			DataSet->InputTimeseriesWasProvided[Offset] = true;
 		}
 		
+		
+		//NOTE: This reads the actual data after the header.
+		
 		//NOTE: For the first timestep, try to figure out what format the data was provided in.
 		int FormatType = -1;
 		Token = Stream.PeekToken();
+		
+		u64 Timesteps = DataSet->InputDataTimesteps;
+		
 		if(Token.Type == TokenType_Numeric)
 		{
 			FormatType = 0;
@@ -632,11 +615,77 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 					Stream.PrintErrorHeader();
 					INCA_FATAL_ERROR("Expected either a 'to' or a number.");
 				}
-				
-				
 			}
 		}
 	}
+}
+
+static void
+ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	token_stream Stream(Filename);
+	
+	u64 Timesteps = 0;
+	
+	while(true)
+	{
+		token Token = Stream.PeekToken();
+		
+		if(Token.Type == TokenType_EOF)
+		{
+			Stream.PrintErrorHeader();
+			INCA_FATAL_ERROR("Expected one of the code words timesteps, start_date, inputs, additional_timeseries or index_set_dependencies" << std::endl);
+		}
+		
+		token_string Section = Stream.ExpectUnquotedString();
+
+		if(Section.Equals("timesteps"))
+		{
+			Stream.ExpectToken(TokenType_Colon);
+			Timesteps = Stream.ExpectUInt();
+		}
+		else if(Section.Equals("start_date"))
+		{
+			Stream.ExpectToken(TokenType_Colon);
+			DataSet->InputDataStartDate = Stream.ExpectDate();
+			DataSet->InputDataHasSeparateStartDate = true;
+		}
+		else if(Section.Equals("inputs"))
+		{
+			Stream.ExpectToken(TokenType_Colon);
+			break;
+		}
+		else if(Section.Equals("index_set_dependencies") || Section.Equals("additional_timeseries"))
+		{
+			//NOTE: These are handled in a separate call, so we have to skip through them here.
+			while(true)
+			{
+				Token = Stream.PeekToken();
+				if(Token.Type == TokenType_UnquotedString && !Token.StringValue.Equals("unit")) break; //We hit a new section;
+				Stream.ReadToken(); //Otherwise consume the token and ignore it.
+			}
+		}
+		else
+		{
+			Stream.PrintErrorHeader();
+			INCA_FATAL_ERROR("Input file parser does not recognize section type: " << Section << "." << std::endl);
+		}
+	}
+	
+	if(Timesteps == 0)
+	{
+		INCA_FATAL_ERROR("ERROR: Timesteps in the input file " << Filename << " is set to 0." << std::endl);
+	}
+	AllocateInputStorage(DataSet, Timesteps);
+	
+	if(!DataSet->InputDataHasSeparateStartDate)
+	{
+		DataSet->InputDataStartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
+	}
+	
+	ReadInputSeries(DataSet, Stream);
 }
 
 

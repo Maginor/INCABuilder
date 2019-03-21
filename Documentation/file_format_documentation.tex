@@ -456,6 +456,45 @@ end_timeseries
 \end{lstlisting}
 \end{example}
 
+\subsubsection{Including multiple input files}
+
+If you have a lot of input data, it can be useful to organize it in many separate files. You need to have one master file that has all the "organisational" data. Then below the {\tt inputs} section in the master file, you can use an {\tt include\_file} directive to read timeseries from other files. The other files have to include (one or more) entire timeseries (including the heading name and optional indexes). The path of the file you include should be relative to the location of the master file.
+
+\begin{example}
+Including other files. The master file:
+\begin{lstlisting}
+start_date : "2004-01-01"
+timesteps  : 5
+
+inputs:
+
+include_file "depositions.dat"
+
+"Air temperature":
+-10.7251
+-18.1251
+-14.8251
+-23.6251
+-24.7251
+\end{lstlisting}
+The entire contents of depositions.dat:
+\begin{lstlisting}
+"Nitrate dry deposition" :
+"2004-01-01" to "2005-01-01" 0.01
+"2005-01-02" to "2008-01-01" 0.02
+end_timeseries
+
+"Nitrate wet deposition" :
+"2004-01-01" to "2005-01-01" 0.03
+"2005-01-02" to "2008-01-01" 0.04
+end_timeseries
+\end{lstlisting}
+\end{example}
+
+\begin{note}
+All organisational data like additional timeseries or index set dependencies have to be declared in the master file even though the information may be about timeseries that are included from separate files.
+\end{note}
+
 
 \subsubsection{Converting from .csv or .xlsx}
 In many cases, your input data will a priori exist in a .csv format or an .xlsx format. Since there are very many ways your data could be formatted it would be difficult for us to make a converter that can handle every possibility. If you don't know any python or other scripting languages you could use to convert them, you may have to learn some tricks. We will just give some quick tips here. A more complete tutorial may be for the future.

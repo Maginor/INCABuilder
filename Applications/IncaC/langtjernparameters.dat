@@ -1,4 +1,4 @@
-# Parameter file generated for PERSiST V1.0 at 2019-03-21 16:50:04
+# Parameter file generated for PERSiST V1.0 at 2019-03-22 10:02:32
 
 index_sets:
 "Landscape units" : {"Forest" "Wetland"}
@@ -297,6 +297,12 @@ true
 0.05
 
 "Aquatic DOC microbial mineralisation base rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach initial DOC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach initial DIC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0
 
 ###################### "Reaches" "Landscape units" ######################

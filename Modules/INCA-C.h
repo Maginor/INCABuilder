@@ -51,8 +51,8 @@ AddINCACModel(inca_model *Model)
 	auto LitterFallTimeseries          = RegisterInput(Model, "Litterfall", GPerM2PerDay);
 	//auto RootBreakdownRate             = RegisterParameterDouble(Model, Land, "Root breakdown rate", GPerM2PerDay, 1.0);
 	
-	auto FastPoolEquilibriumFractionOrganicLayer = RegisterParameterDouble(Model, Land, "SOC fast pool equilibrium fraction in the organic layer", Dimensionless, 0.5, 0.0, 1.0, "The size that the fast SOC pool tends towards.");
-	auto FastPoolEquilibriumFractionMineralLayer = RegisterParameterDouble(Model, Land, "SOC fast pool equilibrium fraction in the mineral layer", Dimensionless, 0.5, 0.0, 1.0, "The size that the fast SOC pool tends towards.");
+	auto FastPoolEquilibriumFractionOrganicLayer = RegisterParameterDouble(Model, Land, "SOC fast pool equilibrium fraction in the organic layer", Dimensionless, 0.5, 0.0, 1.0, "The relative size that the fast SOC pool tends towards.");
+	auto FastPoolEquilibriumFractionMineralLayer = RegisterParameterDouble(Model, Land, "SOC fast pool equilibrium fraction in the mineral layer", Dimensionless, 0.5, 0.0, 1.0, "The relative size that the fast SOC pool tends towards.");
 	auto FastPoolRateConstantOrganicLayer = RegisterParameterDouble(Model, Land, "SOC fast pool rate constant in the organic layer", Dimensionless, 50.0, 0.0, 5000.0, "Constant used to determine the rate of exchange between the fast and slow pools of SOC.");
 	auto FastPoolRateConstantMineralLayer = RegisterParameterDouble(Model, Land, "SOC fast pool rate constant in the mineral layer", Dimensionless, 50.0, 0.0, 5000.0, "Constant used to determine the rate of exchange between the fast and slow pools of SOC.");
 	
@@ -562,13 +562,19 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	
+	
+	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
+	auto ReachFlow   = GetEquationHandle(Model, "Reach flow");
+	auto ReachAbstraction = GetEquationHandle(Model, "Reach abstraction");
+	
+	
 	auto DOCMineralisationSelfShadingMultiplier = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation self-shading multiplier", Dimensionless, 1.0); //TODO: Not actually dimensionless
 	auto DOCMineralisationOffset                = RegisterParameterDouble(Model, Reaches, "Aquatic DOC mineralisation offset", KgPerM3, 1.0);
 	auto ReachDICLossRate                       = RegisterParameterDouble(Model, Reaches, "Reach DIC loss rate", PerDay, 0.1);
 	auto MicrobialMineralisationBaseRate        = RegisterParameterDouble(Model, Reaches, "Aquatic DOC microbial mineralisation base rate", PerDay, 0.1);
 	
-	auto ReachInitialDOCConcentration(Model, Reaches, "Reach initial DOC concentration", MgPerL, 0.0);
-	auto ReachInitialDICConcentration(Model, Reaches, "Reach initial DIC concentration", MgPerL, 0.0);
+	auto ReachInitialDOCConcentration = RegisterParameterDouble(Model, Reaches, "Reach initial DOC concentration", MgPerL, 0.0);
+	auto ReachInitialDICConcentration = RegisterParameterDouble(Model, Reaches, "Reach initial DIC concentration", MgPerL, 0.0);
 	
 	auto SolarRadiation = GetEquationHandle(Model, "Solar radiation");
 	
@@ -607,9 +613,6 @@ AddINCACModel(inca_model *Model)
 	auto ReachDICAbstraction = RegisterEquation(Model, "Reach DIC abstraction", KgPerDay);
 	SetSolver(Model, ReachDICAbstraction, ReachSolver);
 	
-	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
-	auto ReachFlow   = GetEquationHandle(Model, "Reach flow");
-	auto ReachAbstraction = GetEquationHandle(Model, "Reach abstraction");
 	
 	
 	EQUATION(Model, ReachDOCInput,
@@ -664,7 +667,7 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachDICOutput,
-		return 86400.0 * SafeDivide(RESULT(DICMassInReach) * RESULT(ReachFlow), RESULT(ReachVolume)); //TODO: Check unit conversion
+		return 86400.0 * SafeDivide(RESULT(DICMassInReach) * RESULT(ReachFlow), RESULT(ReachVolume));
 	)
 	
 	EQUATION(Model, DICMassInReach,
@@ -677,15 +680,15 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	
-	auto ReachDOCConcentration = RegisterEquation(Model, "Reach DOC concentration", KgPerM3);
-	auto ReachDICConcentration = RegisterEquation(Model, "Reach DIC concentration", KgPerM3);
+	auto ReachDOCConcentration = RegisterEquation(Model, "Reach DOC concentration", MgPerL);
+	auto ReachDICConcentration = RegisterEquation(Model, "Reach DIC concentration", MgPerL);
 	
 	EQUATION(Model, ReachDOCConcentration,
-		return SafeDivide(RESULT(DOCMassInReach), RESULT(ReachVolume));
+		return SafeDivide(RESULT(DOCMassInReach), RESULT(ReachVolume)) * 1000.0;
 	)
 	
 	EQUATION(Model, ReachDICConcentration,
-		return SafeDivide(RESULT(DICMassInReach), RESULT(ReachVolume));
+		return SafeDivide(RESULT(DICMassInReach), RESULT(ReachVolume)) * 1000.0;
 	)
 	
 }

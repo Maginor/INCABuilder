@@ -13,7 +13,7 @@ GenerateDataSet(inca_model *Model)
 	DataSet->Model = Model;
 	
 	DataSet->IndexCounts = AllocClearedArray(index_t, Model->FirstUnusedIndexSetHandle);
-	DataSet->IndexCounts[0] = 1;
+	DataSet->IndexCounts[0] = index_t({0}, 1);
 	DataSet->IndexNames = AllocClearedArray(const char **, Model->FirstUnusedIndexSetHandle);
 	DataSet->IndexNamesToHandle.resize(Model->FirstUnusedIndexSetHandle, {});
 	
@@ -44,7 +44,7 @@ inca_data_set::~inca_data_set()
 			{
 				if(IndexNames[IndexSetHandle])
 				{
-					for(index_t Index = 0; Index < IndexCounts[IndexSetHandle]; ++Index)
+					for(index_t Index = {IndexSetHandle, 0}; Index < IndexCounts[IndexSetHandle]; ++Index)
 					{
 						if(IndexNames[IndexSetHandle][Index]) free((void *)IndexNames[IndexSetHandle][Index]); //NOTE: We free this const char * because we know that it was set using SetIndexes(), which always allocates copies of the index names it receives.
 					}
@@ -60,7 +60,7 @@ inca_data_set::~inca_data_set()
 			{
 				if(BranchInputs[IndexSetHandle])
 				{
-					for(index_t Index = 0; Index < IndexCounts[IndexSetHandle]; ++Index)
+					for(index_t Index = {IndexSetHandle, 0}; Index < IndexCounts[IndexSetHandle]; ++Index)
 					{
 						if(BranchInputs[IndexSetHandle][Index].Inputs) free(BranchInputs[IndexSetHandle][Index].Inputs);
 					}
@@ -127,7 +127,7 @@ CopyDataSet(inca_data_set *DataSet)
 			if(DataSet->IndexNames[IndexSetHandle])
 			{
 				Copy->IndexNames[IndexSetHandle] = AllocClearedArray(const char *, DataSet->IndexCounts[IndexSetHandle]);
-				for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+				for(index_t Index = {IndexSetHandle, 0}; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 				{
 					Copy->IndexNames[IndexSetHandle][Index] = CopyString(DataSet->IndexNames[IndexSetHandle][Index]);
 				}
@@ -145,7 +145,7 @@ CopyDataSet(inca_data_set *DataSet)
 			if(DataSet->BranchInputs[IndexSetHandle])
 			{
 				Copy->BranchInputs[IndexSetHandle] = AllocClearedArray(branch_inputs, DataSet->IndexCounts[IndexSetHandle]);
-				for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+				for(index_t Index = {IndexSetHandle, 0}; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 				{
 					//yeahh.. this could also be a std::vector
 					branch_inputs &Inputs = DataSet->BranchInputs[IndexSetHandle][Index];
@@ -172,7 +172,7 @@ CopyDataSet(inca_data_set *DataSet)
 }
 
 static void
-SetupStorageStructureSpecifer(storage_structure &Structure, size_t *IndexCounts, size_t FirstUnusedHandle)
+SetupStorageStructureSpecifer(storage_structure &Structure, index_t *IndexCounts, size_t FirstUnusedHandle)
 {
 	size_t UnitCount = Structure.Units.size();
 	Structure.TotalCountForUnit = AllocClearedArray(size_t, UnitCount);
@@ -238,7 +238,7 @@ OffsetForHandle(storage_structure &Structure, entity_handle Handle)
 // CurrentIndexes must be set up so that for any index set with handle IndexSetHandle, CurrentIndexes[IndexSetHandle] is the current index of that index set. (Typically ValueSet->CurrentIndexes)
 // IndexCounts    must be set up so that for any index set with handle IndexSetHandle, IndexCounts[IndexSetHandle] is the index count of that index set. (Typically DataSet->IndexCounts)
 inline size_t
-OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, entity_handle Handle)
+OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const index_t *IndexCounts, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -253,6 +253,17 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 	{
 		size_t Count = IndexCounts[IndexSet.Handle];
 		index_t Index = CurrentIndexes[IndexSet.Handle];
+		
+#if INCA_INDEX_BOUNDS_TESTS
+		if(Index >= Count)
+		{
+			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
+		}
+		if(Index.IndexSetHandle != IndexSet.Handle)
+		{
+			INCA_FATAL_ERROR("Used an index addressed to index set number " << Index.IndexSetHandle << " for indexing index set number " << IndexSet.Handle << "." << std::endl);
+		}
+#endif
 		
 		InstanceOffset = InstanceOffset * Count + Index;
 	}
@@ -271,7 +282,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, con
 // WARNING: There is no error checking at all to see if IndexesCount is the same as the number of index set dependencies. If this is wrong, the program could crash, though this access function is mostly used by wrappers that do such error checks themselves.
 // TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
 inline size_t
-OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t IndexesCount, const size_t *IndexCounts, entity_handle Handle)
+OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t IndexesCount, const index_t *IndexCounts, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -292,6 +303,10 @@ OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t Ind
 		if(Index >= Count)
 		{
 			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
+		}
+		if(Index.IndexSetHandle != IndexSet.Handle)
+		{
+			INCA_FATAL_ERROR("Used an index addressed to index set number " << Index.IndexSetHandle << " for indexing index set number " << IndexSet.Handle << "." << std::endl);
 		}
 #endif
 		
@@ -318,7 +333,7 @@ OffsetForHandle(storage_structure &Structure, const index_t *Indexes, size_t Ind
 // WARNING: There is no error checking at all to see if OverrideCount is not larger than the number of index set dependencies, and in that case the program could crash.
 // TODO: Maybe add in a compile-out-able error test that one could turn on during model development.
 inline size_t
-OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle)
+OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const index_t *IndexCounts, const index_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -349,6 +364,10 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 		{
 			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
 		}
+		if(Index.IndexSetHandle != IndexSet.Handle)
+		{
+			INCA_FATAL_ERROR("Used an index addressed to index set number " << Index.IndexSetHandle << " for indexing index set number " << IndexSet.Handle << "." << std::endl);
+		}
 #endif
 		
 		InstanceOffset = InstanceOffset * Count + Index;
@@ -372,7 +391,7 @@ OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, con
 //
 // This function is designed to be used with the system that evaluates cumulation equations.
 static size_t
-OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *IndexCounts, index_set_h Skip, size_t& SubsequentOffset, entity_handle Handle)
+OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, index_t *IndexCounts, index_set_h Skip, size_t& SubsequentOffset, entity_handle Handle)
 {
 	std::vector<storage_unit_specifier> &Units = Structure.Units;
 	
@@ -395,7 +414,7 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 		}
 		if(IndexSet == Skip)
 		{
-			Index = 0;
+			Index = {IndexSet, 0};
 			Skipped = true;
 		}
 
@@ -403,6 +422,10 @@ OffsetForHandle(storage_structure &Structure, index_t *CurrentIndexes, size_t *I
 		if(Index >= Count)
 		{
 			INCA_FATAL_ERROR("Index out of bounds for index set number " << IndexSet.Handle << ", got index " << Index << ", count was " << Count << std::endl);
+		}
+		if(Index.IndexSetHandle != IndexSet.Handle)
+		{
+			INCA_FATAL_ERROR("Used an index addressed to index set number " << Index.IndexSetHandle << " for indexing index set number " << IndexSet.Handle << "." << std::endl);
 		}
 #endif
 		
@@ -532,7 +555,7 @@ SetIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::vector<
 		}
 	}
 	
-	DataSet->IndexCounts[IndexSetHandle] = IndexNames.size();
+	DataSet->IndexCounts[IndexSetHandle] = {IndexSetHandle, (u32)IndexNames.size()};
 	DataSet->IndexNames[IndexSetHandle] = AllocClearedArray(const char *, IndexNames.size());
 	
 	for(size_t IndexIndex = 0; IndexIndex < IndexNames.size(); ++IndexIndex)
@@ -582,11 +605,11 @@ SetBranchIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::v
 		INCA_FATAL_ERROR("ERROR: Tried to set indexes for the index set " << Spec.Name << ", but no indexes were provided" << std::endl);
 	}
 	
-	DataSet->IndexCounts[IndexSetHandle] = Inputs.size();
+	DataSet->IndexCounts[IndexSetHandle] = {IndexSetHandle, (u32)Inputs.size()};
 	DataSet->IndexNames[IndexSetHandle] = AllocClearedArray(const char *, Inputs.size());
 
 	DataSet->BranchInputs[IndexSetHandle] = AllocClearedArray(branch_inputs, Inputs.size());
-	index_t IndexIndex = 0;
+	index_t IndexIndex = {IndexSetHandle, 0};
 	for(const auto &InputData : Inputs)
 	{
 		const char *IndexName = InputData.first.Copy().Data; //NOTE: Leaks unless we free it.
@@ -603,7 +626,7 @@ SetBranchIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::v
 		DataSet->BranchInputs[IndexSetHandle][IndexIndex].Count = InputNames.size();
 		DataSet->BranchInputs[IndexSetHandle][IndexIndex].Inputs = AllocClearedArray(index_t, InputNames.size());
 		
-		index_t InputIdxIdx = 0;
+		index_t InputIdxIdx = {IndexSetHandle, 0};
 		for(token_string InputName : InputNames)
 		{
 			auto Find = DataSet->IndexNamesToHandle[IndexSetHandle].find(InputName);
@@ -611,7 +634,7 @@ SetBranchIndexes(inca_data_set *DataSet, token_string IndexSetName, const std::v
 			{
 				INCA_FATAL_ERROR("ERROR: The index \"" << InputName << "\" appears an input to the index \"" << IndexName << "\", in the index set " << IndexSetName << ", before it itself is declared." << std::endl);
 			}
-			index_t InputIndex = Find->second;
+			index_t InputIndex = {IndexSetHandle, Find->second};
 			DataSet->BranchInputs[IndexSetHandle][IndexIndex].Inputs[InputIdxIdx] = InputIndex;
 			++InputIdxIdx;
 		}
@@ -785,13 +808,13 @@ GetIndex(inca_data_set *DataSet, index_set_h IndexSet, token_string IndexName)
 	auto Find = IndexMap.find(IndexName);
 	if(Find != IndexMap.end())
 	{
-		return Find->second;
+		return {IndexSet, Find->second};
 	}
 	else
 	{
 		INCA_FATAL_ERROR("ERROR: Tried the index name " << IndexName << " with the index set " << GetName(DataSet->Model, IndexSet) << ", but that index set does not contain that index." << std::endl);
 	}
-	return 0;
+	return {IndexSet, 0};
 }
 
 static void
@@ -944,7 +967,7 @@ CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h Cumulate
 	size_t Offset = OffsetForHandle(DataSet->ResultStorageStructure, CurrentIndexes, DataSet->IndexCounts, CumulateOverIndexSet, SubsequentOffset, Equation.Handle);
 	
 	double *Lookup = LookupBase + Offset;
-	for(index_t Index = 0; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
+	for(index_t Index = {CumulateOverIndexSet, 0}; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
 	{
 		Total += *Lookup;
 		Lookup += SubsequentOffset;
@@ -969,7 +992,7 @@ CumulateResult(inca_data_set *DataSet, equation_h Equation, index_set_h Cumulate
 	parameter_value *ParLookup = DataSet->ParameterData + ParOffset;
 	
 	ParLookup = DataSet->ParameterData + ParOffset;
-	for(index_t Index = 0; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
+	for(index_t Index = {CumulateOverIndexSet, 0}; Index < DataSet->IndexCounts[CumulateOverIndexSet.Handle]; ++Index)
 	{
 		double EquationValue = *Lookup;
 		double ParValue = (*ParLookup).ValDouble;
@@ -1289,7 +1312,7 @@ ForeachRecursive(inca_data_set *DataSet, char **CurrentIndexNames, const std::ve
 	{
 		index_set_h IterateOver = IndexSets[Level + 1];
 		size_t IndexCount = DataSet->IndexCounts[IterateOver.Handle];
-		for(index_t Index = 0; Index < IndexCount; ++Index)
+		for(index_t Index = {IterateOver, 0}; Index < IndexCount; ++Index)
 		{
 			CurrentIndexNames[Level + 1] = (char *)DataSet->IndexNames[IterateOver.Handle][Index]; //NOTE: Casting away constness because it is annoying, and it does not matter in this case.
 			ForeachRecursive(DataSet, CurrentIndexNames, IndexSets, Do, Level + 1);

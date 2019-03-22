@@ -796,7 +796,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	EQUATION(Model, InitialNewlyConvertedSoilLabilePMass,
 		double ag = RESULT(AgriculturalSoilLabilePMass);
-		if(PARAMETER(NCType) == Seminatural) return ag;
+		index_t nctype = INDEX_NUMBER(LandscapeUnits, PARAMETER(NCType));
+		if(nctype == Seminatural) return ag;
 		return 0.0;
 	)
 	
@@ -842,7 +843,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	EQUATION(Model, InitialNewlyConvertedSoilLabilePMass,
 		double ag = RESULT(AgriculturalSoilLabilePMass);
-		if(PARAMETER(NCType) == Seminatural) return ag;
+		index_t nctype = INDEX_NUMBER(LandscapeUnits, PARAMETER(NCType));
+		if(nctype == Seminatural) return ag;
 		return 0.0;
 	)
 	
@@ -870,7 +872,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 #endif
 	
 	EQUATION(Model, NewlyConvertedSoilWaterVolume,
-		u64 nctype = PARAMETER(NCType);
+		index_t nctype = INDEX_NUMBER(LandscapeUnits, PARAMETER(NCType));
 		double ag = RESULT(AgriculturalSoilWaterVolume);
 		double sn = RESULT(SeminaturalSoilWaterVolume);
 		if(nctype == Arable) return ag;
@@ -878,7 +880,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, NewlyConvertedSoilWaterFlow,
-		u64 nctype = PARAMETER(NCType);
+		index_t nctype = INDEX_NUMBER(LandscapeUnits, PARAMETER(NCType));
 		double ag = RESULT(AgriculturalSoilWaterFlow);
 		double sn = RESULT(SeminaturalSoilWaterFlow);
 		if(nctype == Arable) return ag;
@@ -887,7 +889,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	
 	EQUATION(Model, InitialNewlyConvertedSoilWaterEPC0,
-		u64 nctype = PARAMETER(NCType);
+		index_t nctype = INDEX_NUMBER(LandscapeUnits, PARAMETER(NCType));
 		return ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, nctype), PARAMETER(CatchmentArea));
 	)
 	
@@ -1101,7 +1103,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	EQUATION(Model, FlowToWaterBody,
 		double sum = 0.0;
 		
-		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		for(index_t ReachIndex = FIRST_INDEX(Reach); ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
 		{
 			double ca = PARAMETER(CatchmentArea, ReachIndex);
 			double q  = RESULT(DailyMeanReachFlow, ReachIndex); //NOTE: This is in mm/day
@@ -1116,7 +1118,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	EQUATION(Model, SSFluxToWaterBody,
 		double sum = 0.0;
 		
-		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		for(index_t ReachIndex = FIRST_INDEX(Reach); ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
 		{
 			double ss = RESULT(DailyMeanSuspendedSedimentFlux, ReachIndex);
 			if(PARAMETER(IsInputToWaterBody, ReachIndex))
@@ -1130,7 +1132,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	EQUATION(Model, TDPFluxToWaterBody,
 		double sum = 0.0;
 		
-		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		for(index_t ReachIndex = FIRST_INDEX(Reach); ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
 		{
 			double tdp = RESULT(DailyMeanTDPFlux, ReachIndex);
 			if(PARAMETER(IsInputToWaterBody, ReachIndex))
@@ -1144,7 +1146,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	EQUATION(Model, PPFluxToWaterBody,
 		double sum = 0.0;
 		
-		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		for(index_t ReachIndex = FIRST_INDEX(Reach); ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
 		{
 			double pp = RESULT(DailyMeanPPFlux, ReachIndex);
 			if(PARAMETER(IsInputToWaterBody, ReachIndex))
@@ -1158,7 +1160,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	EQUATION(Model, TPFluxToWaterBody,
 		double sum = 0.0;
 		
-		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		for(index_t ReachIndex = FIRST_INDEX(Reach); ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
 		{
 			double tp = RESULT(DailyMeanTPFlux, ReachIndex);
 			if(PARAMETER(IsInputToWaterBody, ReachIndex))
@@ -1172,7 +1174,7 @@ AddSimplyPInputToWaterBodyModule(inca_model *Model)
 	EQUATION(Model, SRPFluxToWaterBody,
 		double sum = 0.0;
 		
-		for(index_t ReachIndex = 0; ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
+		for(index_t ReachIndex = FIRST_INDEX(Reach); ReachIndex < INDEX_COUNT(Reach); ++ReachIndex)
 		{
 			double srp = RESULT(DailyMeanSRPFlux, ReachIndex); //NOTE: This is in mm/day
 			if(PARAMETER(IsInputToWaterBody, ReachIndex))

@@ -294,7 +294,7 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 		const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		if(Spec.Type == IndexSetType_Basic)
 		{
-			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+			for(index_t Index = {IndexSetHandle, 0}; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 			{
 				std::string IndexName = DataSet->IndexNames[IndexSetHandle][Index];
 				Json["index_sets"][Spec.Name].push_back(IndexName);
@@ -303,7 +303,7 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 		else if(Spec.Type == IndexSetType_Branched)
 		{
 			std::vector<std::vector<std::string>> BranchInputs;
-			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+			for(index_t Index = {IndexSetHandle, 0}; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 			{
 				std::vector<std::string> Branches;
 				Branches.push_back(DataSet->IndexNames[IndexSetHandle][Index]); //NOTE: The name of the index itself.

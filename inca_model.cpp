@@ -964,19 +964,19 @@ ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_
 				InnerLoopBody(DataSet, ValueSet, BatchGroup, BatchGroupIdx, CurrentLevel);
 			
 			if(CurrentLevel == BottomLevel)
-				ValueSet->CurrentIndexes[CurrentIndexSet.Handle]++;
+				++ValueSet->CurrentIndexes[CurrentIndexSet.Handle];
 			
 			//NOTE: We need to check again because currentindex may have changed.
 			if(ValueSet->CurrentIndexes[CurrentIndexSet.Handle] == DataSet->IndexCounts[CurrentIndexSet.Handle])
 			{
 				//NOTE: We are at the end of this index set
 				
-				ValueSet->CurrentIndexes[CurrentIndexSet.Handle] = 0;
+				ValueSet->CurrentIndexes[CurrentIndexSet.Handle] = {CurrentIndexSet, 0};
 				//NOTE: Traverse up the tree
 				if(CurrentLevel == 0) break; //NOTE: We are finished with this batch group.
 				CurrentLevel--;
 				CurrentIndexSet = BatchGroup.IndexSets[CurrentLevel];
-				ValueSet->CurrentIndexes[CurrentIndexSet.Handle]++; //Advance the index set above us so that we don't walk down the same branch again.
+				++ValueSet->CurrentIndexes[CurrentIndexSet.Handle]; //Advance the index set above us so that we don't walk down the same branch again.
 				continue;
 			}
 			else if(CurrentLevel != BottomLevel)

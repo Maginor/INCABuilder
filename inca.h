@@ -1,13 +1,13 @@
 
 
 
-//NOTE: This is designed to be built as a unity build, i.e. in only a single compilation unit. We may split things up into separate compilation units with proper headers later.
+//NOTE: This is designed to be built as a unity build, i.e. in only a single compilation unit.
 
 
 /*
 TODOs:
-	- PrintPartialDependencyTrace gives incorrect information sometimes when a solver is involved twice.
-	- Better encapsulation of the ValueSet subsystem. Unify lookup systems for parameters, inputs, results, last_results
+	- PrintPartialDependencyTrace gives incorrect information sometimes about what equation is involved when a solver is the one having a dependency.
+	- Better encapsulation of the value_set_accessor subsystem. Unify lookup systems for parameters, inputs, results, last_results
 	- Have to figure out if the initial value equation system we have currently is good.
 	- Clean up the input tokenizer. Maybe just use fscanf for reading numbers, but it is actually a little complicated since we have to figure out the type in any case.
 	- Allow the dependency system to be able to understand explicitly indexed lookups of results better.
@@ -15,7 +15,12 @@ TODOs:
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
 	- Better convenience accessors for the DataSet so that io and application code does not have to understand the inner structure of the DataSet that much.
-	- Clean up the date module (i.e. the collection of functions in inca_util.h). Instead of passing SecondsSinceEpoch everywhere, wrap that in a struct and make functions that can advance it one day, extract, year, month, day etc.
+	- Better management of the index_t system. Maybe store the index set id in the upper bits of the index, which would make it possible to check that the correct index is used with the correct index set when explicitly indexing. Something like:
+	struct index_t { 
+		u32 IndexSetHandle;
+		u32 Index;
+	};
+	   would require more accessors like INDEX_NO(IndexSet, Number), LAST_INDEX(IndexSet), operators like <=, ++ etc.
 	*/
 
 
@@ -52,10 +57,6 @@ typedef int64_t s64;
 typedef int32_t s32;
 typedef int16_t s16;
 typedef int8_t s8;
-
-typedef size_t entity_handle;
-//typedef u32    index_t; //NOTE: We get an error on the 64 bit compilation with this, and I have not entirely figured out why yet
-typedef size_t index_t;
 
 
 //NOTE: We allow the error handling to be replaced by the application. This is for instance useful for the python wrapper.

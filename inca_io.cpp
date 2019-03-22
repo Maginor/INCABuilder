@@ -73,7 +73,7 @@ WriteParameterValues(FILE *File, entity_handle ParameterHandle, parameter_type T
 	index_set_h IndexSet = IndexSets[Level];
 	size_t IndexCount = DataSet->IndexCounts[IndexSet.Handle];
 	
-	for(index_t Index = 0; Index < IndexCount; ++Index)
+	for(index_t Index = {IndexSet, 0}; Index < IndexCount; ++Index)
 	{
 		Indexes[Level] = Index;
 		if(Level + 1 == IndexSetCount)
@@ -129,7 +129,7 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	{
 		const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		fprintf(File, "\"%s\" : {", Spec.Name);
-		for(index_t IndexIndex = 0; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)
+		for(index_t IndexIndex = {IndexSetHandle, 0}; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)
 		{
 			if(Spec.Type == IndexSetType_Basic)
 			{

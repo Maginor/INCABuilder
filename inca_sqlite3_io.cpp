@@ -130,7 +130,7 @@ ExportParameterGroupRecursivelyToDatabase(inca_data_set *DataSet, entity_handle 
 	{
 		size_t Level = (size_t) (Dpt + 1) / 2; //NOTE: This is kind of abusive and depends on the structure not changing a lot;
 		
-		for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSet.Handle]; ++Index)
+		for(index_t Index = {IndexSet, 0}; Index < DataSet->IndexCounts[IndexSet.Handle]; ++Index)
 		{
 			Indexes[Level-1] = Index;
 			
@@ -583,7 +583,7 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		if(Entry.IsIndex)
 		{
 			index_set_h IndexSet = IDToIndexSet[Entry.ParentID];
-			index_t Index = DataSet->IndexNamesToHandle[IndexSet.Handle][Entry.Name.data()];
+			index_t Index = {IndexSet, DataSet->IndexNamesToHandle[IndexSet.Handle][Entry.Name.data()]}; //TODO: Should be a "getter" function for this
 			
 			Level = Entry.Dpt / 2; //NOTE: This is kind of abusive. Depends a lot on the format not changing at all.
 			
@@ -760,7 +760,7 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 			int LftOfIndexSet = RunningLft++;
 			int IDOfIndexSet = RunningID++;
 			
-			for(size_t Index = 0; Index < DataSet->IndexCounts[IndexSet.Handle]; ++Index)
+			for(index_t Index = {IndexSet, 0}; Index < DataSet->IndexCounts[IndexSet.Handle]; ++Index)
 			{
 				int LftOfIndex = RunningLft++;
 				int IDOfIndex  = RunningID++;

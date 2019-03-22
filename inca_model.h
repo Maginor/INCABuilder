@@ -4,6 +4,8 @@
 
 //NOTE: The purpose of having unit_h, input_h, equation_h etc. be structs that contain a numeric handle rather than just letting them be a handle directly is that we can then use the C++ type system to get type safety. Unfortunately, C++ does not allow you to typedef a unique copy of a type that is not interchangable with others. However the type system WILL distinguish between two differently named structs even though they are otherwise equal.
 
+typedef u32 entity_handle;
+//typedef size_t index_t;
 
 #define MODEL_ENTITY_HANDLE(Type) struct Type \
 { \
@@ -31,7 +33,53 @@ MODEL_ENTITY_HANDLE(parameter_group_h)
 
 #undef MODEL_ENTITY_HANDLE
 
-
+struct index_t
+{
+	entity_handle IndexSetHandle;
+	u32           Index;
+	
+	index_t() {};
+	
+	index_t(index_set_h IndexSet, u32 Index) : IndexSetHandle(IndexSet.Handle), Index(Index) {};
+	
+	index_t(entity_handle IndexSetHandle, u32 Index) : IndexSetHandle(IndexSetHandle), Index(Index) {};
+	
+	void operator++()
+	{
+		Index++;
+	}
+	
+	index_t operator+(s32 Add) const
+	{
+		index_t Result = *this;
+		Result.Index += Add;     //NOTE: This could result in an underflow. Have to see if that is a problem
+		return Result;
+	}
+	
+	index_t operator-(s32 Subtract) const
+	{
+		index_t Result = *this;
+		Result.Index -= Subtract;     //NOTE: This could result in an underflow. Have to see if that is a problem
+		return Result;
+	}
+	
+	bool operator<=(const index_t& Other) const
+	{
+		//NOTE: This does NOT check if they came from a different index set, that check should probably be done somewhere else?
+		return Index <= Other.Index;
+	}
+	
+	bool operator<(const index_t& Other) const
+	{
+		//NOTE: This does NOT check if they came from a different index set, that check should probably be done somewhere else?
+		return Index < Other.Index;
+	}
+	
+	operator size_t() const
+	{
+		return Index;
+	}
+};
 
 union parameter_value
 {
@@ -518,14 +566,19 @@ struct value_set_accessor
 	{
 		Running = true;
 		this->DataSet = DataSet;
-		Model = DataSet->Model;
+		this->Model = DataSet->Model;
 
 		CurInputs      = AllocClearedArray(double, Model->FirstUnusedInputHandle);
 		CurParameters  = AllocClearedArray(parameter_value, Model->FirstUnusedParameterHandle);
 		CurResults     = AllocClearedArray(double, Model->FirstUnusedEquationHandle);
 		LastResults    = AllocClearedArray(double, Model->FirstUnusedEquationHandle);
-		CurrentIndexes = AllocClearedArray(index_t, Model->FirstUnusedIndexSetHandle);
 		CurInputWasProvided = AllocClearedArray(bool, Model->FirstUnusedInputHandle);
+		
+		CurrentIndexes = AllocClearedArray(index_t, Model->FirstUnusedIndexSetHandle);
+		for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		{
+			CurrentIndexes[IndexSetHandle].IndexSetHandle = IndexSetHandle;
+		}
 		
 		DayOfYear = 0;
 		DaysThisYear = 365;
@@ -556,6 +609,11 @@ struct value_set_accessor
 			memset(CurResults,     0, sizeof(double)*Model->FirstUnusedEquationHandle);
 			memset(LastResults,    0, sizeof(double)*Model->FirstUnusedEquationHandle);
 			memset(CurrentIndexes, 0, sizeof(index_t)*Model->FirstUnusedIndexSetHandle);
+			
+			for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+			{
+				CurrentIndexes[IndexSetHandle].IndexSetHandle = IndexSetHandle;
+			}
 		}
 		else
 		{
@@ -734,12 +792,12 @@ RequireIndex(inca_model *Model, index_set_h IndexSet, const char *IndexName)
 	auto Find = std::find(Spec.RequiredIndexes.begin(), Spec.RequiredIndexes.end(), IndexName);
 	if(Find != Spec.RequiredIndexes.end())
 	{
-		return (index_t)std::distance(Spec.RequiredIndexes.begin(), Find); //NOTE: This is its position in the vector.
+		return index_t(IndexSet, (u32)std::distance(Spec.RequiredIndexes.begin(), Find)); //NOTE: This is its position in the vector.
 	}
 	else
 	{
 		Spec.RequiredIndexes.push_back(IndexName);
-		return (index_t)(Spec.RequiredIndexes.size() - 1);
+		return index_t(IndexSet, (u32)(Spec.RequiredIndexes.size() - 1));
 	}
 }
 
@@ -1176,8 +1234,8 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool_h Parameter)
 
 //NOTE: This does NOT do error checking to see if we provided too many override indexes or if they were out of bounds! We could maybe add an option to do that
 // that is compile-out-able?
-size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle);
-size_t OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const size_t *IndexCounts, entity_handle Handle);
+size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const index_t *IndexCounts, const index_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle);
+//size_t OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const index_t *IndexCounts, entity_handle Handle);
 
 
 template<typename... T> double
@@ -1362,15 +1420,15 @@ SetResult(value_set_accessor *ValueSet, double Value, equation_h Result, T... In
 
 #define INDEX_COUNT(IndexSetH) (ValueSet__->Running ? (ValueSet__->DataSet->IndexCounts[IndexSetH.Handle]) : 1)
 #define CURRENT_INDEX(IndexSetH) (ValueSet__->Running ? GetCurrentIndex(ValueSet__, IndexSetH) : RegisterIndexSetDependency(ValueSet__, IndexSetH))
-#define PREVIOUS_INDEX(IndexSetH) (ValueSet__->Running ? GetPreviousIndex(ValueSet__, IndexSetH) : RegisterIndexSetDependency(ValueSet__, IndexSetH))
-#define FINAL_INDEX(IndexSetH) (INDEX_COUNT(IndexSetH)-1)
-#define INPUT_COUNT(IndexSetH) (ValueSet__->Running ? InputCount(ValueSet__, IndexSetH) : 0)
+#define FIRST_INDEX(IndexSetH) (index_t(IndexSetH, 0))
+#define INDEX_NUMBER(IndexSetH, Index) (index_t(IndexSetH, (u32)Index))
+#define INPUT_COUNT(IndexSetH) (ValueSet__->Running ? GetInputCount(ValueSet__, IndexSetH) : 0)
 
 inline index_t
 RegisterIndexSetDependency(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	ValueSet->DirectIndexSetDependencies.push_back(IndexSet);
-	return 0;
+	return index_t(IndexSet, 0);
 }
 
 inline index_t
@@ -1379,16 +1437,8 @@ GetCurrentIndex(value_set_accessor *ValueSet, index_set_h IndexSet)
 	return ValueSet->CurrentIndexes[IndexSet.Handle];
 }
 
-inline index_t
-GetPreviousIndex(value_set_accessor *ValueSet, index_set_h IndexSet)
-{
-	index_t CurrentIndex = GetCurrentIndex(ValueSet, IndexSet);
-	if(CurrentIndex == 0) return 0;
-	return CurrentIndex - 1;
-}
-
 inline size_t
-InputCount(value_set_accessor *ValueSet, index_set_h IndexSet)
+GetInputCount(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	index_t Current = GetCurrentIndex(ValueSet, IndexSet);
 	return ValueSet->DataSet->BranchInputs[IndexSet.Handle][Current].Count;
@@ -1417,7 +1467,8 @@ struct branch_input_iterator
 inline branch_input_iterator
 BranchInputIteratorBegin(value_set_accessor *ValueSet, index_set_h IndexSet, index_t Branch)
 {
-	static index_t DummyData = 0;
+	static index_t DummyData;
+	DummyData = index_t(IndexSet, 0);
 	
 	branch_input_iterator Iterator;
 	Iterator.IndexSet = IndexSet;

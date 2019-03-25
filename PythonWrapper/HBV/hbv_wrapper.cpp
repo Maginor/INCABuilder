@@ -5,9 +5,9 @@
 #define INCA_EQUATION_PROFILING 0
 #define INCA_PRINT_TIMING_INFO 0
 
-#include "python_wrapper.h"
+#include "../python_wrapper.h"
 
-#include "../Modules/HBV.h"
+#include "../../Modules/HBV.h"
 
 
 

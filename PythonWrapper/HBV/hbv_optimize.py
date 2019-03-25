@@ -1,11 +1,16 @@
 
-import inca
-from inca_calibration import *
-	
+import imp
 
-inca.initialize('hbv.dll')
+# Path to folder containing wrapper modules
+wrapper_fpath = (r"..\inca.py")
+optimize_funs_fpath = (r'..\inca_calibration.py')
 
-dataset = inca.DataSet.setup_from_parameter_and_input_files('../Applications/HBV/langtjernparameters.dat', '../Applications/HBV/langtjerninputs.dat')
+wr = imp.load_source('inca', wrapper_fpath)
+cf = imp.load_source('inca_calibration', optimize_funs_fpath)
+
+wr.initialize('hbv.dll')
+
+dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/HBV/langtjernparameters.dat', '../../Applications/HBV/langtjerninputs.dat')
 
 
 dataset.set_parameter_uint('Timesteps', [], 730)
@@ -25,20 +30,20 @@ calibration = [
 	]
 
 
-initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
+initial_guess = cf.default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
 initial_guess.append(0.5)
 
 min = [0.1 * x for x in initial_guess]
 max = [10.0 * x for x in initial_guess]
 
-constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
+cf.constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
 
 skiptimesteps = 100   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (log_likelyhood, 'Reach flow', ['R1'], 'Discharge', [], skiptimesteps)
+objective = (cf.log_likelyhood, 'Reach flow', ['R1'], 'Discharge', [], skiptimesteps)
 
 
-param_est = run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)
+param_est = cf.run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)
 
 print('\n')
 for idx, cal in enumerate(calibration) :
@@ -49,12 +54,12 @@ if len(param_est) > len(calibration) :
 
 
 # NOTE: Write the optimal values back to the dataset and then generate a new parameter file that has these values.
-set_values(dataset, param_est, calibration)
+cf.set_values(dataset, param_est, calibration)
 dataset.write_parameters_to_file('hbv_optimal_parameters.dat')
 
 # NOTE: Run the model one more time with the optimal parameters and plot them
 dataset.run_model()
-plot_objective(dataset, objective, "hbv_plots\\optimizer_MAP_langtjern.png")
+cf.plot_objective(dataset, objective, "hbv_plots\\optimizer_MAP_langtjern.png")
 
 
 

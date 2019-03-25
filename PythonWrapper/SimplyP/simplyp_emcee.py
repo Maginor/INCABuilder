@@ -1,16 +1,20 @@
 
 
-import matplotlib.pyplot as plt, seaborn as sn, emcee, corner, mpld3
-import inca
-from inca_calibration import *
+import matplotlib.pyplot as plt, seaborn as sn, emcee, corner, mpld3, imp
 import numpy as np
 import time
+
+wrapper_fpath = (r"..\inca.py")
+optimize_funs_fpath = (r'..\inca_calibration.py')
+
+wr = imp.load_source('inca', wrapper_fpath)
+cf = imp.load_source('inca_calibration', optimize_funs_fpath)	
 
 from multiprocessing import Pool
 
 
 def log_prior(params, min, max) :
-	if check_min_max(params, min, max) :
+	if cf.check_min_max(params, min, max) :
 		return 0
 	return -np.inf
 
@@ -80,9 +84,9 @@ def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_w
 
 	
 	
-inca.initialize('simplyp.dll')
+wr.initialize('simplyp.dll')
 
-dataset = inca.DataSet.setup_from_parameter_and_input_files('optimal_parameters.dat', '../Applications/SimplyP/tarlandinputs.dat')
+dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/SimplyP/tarlandparameters.dat', '../../Applications/SimplyP/tarlandinputs.dat')
 
 #NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
@@ -97,17 +101,17 @@ calibration = [
 
 labels_short = [r'$f_{quick}$', r'$\beta$', r'$T_g$', r'$a$', r'$b$', r'$T_s[A]$', r'$T_s[S]$', r'M']
 
-initial_guess = default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
+initial_guess = cf.default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
 initial_guess.append(0.23)
 
 min = [0.1 * x for x in initial_guess]
 max = [10.0 * x for x in initial_guess]
 
-constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
+cf.constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (log_likelyhood, 'Reach flow (daily mean)', ['Tarland1'], 'observed Q mm/d', [], skiptimesteps)
+objective = (cf.log_likelyhood, 'Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', [], skiptimesteps)
 
 if __name__ == '__main__': #NOTE: This line is needed, or something goes horribly wrong with the paralellization
 	samples = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=20000, n_burn=1000)

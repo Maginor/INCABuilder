@@ -10,18 +10,11 @@ TODOs:
 	- Better encapsulation of the value_set_accessor subsystem. Unify lookup systems for parameters, inputs, results, last_results
 	- Have to figure out if the initial value equation system we have currently is good.
 	- Clean up the input tokenizer. Maybe just use fscanf for reading numbers, but it is actually a little complicated since we have to figure out the type in any case.
-	- Allow the dependency system to be able to understand explicitly indexed lookups of results better.
 	- Pre-computed parameter values.
 	- Remove units as model entities entirely and only store / input them as strings? They seem like an unnecessary step right now.
 	- Manage the memory for all the data in the equation batch structure in such a way that it is aligned with how it will be read. (will have to not use std::vector in that case...)
-	- Better convenience accessors for the DataSet so that io and application code does not have to understand the inner structure of the DataSet that much.
-	- Better management of the index_t system. Maybe store the index set id in the upper bits of the index, which would make it possible to check that the correct index is used with the correct index set when explicitly indexing. Something like:
-	struct index_t { 
-		u32 IndexSetHandle;
-		u32 Index;
-	};
-	   would require more accessors like INDEX_NO(IndexSet, Number), LAST_INDEX(IndexSet), operators like <=, ++ etc.
-	*/
+	- (Even more) convenience accessors for the DataSet so that io and application code does not have to understand the inner structure of the DataSet that much.
+*/
 
 
 #ifndef INCA_H
@@ -74,6 +67,7 @@ typedef int8_t s8;
 #include "inca_math.h"
 #include "inca_util.h"
 #include "datetime.h"
+#include "token_string.h"
 #include "inca_model.h"
 #include "inca_data_set.cpp"
 #include "jacobian.cpp"

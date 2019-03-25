@@ -217,7 +217,7 @@ struct equation_spec
 	solver_h Solver;
 	
 	//NOTE: The below are built during EndModelDefinition:
-	std::set<index_set_h> IndexSetDependencies;          //NOTE: If the equation is run on a solver, the final index set dependencies of the equation will be those of the solver.
+	std::set<index_set_h> IndexSetDependencies;          //NOTE: If the equation is run on a solver, the final index set dependencies of the equation will be those of the solver, not the ones stored here. You should generally use the storage structure to determine the final dependencies rather than this vector unless you are doing something specific in EndModelDefinition.
 	std::set<entity_handle>  ParameterDependencies;
 	std::set<input_h>     InputDependencies;
 	std::set<equation_h>  DirectResultDependencies;
@@ -268,10 +268,10 @@ struct input_spec
 //TODO: Find a better name for this struct?
 struct iteration_data
 {
-	std::vector<entity_handle>   ParametersToRead;
-	std::vector<input_h>      InputsToRead;
-	std::vector<equation_h>   ResultsToRead;
-	std::vector<equation_h>   LastResultsToRead;
+	std::vector<entity_handle> ParametersToRead;
+	std::vector<input_h>       InputsToRead;
+	std::vector<equation_h>    ResultsToRead;
+	std::vector<equation_h>    LastResultsToRead;
 };
 
 enum equation_batch_type
@@ -299,7 +299,7 @@ struct equation_batch_group
 {
 	std::vector<index_set_h> IndexSets;
 	
-	std::vector<equation_h>     LastResultsToReadAtBase;  //Unfortunately we need this..
+	std::vector<equation_h>     LastResultsToReadAtBase;  //Unfortunately we need this for LAST_RESULTs of equations with 0 index set dependencies.
 	std::vector<iteration_data> IterationData;
 	size_t FirstBatch;
 	size_t LastBatch;
@@ -326,86 +326,7 @@ struct storage_structure
 	~storage_structure();
 };
 
-struct token_string
-{
-	//NOTE: This is a length-based string that does not have ownership of its data.
-	token_string() : Data(0), Length(0) {};
-	token_string(const char *);
-	
-	const char *Data;
-	size_t Length;
-	
-	bool Equals(const char *) const;
-	token_string Copy() const;
-};
-
-token_string::token_string(const char *DataIn)
-{
-	Length = strlen(DataIn);
-	Data = DataIn;
-}
-
-std::ostream& operator<<(std::ostream& Os, const token_string& Str)
-{
-	for(size_t At = 0; At < Str.Length; ++At)
-	{
-		Os << Str.Data[At];
-	}
-	return Os;
-}
-
-bool operator==(const token_string &StrA, const token_string &StrB)
-{
-	if(StrA.Length != StrB.Length) return false;
-	for(size_t At = 0; At < StrA.Length; ++At)
-	{
-		if(StrA.Data[At] != StrB.Data[At]) return false;
-	}
-	return true;
-}
-
-bool token_string::Equals(const char *Str) const
-{
-	for(size_t At = 0; At < Length; ++At)
-	{
-		if(Str[At] == 0) return false;
-		if(Str[At] != Data[At]) return false;
-	}
-	if(Str[Length] != 0) return false;
-	return true;
-}
-
-token_string token_string::Copy() const
-{
-	token_string Result;
-	char *NewData = (char *)malloc(Length + 1);
-	Result.Data = NewData;
-	Result.Length = Length;
-	NewData[Length] = '\0'; //NOTE: In case people want a 0-terminated string
-	for(size_t At = 0; At < Length; ++At)
-	{
-		NewData[At] = Data[At];
-	}
-	return Result;
-}
-
-//TODO: Borrowed hash function from https://stackoverflow.com/questions/20649864/c-unordered-map-with-char-as-key . We should look into it more..
-struct hash_function
-{
-    //BKDR Hash algorithm
-    int operator()(const token_string &Str) const
-    {
-        int Seed = 131;//31  131 1313 13131131313 etc//
-        int Hash = 0;
-		for(size_t At = 0; At < Str.Length; ++At)
-        {
-            Hash = (Hash * Seed) + Str.Data[At];
-        }
-        return Hash & (0x7FFFFFFF);
-    }
-};
-
-typedef std::unordered_map<token_string, entity_handle, hash_function> string_map;
+typedef std::unordered_map<token_string, entity_handle, token_string_hash_function> string_map;
 
 struct inca_data_set;
 typedef std::function<void(inca_data_set *)> inca_preprocessing_step;

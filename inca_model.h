@@ -119,6 +119,8 @@ struct parameter_spec
 	unit_h Unit;
 	const char *Description;
 	
+	equation_h IsComputedBy; //NOTE: We allow certain parameters to be computed by an initial value equation rather than being provided by a parameter file.
+	
 	parameter_group_h Group;
 	
 	//NOTE: This not set before EndModelDefinition:
@@ -870,6 +872,40 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 	Model->ParameterGroupSpecs[Group.Handle].Parameters.push_back(Parameter.Handle);
 
 	return Parameter;
+}
+
+inline void
+ParameterIsComputedBy(inca_model *Model, parameter_double_h Parameter, equation_h Equation)
+{
+	parameter_spec &Spec  = Model->ParameterSpecs[Parameter.Handle];
+	equation_spec &EqSpec = Model->EquationSpecs[Equation.Handle];
+	if(EqSpec.Type != EquationType_InitialValue)
+	{
+		INCA_FATAL_ERROR("ERROR: Tried to set the equation " << EqSpec.Name << " to compute the parameter " << Spec.Name << ", but " << EqSpec.Name << " is not an initial value equation." << std::endl);
+	}
+	if(EqSpec.Unit != Spec.Unit)
+	{
+		INCA_FATAL_ERROR("ERROR: The equation " << EqSpec.Name << " has a different unit from the parameter " << Spec.Name << ", that it is trying to compute." << std::endl);
+	}
+	
+	Spec.IsComputedBy = Equation;
+}
+
+inline void
+ParameterIsComputedBy(inca_model *Model, parameter_uint_h Parameter, equation_h Equation)
+{
+	parameter_spec &Spec  = Model->ParameterSpecs[Parameter.Handle];
+	equation_spec &EqSpec = Model->EquationSpecs[Equation.Handle];
+	if(EqSpec.Type != EquationType_InitialValue)
+	{
+		INCA_FATAL_ERROR("ERROR: Tried to set the equation " << EqSpec.Name << " to compute the parameter " << Spec.Name << ", but " << EqSpec.Name << " is not an initial value equation." << std::endl);
+	}
+	if(EqSpec.Unit != Spec.Unit)
+	{
+		INCA_FATAL_ERROR("ERROR: The equation " << EqSpec.Name << " has a different unit from the parameter " << Spec.Name << ", that it is trying to compute." << std::endl);
+	}
+	
+	Spec.IsComputedBy = Equation;
 }
 
 inline void

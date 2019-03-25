@@ -262,7 +262,8 @@ EndModelDefinition(inca_model *Model)
 	
 	for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
 	{
-		parameter_group_h CurrentGroup = Model->ParameterSpecs[ParameterHandle].Group;
+		const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+		parameter_group_h CurrentGroup = Spec.Group;
 		std::vector<index_set_h>& Dependencies = Model->ParameterSpecs[ParameterHandle].IndexSetDependencies;
 		while(IsValid(CurrentGroup))
 		{
@@ -393,6 +394,29 @@ EndModelDefinition(inca_model *Model)
 		if(IsValid(EqInitialValue))
 		{
 			Spec.DirectLastResultDependencies.insert(EqInitialValue);
+		}
+	}
+	
+	{
+		//NOTE: Check for computed parameters if their equation satisfies the requirements:
+		for(entity_handle ParameterHandle = 1; ParameterHandle < Model->FirstUnusedParameterHandle; ++ParameterHandle)
+		{
+			parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+			equation_h Equation = Spec.IsComputedBy;
+			if(IsValid(Equation))
+			{
+				equation_spec &EqSpec = Model->EquationSpecs[Equation.Handle];
+				
+				if(
+					   !EqSpec.DirectResultDependencies.empty()
+					|| !EqSpec.DirectLastResultDependencies.empty()
+					|| !EqSpec.IndexedResultAndLastResultDependencies.empty()
+					|| !EqSpec.InputDependencies.empty()
+				)
+				{
+					INCA_FATAL_ERROR("ERROR: The initial value equation " << EqSpec.Name << " assigned to compute the parameter " << Spec.Name << " depends on either a result of an equation or an input. This is not allowed for computed parameters." << std::endl);
+				}
+			}
 		}
 	}
 	
@@ -1365,6 +1389,53 @@ static void
 PrintEquationProfiles(inca_data_set *DataSet, value_set_accessor *ValueSet);
 
 static void
+ProcessComputedParameters(inca_data_set *DataSet, value_set_accessor *ValueSet)
+{
+	//NOTE: Preprocessing of computed parameters.
+	for(entity_handle ParameterHandle = 1; ParameterHandle < DataSet->Model->FirstUnusedParameterHandle; ++ParameterHandle)
+	{
+		const parameter_spec &Spec = DataSet->Model->ParameterSpecs[ParameterHandle];
+		equation_h Equation = Spec.IsComputedBy;
+		if(IsValid(Spec.IsComputedBy))
+		{
+			const equation_spec &EqSpec = DataSet->Model->EquationSpecs[Equation.Handle];
+			
+			ForeachParameterInstance(DataSet, ParameterHandle,
+				[DataSet, ParameterHandle, Equation, &EqSpec, &Spec, ValueSet](index_t *Indexes, size_t IndexesCount)
+				{
+					//NOTE: We have to set the value set accessor into the right state.
+					
+					for(size_t IdxIdx = 0; IdxIdx < IndexesCount; ++IdxIdx)
+					{
+						index_t Index = Indexes[IdxIdx];
+						ValueSet->CurrentIndexes[Index.IndexSetHandle] = Index;
+					}
+					
+					for(entity_handle DependentParameter : EqSpec.ParameterDependencies)
+					{
+						size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, ValueSet->CurrentIndexes, DataSet->IndexCounts, DependentParameter);
+						ValueSet->CurParameters[DependentParameter] = DataSet->ParameterData[Offset];
+					}
+					
+					size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, Indexes, IndexesCount, DataSet->IndexCounts, ParameterHandle);
+					double ValD = DataSet->Model->Equations[Equation.Handle](ValueSet);
+					parameter_value Value;
+					if(Spec.Type == ParameterType_Double)
+					{
+						Value.ValDouble = ValD;
+					}
+					else if(Spec.Type == ParameterType_UInt)
+					{
+						Value.ValUInt = (u64)ValD; //Or should we do a more sophisticated rounding?
+					}
+					DataSet->ParameterData[Offset] = Value;
+				}
+			);
+		}
+	}
+}
+
+static void
 RunModel(inca_data_set *DataSet)
 {
 #if INCA_PRINT_TIMING_INFO
@@ -1433,14 +1504,17 @@ RunModel(inca_data_set *DataSet)
 	
 	AllocateResultStorage(DataSet, Timesteps);
 	
+	value_set_accessor ValueSet(DataSet);
+	
+	ProcessComputedParameters(DataSet, &ValueSet);
+	
+	ValueSet.Clear();
+	
 	
 	for(const inca_preprocessing_step &PreprocessingStep : Model->PreprocessingSteps)
 	{
 		PreprocessingStep(DataSet);
 	}
-	
-	
-	value_set_accessor ValueSet(DataSet);
 	
 	///////////// Setting up fast lookup ////////////////////
 	

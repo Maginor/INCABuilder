@@ -1370,3 +1370,38 @@ ForeachParameterInstance(inca_data_set *DataSet, const char *ParameterName, cons
 
 
 
+static void
+ForeachRecursive(inca_data_set *DataSet, index_t *CurrentIndexes, const std::vector<index_set_h> &IndexSets, const std::function<void(index_t *Indexes, size_t IndexesCount)> &Do, s32 Level)
+{
+	if(Level + 1 == IndexSets.size())
+	{
+		Do(CurrentIndexes, IndexSets.size());
+	}
+	else
+	{
+		index_set_h IterateOver = IndexSets[Level + 1];
+		size_t IndexCount = DataSet->IndexCounts[IterateOver.Handle];
+		for(index_t Index = {IterateOver, 0}; Index < IndexCount; ++Index)
+		{
+			CurrentIndexes[Level + 1] = Index;
+			ForeachRecursive(DataSet, CurrentIndexes, IndexSets, Do, Level + 1);
+		}
+	}
+}
+
+static void
+ForeachParameterInstance(inca_data_set *DataSet, entity_handle ParameterHandle, const std::function<void(index_t *Indexes, size_t IndexesCount)> &Do)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	index_t CurrentIndexes[256];
+	
+	size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
+	storage_unit_specifier &Unit = DataSet->ParameterStorageStructure.Units[UnitIndex];
+	std::vector<index_set_h> &IndexSets = Unit.IndexSets;
+	
+	ForeachRecursive(DataSet, CurrentIndexes, IndexSets, Do, -1);
+}
+
+
+

@@ -6,7 +6,6 @@
 
 struct token_string
 {
-	
 	token_string() : Data(0), Length(0) {};
 	token_string(const char *);
 	

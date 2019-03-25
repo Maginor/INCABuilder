@@ -383,7 +383,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	auto Degrees       = RegisterUnit(Model, "°");
 	auto MgPerL        = RegisterUnit(Model, "mg/l");
 	
-	// Set up indexers
+	// Set up index sets
 	auto Reach          = GetIndexSetHandle(Model, "Reaches");
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
 	
@@ -564,7 +564,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto KgPerDay       = RegisterUnit(Model, "kg/day");
 	auto KgPerMm        = RegisterUnit(Model, "kg/mm");
 	
-	// INDEXERS
+	// INDEX SETS
 	auto Reach = GetIndexSetHandle(Model, "Reaches");
 	
 	auto LandscapeUnits = GetIndexSetHandle(Model, "Landscape units");
@@ -601,7 +601,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 
 	// Add to global system parameter group
 	auto System = GetParameterGroupHandle(Model, "System");
-	auto DynamicEPC0                    = RegisterParameterBool(Model, System, "Dynamic EPC0", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it varies with labile P content");	
+	auto DynamicEPC0                    = RegisterParameterBool(Model, System, "Dynamic EPC0", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it varies with labile P content");
+	auto RunInCalibrationMode           = RegisterParameterBool(Model, System, "Run in calibration mode", false);
 	
 	// Params defined in hydrol or sed modules
 	auto CatchmentArea               = GetParameterDoubleHandle(Model, "Catchment area");
@@ -624,6 +625,18 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto DailyMeanReachFlow          = GetEquationHandle(Model, "Reach flow (daily mean, mm/day)");
 	auto GroundwaterFlow             = GetEquationHandle(Model, "Groundwater flow");
 	auto ReachSedimentInputCoefficient  = GetEquationHandle(Model, "Sediment input coefficient");
+	
+	auto ComputedPhosphorousSorptionCoefficient = RegisterEquationInitialValue(Model, "Computed phosphorous sorption coefficient", MmPerKg);
+	ParameterIsComputedBy(Model, PhosphorousSorptionCoefficient, ComputedPhosphorousSorptionCoefficient);
+	
+	EQUATION(Model, ComputedPhosphorousSorptionCoefficient,
+		double providedvalue = PARAMETER(PhosphorousSorptionCoefficient);
+		double computedvalue = 1e-5; //TODO: do your computation here. Note that a value of 0 crashes the model. If a value of 0 is possible, that has to be accommodated for in the equations below
+		
+		if(PARAMETER(RunInCalibrationMode)) return computedvalue;
+		return providedvalue;
+	)
+	
 	
 	
 	// P equations

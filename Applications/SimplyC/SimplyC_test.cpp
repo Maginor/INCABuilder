@@ -6,15 +6,16 @@
 
 #include "../../inca.h"
 
+#include "../../Modules/UnitConversions.h"
 #include "../../Modules/SimplyC.h"
-#include "../../Modules/SimplyHydrol.h"
+#include "../../Modules/SimplyHydrol_noGW.h"
 #include "../../Modules/SoilTemperature_simply.h"
 
 #define READ_PARAMETER_FILE 1 //Read params from file? Or auto-generate using indexers defined below & defaults
 
 int main()
 {
-	inca_model *Model = BeginModelDefinition("SimplyC", "0.0"); //Name, version
+	inca_model *Model = BeginModelDefinition("SimplyC", "0.1"); //Name, version
 	
 	auto Days 	        = RegisterUnit(Model, "days");
 	auto System = RegisterParameterGroup(Model, "System");
@@ -34,18 +35,18 @@ int main()
 	inca_data_set *DataSet = GenerateDataSet(Model); //Create specific model dataset objext
 
 #if READ_PARAMETER_FILE == 0 //If don't have param file already, auto-generate param file for you
-	SetIndexes(DataSet, "Landscape units", {"Low soil carbon", "High soil carbon"});
+	SetIndexes(DataSet, "Landscape units", {"Forest and bog"});
 	SetBranchIndexes(DataSet, "Reaches", {  {"Inlet", {}} }  );
 	
 	AllocateParameterStorage(DataSet);
 	WriteParametersToFile(DataSet, "new_SimplyC_params.dat");
 #else
-	ReadParametersFromFile(DataSet, "SimplyC_params.dat");
+	ReadParametersFromFile(DataSet, "SimplyC_params_noGW.dat");
 
 	ReadInputsFromFile(DataSet, "../SimplyC/langtjerninputs.dat");
 	
 	PrintResultStructure(Model);
-	//PrintParameterStorageStructure(DataSet);
+	PrintParameterStorageStructure(DataSet);
 	//PrintInputStorageStructure(DataSet);
 	
 	
@@ -55,8 +56,8 @@ int main()
 #endif
 
 	// Can access results by name and indexes. Get this from results structure
-	PrintResultSeries(DataSet, "Soil water volume", {"Inlet"}, 10); //Print just first 10 values
-	PrintResultSeries(DataSet, "Soil water carbon flux", {"Inlet"}, 10);
+//	PrintResultSeries(DataSet, "Soil water volume", {"Inlet"}, 10); //Print just first 10 values
+//	PrintResultSeries(DataSet, "Soil water carbon flux", {"Inlet"}, 10);
 
 	
 	//PrintResultSeries(DataSet, "Agricultural soil water EPC0", {"Tarland1"}, 1000);

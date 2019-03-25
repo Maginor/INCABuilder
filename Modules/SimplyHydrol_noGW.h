@@ -1,36 +1,7 @@
 // Simply Hydrology module
 
 #include "Preprocessing/ThornthwaitePET.h"
-
-inline double
-ConvertMmPerDayToM3PerDay(double MmPerDay, double CatchmentArea)
-{
-	return MmPerDay * 1000.0 * CatchmentArea;
-}
-
-inline double
-ConvertM3PerSecondToMmPerDay(double M3PerSecond, double CatchmentArea)
-{
-	return M3PerSecond * 86400.0 / (1000.0 * CatchmentArea);
-}
-
-inline double
-ConvertMmPerDayToM3PerSecond(double MmPerDay, double CatchmentArea)
-{
-	return MmPerDay * CatchmentArea / 86.4;
-}
-
-inline double
-ConvertMmToM3(double Mm, double CatchmentArea)
-{
-	return Mm * 1000.0 * CatchmentArea;
-}
-
-inline double
-ConvertMmToLitres(double Mm, double CatchmentArea)
-{
-	return Mm * 1e6 * CatchmentArea;
-}
+#include "UnitConversions.h"
 
 inline double
 ActivationControl0(double X)
@@ -79,13 +50,10 @@ AddSimplyHydrologyModule(inca_model *Model)
 	// Hydrology parameters that don't vary by sub-catchment or reach
 	auto Hydrology = RegisterParameterGroup(Model, "Hydrology");
 	
-	auto ProportionToQuickFlow   = RegisterParameterDouble(Model, Hydrology, "Proportion of precipitation that contributes to quick flow", Dimensionless, 0.020, 0.0, 1.0);
-	auto PETReductionFactor      = RegisterParameterDouble(Model, Hydrology, "PET reduction factor", Dimensionless, 1.0, 0.0, 1.0);
-	auto SoilFieldCapacity       = RegisterParameterDouble(Model, Hydrology, "Soil field capacity", Mm, 290.0, 0.0, 5000.0);
-	auto BaseflowIndex           = RegisterParameterDouble(Model, Hydrology, "Baseflow index", Dimensionless, 0.70, 0.0, 1.0);
-	auto GroundwaterTimeConstant = RegisterParameterDouble(Model, Hydrology, "Groundwater time constant", Days, 65.0, 0.5, 400.0);
-	auto MinimumGroundwaterFlow  = RegisterParameterDouble(Model, Hydrology, "Minimum groundwater flow", MmPerDay, 0.40, 0.0, 10.0);
-	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
+	auto ProportionToQuickFlow   = RegisterParameterDouble(Model, Hydrology, "Proportion of precipitation that contributes to quick flow", Dimensionless, 0.020, 0.0, 0.99);
+	auto PETReductionFactor      = RegisterParameterDouble(Model, Hydrology, "PET multiplication factor", Dimensionless, 1.0, 0.0, 2.0);
+	auto SoilFieldCapacity       = RegisterParameterDouble(Model, Hydrology, "Soil field capacity", Mm, 290.0, 0.1, 1000.0);
+	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.01, 0.99, "The a in V = aQ^b");
 	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
 	
 	// General parameters that vary by reach or sub-catchment
@@ -102,7 +70,7 @@ AddSimplyHydrologyModule(inca_model *Model)
 	// Terrestrial hydrology parameters that vary by land class
 	auto HydrologyLand = RegisterParameterGroup(Model, "Hydrology land", LandscapeUnits);
 	
-	auto SoilWaterTimeConstant   = RegisterParameterDouble(Model, HydrologyLand, "Soil water time constant", Days, 2.0, 0.05, 40.0);
+	auto SoilWaterTimeConstant   = RegisterParameterDouble(Model, HydrologyLand, "Soil water time constant", Days, 2.0, 0.01, 30.0);
 	
 	// General parameters that vary by land class and reach
 	auto SubcatchmentGeneral = RegisterParameterGroup(Model, "Subcatchment characteristics by land class", LandscapeUnits);
@@ -166,18 +134,29 @@ AddSimplyHydrologyModule(inca_model *Model)
 	
 	// ODE equations
 	
-	auto SimplySolver = RegisterSolver(Model, "Simply solver", 0.01 /* 1.0/20000.0 */, IncaDascru);
-	//auto SimplySolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
-	//auto SimplySolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostCashCarp54, 1e-6, 1e-6);
-	//auto SimplySolver = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
-	//auto SimplySolver = RegisterSolver(Model, "SimplyP solver", 0.0025, Mtl4ImplicitEuler);   //NOTE: Being a first order method, this one is not that good..
+	// Land phase
 	
-	auto SoilWaterFlow = RegisterEquation(Model, "Soil water flow", MmPerDay);
-	SetSolver(Model, SoilWaterFlow, SimplySolver);
+	auto SimplySolverLand = RegisterSolver(Model, "Simply solver, land", 0.01 /* 1.0/20000.0 */, IncaDascru);
+	//auto SimplySolverLand = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRK4);
+	//auto SimplySolverLand = RegisterSolver(Model, "SimplyP solver", 0.001, BoostCashCarp54, 1e-6, 1e-6);
+	//auto SimplySolverLand = RegisterSolver(Model, "SimplyP solver", 0.001, BoostRosenbrock4, 1e-3, 1e-3);
+	//auto SimplySolverLand = RegisterSolver(Model, "SimplyP solver", 0.0025, Mtl4ImplicitEuler);   //NOTE: Being a first order method, this one is not that good..
 	
 	auto SoilWaterVolume = RegisterEquationODE(Model, "Soil water volume", Mm);
 	SetInitialValue(Model, SoilWaterVolume, SoilFieldCapacity);
-	SetSolver(Model, SoilWaterVolume, SimplySolver);
+	SetSolver(Model, SoilWaterVolume, SimplySolverLand);
+	
+	auto SoilWaterFlow = RegisterEquation(Model, "Soil water flow", MmPerDay); // Total flow out of soil box
+	SetSolver(Model, SoilWaterFlow, SimplySolverLand);
+
+//	auto DailyMeanSoilWaterFlow = RegisterEquationODE(Model, "Soil water flow, daily mean", MmPerDay);
+//	SetSolver(Model, DailyMeanSoilWaterFlow, SimplySolverLand);
+//	ResetEveryTimestep(Model, DailyMeanSoilWaterFlow);
+	
+	auto SoilWaterFlowToReach = RegisterEquationODE(Model, "Soil water flow to reach, daily mean", MmPerDay); // This is used as basis of a cumulative equation below
+	SetInitialValue(Model, SoilWaterFlowToReach, 0.0);		
+	SetSolver(Model, SoilWaterFlowToReach, SimplySolverLand);
+	ResetEveryTimestep(Model, SoilWaterFlowToReach);
 	
 	EQUATION(Model, SoilWaterFlow,
 		double smd = PARAMETER(SoilFieldCapacity) - RESULT(SoilWaterVolume);
@@ -185,86 +164,41 @@ AddSimplyHydrologyModule(inca_model *Model)
 		return -smd * ActivationControl(RESULT(SoilWaterVolume), PARAMETER(SoilFieldCapacity), 0.01) / PARAMETER(SoilWaterTimeConstant);
 	)
 	
+	EQUATION(Model, SoilWaterFlowToReach,
+		return RESULT(SoilWaterFlow) * PARAMETER(LandUseProportions);
+	)
+	
 	EQUATION(Model, SoilWaterVolume,
-		// mu = -np.log(0.01)/p['fc']
-		//P*(1-f_quick) - alpha*E*(1 - np.exp(-mu*VsA_i)) - QsA_i
 		return
 			  RESULT(Infiltration)
 			- PARAMETER(PETReductionFactor) * INPUT(PotentialEvapoTranspiration) * (1.0 - exp(log(0.01) * RESULT(SoilWaterVolume) / PARAMETER(SoilFieldCapacity))) //NOTE: Should 0.01 be a parameter?
 			- RESULT(SoilWaterFlow);	
 	)
 	
-	auto InitialGroundwaterVolume = RegisterEquationInitialValue(Model, "Initial groundwater volume", Mm);
-	auto GroundwaterVolume        = RegisterEquationODE(Model, "Groundwater volume", Mm);
-	SetInitialValue(Model, GroundwaterVolume, InitialGroundwaterVolume);
-	SetSolver(Model, GroundwaterVolume, SimplySolver);
+	// Sub-catchment/Reach equations
 	
-	auto GroundwaterFlow          = RegisterEquation(Model, "Groundwater flow", MmPerDay);
-	SetSolver(Model, GroundwaterFlow, SimplySolver);
-	
-	EQUATION(Model, GroundwaterFlow,
-		double flow0   = RESULT(GroundwaterVolume) / PARAMETER(GroundwaterTimeConstant);
-		double flowmin = PARAMETER(MinimumGroundwaterFlow);
-		double t = ActivationControl(flow0, flowmin, 0.01);
-		return (1.0 - t)*flowmin + t*flow0;
-	)
-	
-	EQUATION(Model, GroundwaterVolume,
-		return PARAMETER(BaseflowIndex) * RESULT(SoilWaterFlow)
-			- RESULT(GroundwaterFlow);
-	)
-	
-	EQUATION(Model, InitialGroundwaterVolume,
-		double initialflow = PARAMETER(BaseflowIndex) * ConvertM3PerSecondToMmPerDay(PARAMETER(InitialInStreamFlow), PARAMETER(CatchmentArea));
-		return initialflow * PARAMETER(GroundwaterTimeConstant);
-	)
-	
-	auto Control = RegisterEquation(Model, "Control", Dimensionless);
-	
-	EQUATION(Model, Control,
-		//NOTE: We create this equation to put in the code that allow us to "hack" certain values.
-		// The return value of this equation does not mean anything.
-		double volume = RESULT(GroundwaterFlow)*PARAMETER(GroundwaterTimeConstant);  //Wow, somehow this does not register index sets correctly if it is passed directly inside the macro below! May want to debug that.
-		SET_RESULT(GroundwaterVolume, volume);
-		
-		return 0.0;
-	)
-	
-	auto SoilWaterFlowToReach = RegisterEquation(Model, "Soil water flow to reach", M3PerSecond); //Units m3/s so that can sum over LU classes
-	SetSolver(Model, SoilWaterFlowToReach, SimplySolver);
+	auto SimplySolverReach = RegisterSolver(Model, "Simply solver, reach", 0.01 /* 1.0/20000.0 */, IncaDascru);
 	
 	auto TotalSoilwaterFlowToReach = RegisterEquationCumulative(Model, "Total soilwater flow to reach from all land classes", SoilWaterFlowToReach, LandscapeUnits); //Sum over LU
 		
-	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MmPerDay);
-	SetSolver(Model, ReachFlowInput, SimplySolver);
+//	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MmPerDay);
+//	SetSolver(Model, ReachFlowInput, SimplySolverReach);
 	
 	auto InitialReachVolume = RegisterEquationInitialValue(Model, "Initial reach volume", Mm); 
 	auto ReachVolume        = RegisterEquationODE(Model, "Reach volume", Mm);
 	SetInitialValue(Model, ReachVolume, InitialReachVolume);
-	SetSolver(Model, ReachVolume, SimplySolver);
+	SetSolver(Model, ReachVolume, SimplySolverReach);
 	
 	auto InitialReachFlow   = RegisterEquationInitialValue(Model, "Initial reach flow", MmPerDay);
 	auto ReachFlow          = RegisterEquationODE(Model, "Reach flow (end-of-day)", MmPerDay);
 	SetInitialValue(Model, ReachFlow, InitialReachFlow);
-	SetSolver(Model, ReachFlow, SimplySolver);
+	SetSolver(Model, ReachFlow, SimplySolverReach);
 	
 	auto DailyMeanReachFlow = RegisterEquationODE(Model, "Reach flow (daily mean, mm/day)", MmPerDay);
 	SetInitialValue(Model, DailyMeanReachFlow, 0.0);
-	SetSolver(Model, DailyMeanReachFlow, SimplySolver);
+	SetSolver(Model, DailyMeanReachFlow, SimplySolverReach);
 	ResetEveryTimestep(Model, DailyMeanReachFlow);
-	
-	EQUATION(Model, SoilWaterFlowToReach,
-		return ConvertMmPerDayToM3PerSecond((1.0-PARAMETER(BaseflowIndex))*RESULT(SoilWaterFlow), PARAMETER(CatchmentArea)*PARAMETER(LandUseProportions));
-	)
-	
-	EQUATION(Model, ReachFlowInput,
-		double upstreamflow = 0.0;
-		FOREACH_INPUT(Reach,
-			upstreamflow += RESULT(DailyMeanReachFlow, *Input) * PARAMETER(CatchmentArea, *Input) / PARAMETER(CatchmentArea);
-		)
-		double soilwaterFlow = ConvertM3PerSecondToMmPerDay(RESULT(TotalSoilwaterFlowToReach), PARAMETER(CatchmentArea));
-		return upstreamflow + RESULT(InfiltrationExcess)+ soilwaterFlow + RESULT(GroundwaterFlow);
-	)
+
 	
 	EQUATION(Model, InitialReachFlow,
 		double upstreamflow = 0.0;
@@ -278,25 +212,29 @@ AddSimplyHydrologyModule(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachFlow,
-		//dQr_dt = ((Qq_i + (1-beta)*(f_A*QsA_i + f_S*QsS_i) + Qg_i + Qr_US_i - Qr_i) # Fluxes (mm/d)
-              //*a_Q*(Qr_i**b_Q)*(8.64*10**4)/((1-b_Q)*(L_reach)))
+		double upstreamflow = 0.0;
+		FOREACH_INPUT(Reach,
+			upstreamflow += RESULT(DailyMeanReachFlow, *Input) * PARAMETER(CatchmentArea, *Input) / PARAMETER(CatchmentArea);
+					 )
+		double ReachFlowInput = upstreamflow + RESULT(InfiltrationExcess) + RESULT(TotalSoilwaterFlowToReach);
 		return
-			(RESULT(ReachFlowInput) - RESULT(ReachFlow))
+			(ReachFlowInput - RESULT(ReachFlow))
 			* PARAMETER(A) * pow(RESULT(ReachFlow), PARAMETER(B))*86400.0 / ((1.0-PARAMETER(B))*PARAMETER(ReachLength));
 	)
 	
 	EQUATION(Model, InitialReachVolume,
-		//Tr0 = ((p_SC.ix['L_reach',SC])/
-                   //(p['a_Q']*(Qr0**p['b_Q'])*(8.64*10**4))) # Reach time constant (days); T=L/aQ^b
-        //Vr0 = Qr0*Tr0 # Reach volume (V=QT) (mm)
 		double initialreachtimeconstant = PARAMETER(ReachLength) / (PARAMETER(A) * pow(RESULT(ReachFlow), PARAMETER(B)) * 86400.0);
 		
 		return RESULT(ReachFlow) * initialreachtimeconstant;
 	)
 	
 	EQUATION(Model, ReachVolume,
-		//dVr_dt = Qq_i + (1-beta)*(f_A*QsA_i + f_S*QsS_i) + Qg_i + Qr_US_i - Qr_i
-		return RESULT(ReachFlowInput) - RESULT(ReachFlow);
+		double upstreamflow = 0.0;
+		FOREACH_INPUT(Reach,
+			upstreamflow += RESULT(DailyMeanReachFlow, *Input) * PARAMETER(CatchmentArea, *Input) / PARAMETER(CatchmentArea);
+					 )
+		double ReachFlowInput = upstreamflow + RESULT(InfiltrationExcess) + RESULT(TotalSoilwaterFlowToReach);
+		return ReachFlowInput - RESULT(ReachFlow);
 	)
 	
 	EQUATION(Model, DailyMeanReachFlow,

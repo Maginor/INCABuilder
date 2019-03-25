@@ -168,7 +168,6 @@ AddPersistModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SaturationExcessInput,
-		CURRENT_INDEX(Reach); //NOTE: To force a dependency.
 		double sumSaturationExcessInput = 0.0;
 		double relativeareaindex = PARAMETER(RelativeAreaIndex);
 		for(index_t OtherSoil = FIRST_INDEX(SoilBoxes); OtherSoil < INDEX_COUNT(SoilBoxes); ++OtherSoil)
@@ -204,7 +203,7 @@ AddPersistModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, EvapoTranspirationX3,
-		double depth = RESULT(WaterDepth2); //NOTE: To force a dependency. Makes the batch structure of the model a little cleaner, but is actually not necessary...
+		//double depth = RESULT(WaterDepth2); //NOTE: To force a dependency. Makes the batch structure of the model a little cleaner, but is actually not necessary...
 		double x3 = Max(0.0, INPUT(AirTemperature) - PARAMETER(GrowingDegreeThreshold));
 		return x3;
 	)

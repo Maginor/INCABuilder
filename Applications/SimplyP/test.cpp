@@ -18,6 +18,7 @@ int main()
 	auto System = RegisterParameterGroup(Model, "System");
 	RegisterParameterUInt(Model, System, "Timesteps", Days, 10957);
 	RegisterParameterDate(Model, System, "Start date", "1981-1-1");
+	RegisterParameterBool(Model, System, "Calibration mode", true, "Run model in calibration mode? If true, the initial agricultural soil water TDP concentration (and therefore EPC0) is calibrated and used to estimate the phosphorus sorption coefficient. If false, the sorption coefficient is read in from the parameter file");
 	
 	AddSimplyPHydrologyModule(Model);
 	AddSimplyPSedimentModule(Model);

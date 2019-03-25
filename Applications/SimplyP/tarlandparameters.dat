@@ -12,10 +12,13 @@ parameters:
 "Start date" :     # ["1000-01-01", "3000-12-31"]
 "2004-1-1"
 
+"Calibration mode" :     # Run model in calibration mode? If true, the initial agricultural soil water TDP concentration (and therefore EPC0) is calibrated and used to estimate the soil water sorption constant. If false, this parameter must be entered
+true
+
 "Latitude" :     #(°) [-90, 90] Used in PET calculation if no PET timeseries was provided in the input data
 59.6
 
-"Initial snow depth" :     #(mm) [0, 50000]
+"Initial snow depth as water equivalent" :     #(mm) [0, 50000]
 0
 
 "Degree-day factor for snowmelt" :     #(mm/°C/day) [0, 5]
@@ -24,7 +27,7 @@ parameters:
 "Proportion of precipitation that contributes to quick flow" :     #(dimensionless) [0, 1]
 0.02
 
-"PET reduction factor" :     #(dimensionless) [0, 1]
+"PET multiplication factor" :     #(dimensionless) [0, 1]
 1
 
 "Soil field capacity" :     #(mm) [0, 5000]
@@ -129,7 +132,7 @@ false
 "Reduction of load in sediment" :     #(dimensionless) [0, 1] Proportional reduction in load of sediment delivered to the stream due to management measures, e.g. buffer strips, filter fences, conservation tillage, etc.
 0 0 0
 
-"Initial soil water EPC0" :     #(mg/l) [0, 10]
+"Initial soil water TDP concentration and EPC0" :     #(mg/l) [0, 10]
 0.1 0.1 0
 
 "Initial total soil P content" :     #(mg/kg) [0, 10000]

@@ -8,7 +8,7 @@
 
 #include "../../Modules/SimplyHydrol.h"
 
-#define READ_PARAMETER_FILE 0 //Read params from file? Or auto-generate using indexers defined below & defaults
+#define READ_PARAMETER_FILE 1 //Read params from file? Or auto-generate using indexers defined below & defaults
 
 int main()
 {
@@ -34,7 +34,7 @@ int main()
 	AllocateParameterStorage(DataSet);
 	WriteParametersToFile(DataSet, "newparams.dat");
 #else
-	ReadParametersFromFile(DataSet, "tarlandparameters.dat");
+	ReadParametersFromFile(DataSet, "newparams.dat");
 
 	ReadInputsFromFile(DataSet, "tarlandinputs.dat");
 	

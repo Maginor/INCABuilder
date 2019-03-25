@@ -13,8 +13,9 @@
 
 #include "../../inca.h"
 
+#include "../../Modules/UnitConversions.h"
 #include "../../Modules/SimplyC.h"
-#include "../../Modules/SimplyHydrol.h"
+#include "../../Modules/SimplyHydrol_noGW.h"
 #include "../../Modules/SoilTemperature_simply.h"
 
 #include "../../incaview_compatibility.h"
@@ -24,7 +25,7 @@ int main(int argc, char **argv)
 	incaview_commandline_arguments Args;
 	ParseIncaviewCommandline(argc, argv, &Args);
 	
-	inca_model *Model = BeginModelDefinition("SimplyC", "0.0");
+	inca_model *Model = BeginModelDefinition("SimplyC", "0.1");
 	
 	auto Days 	      = RegisterUnit(Model, "days");
 	auto System = RegisterParameterGroup(Model, "System");

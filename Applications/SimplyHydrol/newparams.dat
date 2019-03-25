@@ -1,4 +1,4 @@
-# Parameter file generated for SimplyHydrol V0.0 at 2019-03-08 12:35:41
+# Parameter file generated for SimplyHydrol V0.0 at 2019-03-19 10:27:12
 
 index_sets:
 "Reaches" : {"Tarland1"}
@@ -15,7 +15,7 @@ parameters:
 "Latitude" :     #(°) [-90, 90] Used in PET calculation if no PET timeseries was provided in the input data
 60
 
-"Initial snow depth" :     #(mm) [0, 50000]
+"Initial snow depth as water equivalent" :     #(mm) [0, 50000]
 0
 
 "Degree-day factor for snowmelt" :     #(mm/°C/day) [0, 5]

@@ -73,7 +73,7 @@ AddGibletThrasherModel(inca_model *Model)
 	EQUATION(Model, GibletMigration,
 		double migrationrate = 0.0;
 		double innatemigration = PARAMETER(GibletWillingnessToMigrate);
-		for(index_t Index = 0; Index < INDEX_COUNT(GeographicalLocation); ++Index)
+		for(index_t Index = FIRST_INDEX(GeographicalLocation); Index < INDEX_COUNT(GeographicalLocation); ++Index)
 		{
 			// The Giblet migration rate between two locations is proportional to the predation rate at the current location minus the predation rate at the other location. (modified by giblet population. High giblet population at the current location creates migration pressure away).
 			migrationrate += (
@@ -88,7 +88,7 @@ AddGibletThrasherModel(inca_model *Model)
 	EQUATION(Model, ThrasherMigration,
 		double migrationrate = 0.0;
 		double innatemigration = PARAMETER(ThrasherWillingnessToMigrate);
-		for(index_t Index = 0; Index < INDEX_COUNT(GeographicalLocation); ++Index)
+		for(index_t Index = FIRST_INDEX(GeographicalLocation); Index < INDEX_COUNT(GeographicalLocation); ++Index)
 		{
 			//Thrashers desire to move to locations with few Thrashers and many Giblets, but they fear some locations more than others.
 			

@@ -9,6 +9,7 @@
 #include "../../Modules/Persist.h"
 #include "../../Modules/SoilTemperature.h"
 //#include "../../Modules/WaterTemperature.h"
+#include "../../Modules/SolarRadiation.h"
 #include "../../Modules/INCA-C.h"
 
 #include "../../incaview_compatibility.h"
@@ -27,6 +28,7 @@ int main(int argc, char **argv)
 	
 	AddPersistModel(Model);
 	AddSoilTemperatureModel(Model);
+	AddSolarRadiationModule(Model);
 	AddINCACModel(Model);
 	
 	EnsureModelComplianceWithIncaviewCommandline(Model, &Args);

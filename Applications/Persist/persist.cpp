@@ -30,6 +30,8 @@ int main(int argc, char **argv)
 	
 	EndModelDefinition(Model);
 	
+	//PrintResultStructure(Model);
+	
 	inca_data_set *DataSet = GenerateDataSet(Model);
 	
 	RunDatasetAsSpecifiedByIncaviewCommandline(DataSet, &Args);

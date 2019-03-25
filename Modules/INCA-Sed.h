@@ -213,7 +213,7 @@ AddINCASedModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachUpstreamSuspendedSediment,
-		CURRENT_INDEX(SizeClass); //TODO: Has to be here until we fix the dependency system some more..
+		//CURRENT_INDEX(SizeClass); //TODO: Has to be here until we fix the dependency system some more..
 		double sum = 0.0;
 		FOREACH_INPUT(Reach,
 			sum += RESULT(ReachSuspendedSedimentOutput, *Input);
@@ -277,7 +277,7 @@ AddINCASedModel(inca_model *Model)
 	
 	EQUATION(Model, SuspendedSedimentMass,
 		double clayrelease = RESULT(ClayReleaseFromChannelBanks);
-		if(CURRENT_INDEX(SizeClass) != 0) clayrelease = 0.0;
+		if(CURRENT_INDEX(SizeClass) != 0) clayrelease = 0.0;      //NOTE: This assumes that index 0 is always clay though...
 		
 		return 
 			  RESULT(SedimentOfSizeClassDeliveredToReach) 

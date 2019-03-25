@@ -348,7 +348,7 @@ EndModelDefinition(inca_model *Model)
 			Spec.ParameterDependencies.insert(Spec.InitialValue.Handle);
 		}
 		
-		for(dependency_registration ResultDependency : ValueSet.ResultDependencies)
+		for(const result_dependency_registration &ResultDependency : ValueSet.ResultDependencies)
 		{
 			entity_handle DepResultHandle = ResultDependency.Handle;
 			
@@ -357,18 +357,18 @@ EndModelDefinition(inca_model *Model)
 				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
 			}
 			
-			if(ResultDependency.NumExplicitIndexes == 0)
+			if(ResultDependency.Indexes.size() == 0)
 			{
 				Spec.DirectResultDependencies.insert(equation_h {DepResultHandle});
 			}
 			else
 			{
-				//TODO: For index set dependency resolution below, we should really keep the full information about the number of explicit indexes, however it is very tricky to actually use that correctly in the resolution...
-				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle});
+				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle}); //TODO: Do we really need to keep this separately?
+				Spec.IndexedResultAndLastResultDependencies.push_back(ResultDependency); //TODO: Maybe don't store these on the result spec? They are only needed in this algorithm..
 			}
 		}
 		
-		for(dependency_registration ResultDependency : ValueSet.LastResultDependencies)
+		for(const result_dependency_registration &ResultDependency : ValueSet.LastResultDependencies)
 		{
 			entity_handle DepResultHandle = ResultDependency.Handle;
 			if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
@@ -376,11 +376,14 @@ EndModelDefinition(inca_model *Model)
 				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
 			}
 			
-			if(ResultDependency.NumExplicitIndexes == 0)
+			if(ResultDependency.Indexes.size() == 0)
 			{
 				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
 			}
-			//else     TODO: We should keep info about this. See note above ( but tricky )
+			else
+			{
+				Spec.IndexedResultAndLastResultDependencies.push_back(ResultDependency);
+			}
 		}
 		
 		//NOTE: Every equation always depends on its initial value equation if it has one.
@@ -430,6 +433,24 @@ EndModelDefinition(inca_model *Model)
 				{
 					equation_spec &DepSpec = Model->EquationSpecs[ResultDependency.Handle];
 					Spec.IndexSetDependencies.insert(DepSpec.IndexSetDependencies.begin(), DepSpec.IndexSetDependencies.end());
+				}
+				for(const result_dependency_registration &ResultDependency : Spec.IndexedResultAndLastResultDependencies)
+				{
+					equation_spec &DepSpec = Model->EquationSpecs[ResultDependency.Handle];
+					const std::set<index_set_h> &IndexSetDependencies = DepSpec.IndexSetDependencies;
+					for(index_set_h IndexSet : IndexSetDependencies)
+					{
+						bool ExplicitlyIndexed = false;
+						for(index_t Index : ResultDependency.Indexes)
+						{
+							if(Index.IndexSetHandle == IndexSet.Handle)
+							{
+								ExplicitlyIndexed = true;
+								break;
+							}
+						}
+						if(!ExplicitlyIndexed) Spec.IndexSetDependencies.insert(IndexSet);
+					}
 				}
 			}
 			if(DependencyCount != Spec.IndexSetDependencies.size()) Changed = true;
@@ -639,87 +660,90 @@ EndModelDefinition(inca_model *Model)
 	//TODO: Maaybe this could be done in the same pass as above, but I haven't figured out how. The problem is that while we are building the batches above, we don't know about any of the batches that will appear after the current batch we are building.
 
 #if 1
-	{	
-		size_t BatchIdx = 0;
-		for(equation_batch_template &Batch : BatchBuild)
-		{
-			if(Batch.Type != BatchType_Solver)
+	for(size_t It = 0; It < 2; ++It)    //NOTE: In the latest version of INCA-N we have to do this twice to get a good structure.
+	{
+		{	
+			size_t BatchIdx = 0;
+			for(equation_batch_template &Batch : BatchBuild)
 			{
-				s64 EquationIdx = Batch.Equations.size() - 1;
-				while(EquationIdx >= 0)
+				if(Batch.Type != BatchType_Solver)
 				{
-					equation_h ThisEquation = Batch.Equations[EquationIdx];
-					equation_spec &Spec = Model->EquationSpecs[ThisEquation.Handle];
-					
-					bool Continue = false;
-					for(size_t EquationBehind = EquationIdx + 1; EquationBehind < Batch.Equations.size(); ++EquationBehind)
+					s64 EquationIdx = Batch.Equations.size() - 1;
+					while(EquationIdx >= 0)
 					{
-						equation_h ResultBehind = Batch.Equations[EquationBehind];
-						equation_spec &SpecBehind = Model->EquationSpecs[ResultBehind.Handle];
-						//If somebody behind us in this batch depend on us, we are not allowed to move.
-						if(std::find(SpecBehind.DirectResultDependencies.begin(), SpecBehind.DirectResultDependencies.end(), ThisEquation) != SpecBehind.DirectResultDependencies.end())
+						equation_h ThisEquation = Batch.Equations[EquationIdx];
+						equation_spec &Spec = Model->EquationSpecs[ThisEquation.Handle];
+						
+						bool Continue = false;
+						for(size_t EquationBehind = EquationIdx + 1; EquationBehind < Batch.Equations.size(); ++EquationBehind)
 						{
-							Continue = true;
-							break;
+							equation_h ResultBehind = Batch.Equations[EquationBehind];
+							equation_spec &SpecBehind = Model->EquationSpecs[ResultBehind.Handle];
+							//If somebody behind us in this batch depend on us, we are not allowed to move.
+							if(std::find(SpecBehind.DirectResultDependencies.begin(), SpecBehind.DirectResultDependencies.end(), ThisEquation) != SpecBehind.DirectResultDependencies.end())
+							{
+								Continue = true;
+								break;
+							}
 						}
-					}
-					if(Continue)
-					{
-						EquationIdx--;
-						continue;
-					}
-					
-					size_t LastSuitableBatch = BatchIdx;
-					for(size_t BatchBehind = BatchIdx + 1; BatchBehind < BatchBuild.size(); ++BatchBehind)
-					{
-						equation_batch_template &NextBatch = BatchBuild[BatchBehind];
-						if(NextBatch.Type != BatchType_Solver && Spec.IndexSetDependencies == NextBatch.IndexSetDependencies) //This batch suits us
+						if(Continue)
 						{
-							LastSuitableBatch = BatchBehind;
+							EquationIdx--;
+							continue;
 						}
 						
-						bool BatchDependsOnUs = false;
-						FOR_ALL_BATCH_EQUATIONS(NextBatch,
-							equation_spec &CheckSpec = Model->EquationSpecs[Equation.Handle];
-							if(std::find(CheckSpec.DirectResultDependencies.begin(), CheckSpec.DirectResultDependencies.end(), ThisEquation) != CheckSpec.DirectResultDependencies.end())
-							{
-								BatchDependsOnUs = true;
-								break; //UGH, since this is a loop macro that loops over two things, this break does not always do the correct thing.
-							}
-						)
-
-						if(BatchBehind == BatchBuild.size() - 1 || BatchDependsOnUs)
+						size_t LastSuitableBatch = BatchIdx;
+						for(size_t BatchBehind = BatchIdx + 1; BatchBehind < BatchBuild.size(); ++BatchBehind)
 						{
-							if(LastSuitableBatch != BatchIdx)
+							equation_batch_template &NextBatch = BatchBuild[BatchBehind];
+							if(NextBatch.Type != BatchType_Solver && Spec.IndexSetDependencies == NextBatch.IndexSetDependencies) //This batch suits us
 							{
-								//Move to the front of that batch.
-								equation_batch_template &InsertToBatch = BatchBuild[LastSuitableBatch];
-								InsertToBatch.Equations.insert(InsertToBatch.Equations.begin(), ThisEquation);
-								Batch.Equations.erase(Batch.Equations.begin() + EquationIdx);
+								LastSuitableBatch = BatchBehind;
 							}
-							break;
+							
+							bool BatchDependsOnUs = false;
+							FOR_ALL_BATCH_EQUATIONS(NextBatch,
+								equation_spec &CheckSpec = Model->EquationSpecs[Equation.Handle];
+								if(std::find(CheckSpec.DirectResultDependencies.begin(), CheckSpec.DirectResultDependencies.end(), ThisEquation) != CheckSpec.DirectResultDependencies.end())
+								{
+									BatchDependsOnUs = true;
+									break; //UGH, since this is a loop macro that loops over two things, this break does not always do the correct thing.
+								}
+							)
+
+							if(BatchBehind == BatchBuild.size() - 1 || BatchDependsOnUs)
+							{
+								if(LastSuitableBatch != BatchIdx)
+								{
+									//Move to the front of that batch.
+									equation_batch_template &InsertToBatch = BatchBuild[LastSuitableBatch];
+									InsertToBatch.Equations.insert(InsertToBatch.Equations.begin(), ThisEquation);
+									Batch.Equations.erase(Batch.Equations.begin() + EquationIdx);
+								}
+								break;
+							}
 						}
+						
+						EquationIdx--;
 					}
-					
-					EquationIdx--;
 				}
+				
+				++BatchIdx;
 			}
-			
-			++BatchIdx;
 		}
-	}
-	
-	//NOTE: Erase Batch templates that got all their equations removed
-	{
-		s64 BatchIdx = BatchBuild.size()-1;
-		while(BatchIdx >= 0)
+		
+		//NOTE: Erase Batch templates that got all their equations removed
 		{
-			equation_batch_template &Batch = BatchBuild[BatchIdx];
-			if(Batch.Type != BatchType_Solver && Batch.Equations.empty())
+			s64 BatchIdx = BatchBuild.size()-1;
+			while(BatchIdx >= 0)
 			{
-				BatchBuild.erase(BatchBuild.begin() + BatchIdx);
+				equation_batch_template &Batch = BatchBuild[BatchIdx];
+				if(Batch.Type != BatchType_Solver && Batch.Equations.empty())
+				{
+					BatchBuild.erase(BatchBuild.begin() + BatchIdx);
+				}
+				--BatchIdx;
 			}
-			--BatchIdx;
 		}
 	}
 #endif
@@ -961,19 +985,19 @@ ModelLoop(inca_data_set *DataSet, value_set_accessor *ValueSet, inca_inner_loop_
 				InnerLoopBody(DataSet, ValueSet, BatchGroup, BatchGroupIdx, CurrentLevel);
 			
 			if(CurrentLevel == BottomLevel)
-				ValueSet->CurrentIndexes[CurrentIndexSet.Handle]++;
+				++ValueSet->CurrentIndexes[CurrentIndexSet.Handle];
 			
 			//NOTE: We need to check again because currentindex may have changed.
 			if(ValueSet->CurrentIndexes[CurrentIndexSet.Handle] == DataSet->IndexCounts[CurrentIndexSet.Handle])
 			{
 				//NOTE: We are at the end of this index set
 				
-				ValueSet->CurrentIndexes[CurrentIndexSet.Handle] = 0;
+				ValueSet->CurrentIndexes[CurrentIndexSet.Handle] = {CurrentIndexSet, 0};
 				//NOTE: Traverse up the tree
 				if(CurrentLevel == 0) break; //NOTE: We are finished with this batch group.
 				CurrentLevel--;
 				CurrentIndexSet = BatchGroup.IndexSets[CurrentLevel];
-				ValueSet->CurrentIndexes[CurrentIndexSet.Handle]++; //Advance the index set above us so that we don't walk down the same branch again.
+				++ValueSet->CurrentIndexes[CurrentIndexSet.Handle]; //Advance the index set above us so that we don't walk down the same branch again.
 				continue;
 			}
 			else if(CurrentLevel != BottomLevel)
@@ -1057,6 +1081,8 @@ INNER_LOOP_BODY(RunInnerLoop)
 			size_t Offset = *ValueSet->AtInputLookup;
 			++ValueSet->AtInputLookup;
 			ValueSet->CurInputs[Input.Handle] = ValueSet->AllCurInputsBase[Offset];
+			ValueSet->CurInputWasProvided[Input.Handle] = DataSet->InputTimeseriesWasProvided[Offset];
+		
 		}
 		for(equation_h Result : IterationData.ResultsToRead)
 		{
@@ -1365,10 +1391,10 @@ RunModel(inca_data_set *DataSet)
 	
 	
 	u64 Timesteps      = GetTimesteps(DataSet);
-	s64 ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
+	datetime ModelStartTime = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	
 #if INCA_PRINT_TIMING_INFO
-		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " timesteps, starting at " << TimeString(ModelStartTime) << std::endl;
+		std::cout << "Running model " << Model->Name << " V" << Model->Version << " for " << Timesteps << " timesteps, starting at " << ModelStartTime.ToString() << std::endl;
 #endif
 	
 	//NOTE: Allocate input storage in case it was not allocated during setup.
@@ -1378,7 +1404,8 @@ RunModel(inca_data_set *DataSet)
 		std::cout << "WARNING: No input values were specified, using input values of 0 only." << std::endl;
 	}
 	
-	s64 InputDataStartOffsetTimesteps = DayOffset(GetInputStartDate(DataSet), ModelStartTime); //NOTE: Only one-day timesteps currently supported.
+	datetime InputStartDate = GetInputStartDate(DataSet);
+	s64 InputDataStartOffsetTimesteps = InputStartDate.DaysUntil(ModelStartTime); //NOTE: Only one-day timesteps currently supported.
 	if(InputDataStartOffsetTimesteps < 0)
 	{
 		INCA_FATAL_ERROR("ERROR: The input data starts at a later date than the model run." << std::endl);
@@ -1450,12 +1477,22 @@ RunModel(inca_data_set *DataSet)
 		}
 	}
 	
+	//NOTE: Similarly we have to set which of the unindexed inputs were provided.
+	if(!DataSet->InputStorageStructure.Units.empty() && DataSet->InputStorageStructure.Units[0].IndexSets.empty())
+	{
+		for(entity_handle InputHandle : DataSet->InputStorageStructure.Units[0].Handles)
+		{
+			size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, InputHandle);
+			ValueSet.CurInputWasProvided[InputHandle] = DataSet->InputTimeseriesWasProvided[Offset];
+		}
+	}
+	
 	ValueSet.AllLastResultsBase = DataSet->ResultData;
 	ValueSet.AllCurResultsBase = DataSet->ResultData;
 	
 	s32 Year;
-	ValueSet.DayOfYear = DayOfYear(ModelStartTime, &Year);
-	ValueSet.DaysThisYear = 365 + IsLeapYear(Year);
+	ModelStartTime.DayOfYear(&ValueSet.DayOfYear, &Year);
+	ValueSet.DaysThisYear = YearLength(Year);
 	
 	//NOTE: Set up initial values;
 	ValueSet.AtResult = ValueSet.AllCurResultsBase;

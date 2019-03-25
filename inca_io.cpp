@@ -54,9 +54,7 @@ WriteParameterValue(FILE *File, parameter_value Value, parameter_type Type)
 		break;
 		
 		case ParameterType_Time:
-		//s32 Year, Month, Day;
-		//YearMonthDay(Value.ValTime, &Year, &Month, &Day);
-		fprintf(File, "\"%s\"", TimeString(Value.ValTime));
+		fprintf(File, "\"%s\"", Value.ValTime.ToString());
 		break;
 	}
 }
@@ -75,7 +73,7 @@ WriteParameterValues(FILE *File, entity_handle ParameterHandle, parameter_type T
 	index_set_h IndexSet = IndexSets[Level];
 	size_t IndexCount = DataSet->IndexCounts[IndexSet.Handle];
 	
-	for(index_t Index = 0; Index < IndexCount; ++Index)
+	for(index_t Index = {IndexSet, 0}; Index < IndexCount; ++Index)
 	{
 		Indexes[Level] = Index;
 		if(Level + 1 == IndexSetCount)
@@ -131,7 +129,7 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 	{
 		const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		fprintf(File, "\"%s\" : {", Spec.Name);
-		for(index_t IndexIndex = 0; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)
+		for(index_t IndexIndex = {IndexSetHandle, 0}; IndexIndex < DataSet->IndexCounts[IndexSetHandle]; ++IndexIndex)
 		{
 			if(Spec.Type == IndexSetType_Basic)
 			{
@@ -378,6 +376,248 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 }
 
 static void
+ReadInputSeries(inca_data_set *DataSet, token_stream &Stream)
+{
+	const inca_model *Model = DataSet->Model;
+	
+	while(true)
+	{
+		token Token = Stream.ReadToken();
+		if(Token.Type == TokenType_EOF)
+		{
+			return;
+		}
+		
+		if(Token.Type == TokenType_UnquotedString)
+		{
+			if(Token.StringValue.Equals("include_file"))
+			{
+				token_string Filename = Stream.ExpectQuotedString();
+				
+				//NOTE: The file path is given relatively to the current file, so we have to add any path of the current one in front.
+				
+				const char *ParentPath = Stream.Filename;
+				int LastSlash;
+				bool AnySlashAtAll = false;
+				for(LastSlash = strlen(ParentPath) - 1; LastSlash >= 0; --LastSlash)
+				{
+					char C = ParentPath[LastSlash];
+					if(C == '\\' || C == '/')
+					{
+						AnySlashAtAll = true;
+						break;
+					}
+				}
+				if(!AnySlashAtAll) LastSlash = -1;
+				
+				char NewPath[512]; //Umm, hope this is plenty???
+				sprintf(NewPath, "%.*s%.*s", LastSlash+1, ParentPath, Filename.Length, Filename.Data);
+				
+				token_stream SubStream(NewPath);
+				
+				ReadInputSeries(DataSet, SubStream);
+				
+				continue;
+			}
+			else
+			{
+				Stream.PrintErrorHeader();
+				INCA_FATAL_ERROR("Unexpected command word " << Token.StringValue);
+			}
+		}
+		else if(Token.Type != TokenType_QuotedString)
+		{
+			Stream.PrintErrorHeader();
+			INCA_FATAL_ERROR("Expected the quoted name of an input or an include_file directive" << std::endl);
+		}
+		
+		token_string InputName = Token.StringValue;
+		
+		input_h Input = GetInputHandle(Model, InputName);
+		
+		std::vector<size_t> Offsets;
+		
+		while(true)
+		{
+			Token = Stream.PeekToken();
+			if(Token.Type == TokenType_OpenBrace)
+			{
+				std::vector<token_string> IndexNames;
+				
+				Stream.ReadQuotedStringList(IndexNames);
+				
+				const std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
+				if(IndexNames.size() != IndexSets.size())
+				{
+					Stream.PrintErrorHeader();
+					INCA_FATAL_ERROR("Did not get the right amount of indexes for input " << InputName << std::endl);
+				}
+				index_t Indexes[256]; //This could cause a buffer overflow, but will not do so in practice.
+				for(size_t IdxIdx = 0; IdxIdx < IndexNames.size(); ++IdxIdx)
+				{
+					Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
+				}
+				
+				size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexSets.size(), DataSet->IndexCounts, Input.Handle);
+				
+				Offsets.push_back(Offset);
+			}
+			else
+			{
+				break;
+			}
+		}
+		
+		if(Offsets.empty())
+		{
+			size_t Offset = OffsetForHandle(DataSet->InputStorageStructure, Input.Handle);
+			Offsets.push_back(Offset);
+		}
+		
+		Stream.ExpectToken(TokenType_Colon);
+		
+		for(size_t Offset : Offsets)
+		{
+			DataSet->InputTimeseriesWasProvided[Offset] = true;
+		}
+		
+		
+		//NOTE: This reads the actual data after the header.
+		
+		//NOTE: For the first timestep, try to figure out what format the data was provided in.
+		int FormatType = -1;
+		Token = Stream.PeekToken();
+		
+		u64 Timesteps = DataSet->InputDataTimesteps;
+		
+		if(Token.Type == TokenType_Numeric)
+		{
+			FormatType = 0;
+		}
+		else if(Token.Type == TokenType_QuotedString)
+		{
+			FormatType = 1;
+			//NOTE: For this format, the default value is NaN (signifying a missing value).
+			for(size_t Offset : Offsets)
+			{
+				double *WriteTo = DataSet->InputData + Offset;
+				for(u64 Timestep = 0; Timestep < Timesteps; ++ Timestep)
+				{
+					*WriteTo = std::numeric_limits<double>::quiet_NaN();
+					WriteTo += DataSet->InputStorageStructure.TotalCount;
+				}
+			}
+		}
+		else
+		{
+			Stream.PrintErrorHeader();
+			INCA_FATAL_ERROR("Inputs are to be provided either as a series of numbers or a series of dates together with numbers" << std::endl);
+		}
+		
+		if(FormatType == 0)
+		{
+			for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
+			{
+				double Value = Stream.ExpectDouble();
+				for(size_t Offset : Offsets)
+				{
+					double *WriteTo = DataSet->InputData + Offset + Timestep*DataSet->InputStorageStructure.TotalCount;
+					
+					*WriteTo = Value;
+				}
+			}
+		}
+		else //FormatType == 1
+		{
+			datetime StartDate = DataSet->InputDataStartDate;
+			
+			while(true)
+			{
+				s64 CurTimestep;
+				
+				token Token = Stream.PeekToken();
+				
+				if(Token.Type == TokenType_QuotedString)
+				{
+					datetime Date = Stream.ExpectDate();
+					CurTimestep = StartDate.DaysUntil(Date); //NOTE: Only one-day timesteps currently supported.
+				}
+				else if(Token.Type == TokenType_UnquotedString)
+				{
+					if(Token.StringValue.Equals("end_timeseries"))
+					{
+						Stream.ReadToken(); //NOTE: Consume it.
+						break;
+					}
+					else
+					{
+						Stream.PrintErrorHeader();
+						INCA_FATAL_ERROR("Unexpected command word: " << Token.StringValue << std::endl);
+					}
+				}
+				else
+				{
+					Stream.PrintErrorHeader();
+					INCA_FATAL_ERROR("Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl);
+				}
+				
+				Token = Stream.PeekToken();
+				if(Token.Type == TokenType_UnquotedString)
+				{
+					Stream.ReadToken();
+					datetime EndDateRange = Stream.ExpectDate();
+					s64 EndTimestepRange = StartDate.DaysUntil(EndDateRange); //NOTE: Only one-day timesteps currently supported.
+					
+					if(EndTimestepRange < CurTimestep)
+					{
+						Stream.PrintErrorHeader();
+						INCA_FATAL_ERROR("The end of the date range is earlier than the beginning.");
+					}
+					
+					double Value = Stream.ExpectDouble();
+					for(s64 Timestep = CurTimestep; Timestep <= EndTimestepRange; ++Timestep)
+					{
+						if(Timestep >= 0 && Timestep < (s64)Timesteps)
+						{
+							for(size_t Offset : Offsets)
+							{
+								double *WriteTo = DataSet->InputData + Offset + Timestep*DataSet->InputStorageStructure.TotalCount;
+								*WriteTo = Value;
+							}
+						}
+						else
+						{
+							//NOTE: Should we log if this happens and print a warning?
+						}
+					}
+				}
+				else if(Token.Type == TokenType_Numeric)
+				{
+					double Value = Stream.ExpectDouble();
+					if(CurTimestep >= 0 && CurTimestep < (s64)Timesteps)
+					{
+						for(size_t Offset : Offsets)
+						{
+							double *WriteTo = DataSet->InputData + Offset + CurTimestep*DataSet->InputStorageStructure.TotalCount;
+							*WriteTo = Value;
+						}
+					}
+					else
+					{
+						//NOTE: Should we log if this happens and print a warning?
+					}
+				}
+				else
+				{
+					Stream.PrintErrorHeader();
+					INCA_FATAL_ERROR("Expected either a 'to' or a number.");
+				}
+			}
+		}
+	}
+}
+
+static void
 ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 {
 	const inca_model *Model = DataSet->Model;
@@ -397,19 +637,21 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		}
 		
 		token_string Section = Stream.ExpectUnquotedString();
-		Stream.ExpectToken(TokenType_Colon);
 
 		if(Section.Equals("timesteps"))
 		{
+			Stream.ExpectToken(TokenType_Colon);
 			Timesteps = Stream.ExpectUInt();
 		}
 		else if(Section.Equals("start_date"))
 		{
+			Stream.ExpectToken(TokenType_Colon);
 			DataSet->InputDataStartDate = Stream.ExpectDate();
 			DataSet->InputDataHasSeparateStartDate = true;
 		}
 		else if(Section.Equals("inputs"))
 		{
+			Stream.ExpectToken(TokenType_Colon);
 			break;
 		}
 		else if(Section.Equals("index_set_dependencies") || Section.Equals("additional_timeseries"))
@@ -418,7 +660,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 			while(true)
 			{
 				Token = Stream.PeekToken();
-				if(Token.Type == TokenType_UnquotedString) break; //We hit a new section;
+				if(Token.Type == TokenType_UnquotedString && !Token.StringValue.Equals("unit")) break; //We hit a new section;
 				Stream.ReadToken(); //Otherwise consume the token and ignore it.
 			}
 		}
@@ -440,141 +682,7 @@ ReadInputsFromFile(inca_data_set *DataSet, const char *Filename)
 		DataSet->InputDataStartDate = GetStartDate(DataSet); //NOTE: This reads the "Start date" parameter.
 	}
 	
-	while(true)
-	{
-		token Token = Stream.ReadToken();
-		if(Token.Type == TokenType_EOF)
-		{
-			break;
-		}
-		if(Token.Type != TokenType_QuotedString)
-		{
-			//std::cout << "token type: " << TokenNames[Token.Type] << " " << Token.StringValue << std::endl;
-			
-			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Expected the quoted name of an input" << std::endl);
-		}
-		token_string InputName = Token.StringValue;
-		
-		input_h Input = GetInputHandle(Model, InputName);
-		std::vector<token_string> IndexNames;
-		
-		Token = Stream.PeekToken();
-		if(Token.Type == TokenType_OpenBrace)
-		{
-			Stream.ReadQuotedStringList(IndexNames);
-		}
-		
-		Stream.ExpectToken(TokenType_Colon);
-		
-		const std::vector<index_set_h> &IndexSets = Model->InputSpecs[Input.Handle].IndexSetDependencies;
-		if(IndexNames.size() != IndexSets.size())
-		{
-			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Did not get the right amount of indexes for input " << InputName << std::endl);
-		}
-		index_t Indexes[256]; //This could cause a buffer overflow, but will not do so in practice.
-		for(size_t IdxIdx = 0; IdxIdx < IndexNames.size(); ++IdxIdx)
-		{
-			Indexes[IdxIdx] = GetIndex(DataSet, IndexSets[IdxIdx], IndexNames[IdxIdx]);
-		}
-		
-		size_t Offset;
-		if(IndexNames.empty())
-		{
-			Offset = OffsetForHandle(DataSet->InputStorageStructure, Input.Handle);
-		}
-		else
-		{
-			Offset = OffsetForHandle(DataSet->InputStorageStructure, Indexes, IndexSets.size(), DataSet->IndexCounts, Input.Handle);
-		}
-		double *WriteTo = DataSet->InputData + Offset;
-		
-		DataSet->InputTimeseriesWasProvided[Offset] = true;
-		
-		//NOTE: For the first timestep, try to figure out what format the data was provided in.
-		int FormatType = -1;
-		Token = Stream.PeekToken();
-		if(Token.Type == TokenType_Numeric)
-		{
-			FormatType = 0;
-		}
-		else if(Token.Type == TokenType_QuotedString)
-		{
-			FormatType = 1;
-			double *WriteNanTo = WriteTo;
-			//NOTE: For this format, the default value is NaN (signifying a missing value).
-			for(u64 Timestep = 0; Timestep < Timesteps; ++ Timestep)
-			{
-				*WriteNanTo = std::numeric_limits<double>::quiet_NaN();
-				WriteNanTo += DataSet->InputStorageStructure.TotalCount;
-			}
-		}
-		else
-		{
-			Stream.PrintErrorHeader();
-			INCA_FATAL_ERROR("Inputs are to be provided either as a series of numbers or a series of dates together with numbers" << std::endl);
-		}
-		
-		if(FormatType == 0)
-		{
-			for(u64 Timestep = 0; Timestep < Timesteps; ++Timestep)
-			{
-				*WriteTo = Stream.ExpectDouble();
-				WriteTo += DataSet->InputStorageStructure.TotalCount;
-			}
-		}
-		else //FormatType == 1
-		{
-			s64 StartDate = DataSet->InputDataStartDate;
-			
-			while(true)
-			{
-				s64 CurTimestep;
-				
-				token Token = Stream.PeekToken();
-				
-				bool Store = true;
-				if(Token.Type == TokenType_QuotedString)
-				{
-					s64 Date = Stream.ExpectDate();
-					
-					CurTimestep = DayOffset(StartDate, Date); //NOTE: Only one-day timesteps currently supported.
-					
-					if(CurTimestep < 0 || CurTimestep >= (s64)Timesteps)
-					{
-						//Stream.PrintErrorHeader();
-						//INCA_FATAL_ERROR("The date " << Token.StringValue << " falls outside the time period starting with the start date and continuing with the number of specified timesteps." << std::endl);
-						Store = false;
-					}
-				}
-				else if(Token.Type == TokenType_UnquotedString)
-				{
-					if(Token.StringValue.Equals("end_timeseries"))
-					{
-						Stream.ReadToken(); //NOTE: Consume it.
-						break;
-					}
-					else
-					{
-						Stream.PrintErrorHeader();
-						INCA_FATAL_ERROR("Unexpected command word: " << Token.StringValue << std::endl);
-					}
-				}
-				else
-				{
-					Stream.PrintErrorHeader();
-					INCA_FATAL_ERROR("Expected either a date (as a quoted string) or the command word end_timeseries." << std::endl);
-				}
-				
-				double Value = Stream.ExpectDouble();
-				if(Store)
-				{
-					*(WriteTo + ((size_t)CurTimestep)*DataSet->InputStorageStructure.TotalCount) = Value;
-				}
-			}
-		}
-	}
+	ReadInputSeries(DataSet, Stream);
 }
 
 
@@ -630,7 +738,19 @@ ReadInputDependenciesFromFile(inca_model *Model, const char *Filename)
 				{
 					Token = Stream.ReadToken();
 					token_string InputName = Token.StringValue.Copy(); //TODO: Leaks.
-					RegisterInput(Model, InputName.Data, true);
+					
+					unit_h Unit = {0};
+					Token = Stream.PeekToken();
+					if(Token.Type == TokenType_UnquotedString)
+					{
+						if(Token.StringValue.Equals("unit"))
+						{
+							Stream.ReadToken();
+							token_string UnitName = Stream.ExpectQuotedString().Copy(); //TODO: Leaks.
+							Unit = RegisterUnit(Model, UnitName.Data);
+						}
+					}
+					RegisterInput(Model, InputName.Data, Unit, true);
 				}
 				else break;
 			}

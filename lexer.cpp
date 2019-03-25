@@ -28,13 +28,16 @@ const char *TokenNames[9] =
 
 struct token
 {
+	//TODO: putting these in a union breaks something. Can we find out what?
 	token_type Type;
 	token_string StringValue;
+	//union
+	//{
 	u64 UIntValue;
-	//s64 IntValue;
 	double DoubleValue;
-	bool IsUInt;
 	bool BoolValue;
+	//};
+	bool IsUInt;
 };
 
 struct token_stream
@@ -90,10 +93,10 @@ struct token_stream
 	token PeekToken(size_t PeekAhead = 1);
 	token ExpectToken(token_type);
 	
-	double ExpectDouble();
-	u64    ExpectUInt();
-	bool   ExpectBool();
-	s64    ExpectDate();
+	double   ExpectDouble();
+	u64      ExpectUInt();
+	bool     ExpectBool();
+	datetime ExpectDate();
 	token_string ExpectQuotedString();
 	token_string ExpectUnquotedString();
 	
@@ -104,8 +107,9 @@ struct token_stream
 	
 	void PrintErrorHeader(bool CurrentColumn=false);
 
-private:
 	const char *Filename;
+
+private:
 	s32 StartLine;
 	s32 StartColumn;
 	s32 Line;
@@ -163,7 +167,7 @@ token_stream::ExpectToken(token_type Type)
 	if(Token.Type != Type)
 	{
 		PrintErrorHeader();
-		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a " << TokenNames[Token.Type]);
+		INCA_PARTIAL_ERROR("Expected a token of type " << TokenNames[Type] << ", got a(n) " << TokenNames[Token.Type]);
 		if(Token.Type == TokenType_QuotedString || Token.Type == TokenType_UnquotedString)
 		{
 			INCA_PARTIAL_ERROR(" (" << Token.StringValue << ")");
@@ -508,11 +512,11 @@ bool token_stream::ExpectBool()
 	return Token.BoolValue;
 }
 
-s64 token_stream::ExpectDate()
+datetime token_stream::ExpectDate()
 {
-	s64 Date;
 	token_string DateStr = ExpectQuotedString();
-	bool ParseSuccess = ParseSecondsSinceEpoch(DateStr.Data, &Date);
+	bool ParseSuccess;
+	datetime Date(DateStr.Data, &ParseSuccess);
 	if(!ParseSuccess)
 	{
 		PrintErrorHeader();

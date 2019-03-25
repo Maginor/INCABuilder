@@ -41,7 +41,7 @@ WriteInputsToJson(inca_data_set *DataSet, const char *Filename)
 	
 	u64 Timesteps = DataSet->InputDataTimesteps;
 	
-	std::string StartDate = TimeString(GetInputStartDate(DataSet));
+	std::string StartDate = GetInputStartDate(DataSet).ToString();
     
 	json Json = {
 				{"creation_date", CreationDate},
@@ -122,7 +122,7 @@ WriteResultsToJson(inca_data_set *DataSet, const char *Filename)
 	
 	u64 Timesteps = GetTimesteps(DataSet);
 	
-	std::string StartDate = TimeString(GetStartDate(DataSet));
+	std::string StartDate = GetStartDate(DataSet).ToString();
     
 	json Json = {
 				{"creation_date", CreationDate},
@@ -186,7 +186,7 @@ ReadInputDependenciesFromJson(inca_model *Model, const char *Filename)
 		for(std::string &Str : AdditionalTimeseries)
 		{
 			const char *InputName = CopyString(Str.c_str());
-			RegisterInput(Model, InputName, true);
+			RegisterInput(Model, InputName, {0}, true);
 		}
     }
     
@@ -230,17 +230,17 @@ ReadInputsFromJson(inca_data_set *DataSet, const char *Filename)
 	{
 		std::string DateStr = JData["start_date"];
 		
-		s64 SecondsSinceEpoch;
-		bool Success = ParseSecondsSinceEpoch(DateStr.c_str(), &SecondsSinceEpoch);
+		bool ParseSuccess;
+		datetime Date(DateStr.c_str(), &ParseSuccess);
 		
-		if(!Success)
+		if(!ParseSuccess)
 		{
 			INCA_PARTIAL_ERROR("ERROR: In file " << Filename << ": ");
 			INCA_FATAL_ERROR("Unrecognized date format \"" << DateStr << "\". Supported format: Y-m-d" << std::endl);
 		}
 		
 		DataSet->InputDataHasSeparateStartDate = true;
-		DataSet->InputDataStartDate = SecondsSinceEpoch;
+		DataSet->InputDataStartDate = Date;
 	}
 
 	
@@ -294,7 +294,7 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 		const index_set_spec &Spec = Model->IndexSetSpecs[IndexSetHandle];
 		if(Spec.Type == IndexSetType_Basic)
 		{
-			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+			for(index_t Index = {IndexSetHandle, 0}; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 			{
 				std::string IndexName = DataSet->IndexNames[IndexSetHandle][Index];
 				Json["index_sets"][Spec.Name].push_back(IndexName);
@@ -303,7 +303,7 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 		else if(Spec.Type == IndexSetType_Branched)
 		{
 			std::vector<std::vector<std::string>> BranchInputs;
-			for(index_t Index = 0; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
+			for(index_t Index = {IndexSetHandle, 0}; Index < DataSet->IndexCounts[IndexSetHandle]; ++Index)
 			{
 				std::vector<std::string> Branches;
 				Branches.push_back(DataSet->IndexNames[IndexSetHandle][Index]); //NOTE: The name of the index itself.
@@ -357,7 +357,7 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 		else if(Spec.Type == ParameterType_Time)
 		{
 			std::vector<std::string> ValuesTime(Values.size());
-			for(size_t Idx = 0; Idx < Values.size(); ++Idx) ValuesTime[Idx] = TimeString(Values[Idx].ValTime);
+			for(size_t Idx = 0; Idx < Values.size(); ++Idx) ValuesTime[Idx] = Values[Idx].ValTime.ToString();
 			Json["parameters"][ParameterName] = ValuesTime;
 		}
 	}
@@ -456,10 +456,11 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 				std::vector<std::string> Val = It->get<std::vector<std::string>>();
 				for(std::string &D : Val)
 				{
-					s64 SecondsSinceEpoch;
-					bool Success = ParseSecondsSinceEpoch(D.c_str(), &SecondsSinceEpoch);
+					bool ParseSuccess;
+					parameter_value ParVal; ParVal.ValTime = datetime(D.c_str(), &ParseSuccess);
+					
 					//TODO: On failure..
-					parameter_value ParVal; ParVal.ValTime = SecondsSinceEpoch;
+					
 					Values.push_back(ParVal);
 				}
 			}

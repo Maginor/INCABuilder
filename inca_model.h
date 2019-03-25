@@ -4,6 +4,8 @@
 
 //NOTE: The purpose of having unit_h, input_h, equation_h etc. be structs that contain a numeric handle rather than just letting them be a handle directly is that we can then use the C++ type system to get type safety. Unfortunately, C++ does not allow you to typedef a unique copy of a type that is not interchangable with others. However the type system WILL distinguish between two differently named structs even though they are otherwise equal.
 
+typedef u32 entity_handle;
+//typedef size_t index_t;
 
 #define MODEL_ENTITY_HANDLE(Type) struct Type \
 { \
@@ -31,14 +33,62 @@ MODEL_ENTITY_HANDLE(parameter_group_h)
 
 #undef MODEL_ENTITY_HANDLE
 
-
+struct index_t
+{
+	entity_handle IndexSetHandle;
+	u32           Index;
+	
+	index_t() {};
+	
+	index_t(index_set_h IndexSet, u32 Index) : IndexSetHandle(IndexSet.Handle), Index(Index) {};
+	
+	index_t(entity_handle IndexSetHandle, u32 Index) : IndexSetHandle(IndexSetHandle), Index(Index) {};
+	
+	void operator++()
+	{
+		Index++;
+	}
+	
+	index_t operator+(s32 Add) const
+	{
+		index_t Result = *this;
+		Result.Index += Add;     //NOTE: This could result in an underflow. Have to see if that is a problem
+		return Result;
+	}
+	
+	index_t operator-(s32 Subtract) const
+	{
+		index_t Result = *this;
+		Result.Index -= Subtract;     //NOTE: This could result in an underflow. Have to see if that is a problem
+		return Result;
+	}
+	
+	bool operator<=(const index_t& Other) const
+	{
+		//NOTE: This does NOT check if they came from a different index set, that check should probably be done somewhere else?
+		return Index <= Other.Index;
+	}
+	
+	bool operator<(const index_t& Other) const
+	{
+		//NOTE: This does NOT check if they came from a different index set, that check should probably be done somewhere else?
+		return Index < Other.Index;
+	}
+	
+	operator size_t() const
+	{
+		return Index;
+	}
+};
 
 union parameter_value
 {
 	double ValDouble;
 	u64 ValUInt;
 	u64 ValBool; //NOTE: Since this is a union we don't save space by making the bool smaller any way.
-	s64 ValTime; //NOTE: Seconds since 1/1/1970
+	datetime ValTime; //NOTE: From datetime.h
+	
+	parameter_value() : ValTime() {}; //NOTE: 0-initializes it.
 };
 
 
@@ -131,6 +181,18 @@ GetEquationTypeName(equation_type Type)
 	return Typenames[(size_t)Type];
 }
 
+struct dependency_registration
+{
+	entity_handle Handle;
+	size_t NumExplicitIndexes;
+};
+
+struct result_dependency_registration
+{
+	entity_handle Handle;
+	std::vector<index_t> Indexes;
+};
+
 //TODO: See if we could unionize some of the data below. Not everything is needed by every type of equation.
 struct equation_spec
 {
@@ -154,13 +216,15 @@ struct equation_spec
 	
 	solver_h Solver;
 	
-	//NOTE: These are built during EndModelDefinition:
-	std::set<index_set_h> IndexSetDependencies;          //NOTE: If the equation is run on a solver, the final index set dependencies of the equation will be those of the solver.
+	//NOTE: The below are built during EndModelDefinition:
+	std::set<index_set_h> IndexSetDependencies;          //NOTE: If the equation is run on a solver, the final index set dependencies of the equation will be those of the solver, not the ones stored here. You should generally use the storage structure to determine the final dependencies rather than this vector unless you are doing something specific in EndModelDefinition.
 	std::set<entity_handle>  ParameterDependencies;
 	std::set<input_h>     InputDependencies;
 	std::set<equation_h>  DirectResultDependencies;
 	std::set<equation_h>  DirectLastResultDependencies;
 	std::set<equation_h>  CrossIndexResultDependencies;
+	
+	std::vector<result_dependency_registration> IndexedResultAndLastResultDependencies; //TODO: Maybe don't store these here, we could keep them separately just locally in EndModelDefinition.
 	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
@@ -193,7 +257,7 @@ struct input_spec
 {
 	const char *Name;
 	
-	unit_h Unit; //NOTE: Not currently used.
+	unit_h Unit;
 	
 	bool IsAdditional;
 	
@@ -204,10 +268,10 @@ struct input_spec
 //TODO: Find a better name for this struct?
 struct iteration_data
 {
-	std::vector<entity_handle>   ParametersToRead;
-	std::vector<input_h>      InputsToRead;
-	std::vector<equation_h>   ResultsToRead;
-	std::vector<equation_h>   LastResultsToRead;
+	std::vector<entity_handle> ParametersToRead;
+	std::vector<input_h>       InputsToRead;
+	std::vector<equation_h>    ResultsToRead;
+	std::vector<equation_h>    LastResultsToRead;
 };
 
 enum equation_batch_type
@@ -235,7 +299,7 @@ struct equation_batch_group
 {
 	std::vector<index_set_h> IndexSets;
 	
-	std::vector<equation_h>     LastResultsToReadAtBase;  //Unfortunately we need this..
+	std::vector<equation_h>     LastResultsToReadAtBase;  //Unfortunately we need this for LAST_RESULTs of equations with 0 index set dependencies.
 	std::vector<iteration_data> IterationData;
 	size_t FirstBatch;
 	size_t LastBatch;
@@ -262,86 +326,7 @@ struct storage_structure
 	~storage_structure();
 };
 
-struct token_string
-{
-	//NOTE: This is a length-based string that does not have ownership of its data.
-	token_string() : Data(0), Length(0) {};
-	token_string(const char *);
-	
-	const char *Data;
-	size_t Length;
-	
-	bool Equals(const char *) const;
-	token_string Copy() const;
-};
-
-token_string::token_string(const char *DataIn)
-{
-	Length = strlen(DataIn);
-	Data = DataIn;
-}
-
-std::ostream& operator<<(std::ostream& Os, const token_string& Str)
-{
-	for(size_t At = 0; At < Str.Length; ++At)
-	{
-		Os << Str.Data[At];
-	}
-	return Os;
-}
-
-bool operator==(const token_string &StrA, const token_string &StrB)
-{
-	if(StrA.Length != StrB.Length) return false;
-	for(size_t At = 0; At < StrA.Length; ++At)
-	{
-		if(StrA.Data[At] != StrB.Data[At]) return false;
-	}
-	return true;
-}
-
-bool token_string::Equals(const char *Str) const
-{
-	for(size_t At = 0; At < Length; ++At)
-	{
-		if(Str[At] == 0) return false;
-		if(Str[At] != Data[At]) return false;
-	}
-	if(Str[Length] != 0) return false;
-	return true;
-}
-
-token_string token_string::Copy() const
-{
-	token_string Result;
-	char *NewData = (char *)malloc(Length + 1);
-	Result.Data = NewData;
-	Result.Length = Length;
-	NewData[Length] = '\0'; //NOTE: In case people want a 0-terminated string
-	for(size_t At = 0; At < Length; ++At)
-	{
-		NewData[At] = Data[At];
-	}
-	return Result;
-}
-
-//TODO: Borrowed hash function from https://stackoverflow.com/questions/20649864/c-unordered-map-with-char-as-key . We should look into it more..
-struct hash_function
-{
-    //BKDR Hash algorithm
-    int operator()(const token_string &Str) const
-    {
-        int Seed = 131;//31  131 1313 13131131313 etc//
-        int Hash = 0;
-		for(size_t At = 0; At < Str.Length; ++At)
-        {
-            Hash = (Hash * Seed) + Str.Data[At];
-        }
-        return Hash & (0x7FFFFFFF);
-    }
-};
-
-typedef std::unordered_map<token_string, entity_handle, hash_function> string_map;
+typedef std::unordered_map<token_string, entity_handle, token_string_hash_function> string_map;
 
 struct inca_data_set;
 typedef std::function<void(inca_data_set *)> inca_preprocessing_step;
@@ -415,7 +400,7 @@ struct inca_data_set
 	double *InputData;
 	bool   *InputTimeseriesWasProvided;
 	storage_structure InputStorageStructure;
-	s64 InputDataStartDate;
+	datetime InputDataStartDate;
 	bool InputDataHasSeparateStartDate = false; //NOTE: Whether or not a start date was provided for the input data, which is potentially different from the start date of the model run.
 	u64 InputDataTimesteps;
 	
@@ -444,12 +429,6 @@ struct inca_data_set
 	~inca_data_set();
 };
 
-struct dependency_registration
-{
-	entity_handle Handle;
-	size_t NumExplicitIndexes;
-};
-
 struct value_set_accessor
 {
 	// The purpose of the value set accessor is to store state during the run of the model as well as providing access to various values to each equation that gets evaluated.
@@ -468,9 +447,10 @@ struct value_set_accessor
 
 	//NOTE: For use during model execution		
 	parameter_value *CurParameters;
-	double          *CurInputs;
 	double          *CurResults;
 	double          *LastResults;
+	double          *CurInputs;
+	bool            *CurInputWasProvided;
 	
 	index_t *CurrentIndexes; //NOTE: Contains the current index of each index set during execution.	
 	
@@ -492,8 +472,8 @@ struct value_set_accessor
 	//NOTE: For use during dependency registration:
 	std::vector<dependency_registration> ParameterDependencies;
 	std::vector<dependency_registration> InputDependencies;
-	std::vector<dependency_registration> ResultDependencies;
-	std::vector<dependency_registration> LastResultDependencies;
+	std::vector<result_dependency_registration> ResultDependencies;
+	std::vector<result_dependency_registration> LastResultDependencies;
 	std::vector<index_set_h> DirectIndexSetDependencies;
 
 	
@@ -515,13 +495,19 @@ struct value_set_accessor
 	{
 		Running = true;
 		this->DataSet = DataSet;
-		Model = DataSet->Model;
+		this->Model = DataSet->Model;
 
 		CurInputs      = AllocClearedArray(double, Model->FirstUnusedInputHandle);
 		CurParameters  = AllocClearedArray(parameter_value, Model->FirstUnusedParameterHandle);
 		CurResults     = AllocClearedArray(double, Model->FirstUnusedEquationHandle);
 		LastResults    = AllocClearedArray(double, Model->FirstUnusedEquationHandle);
+		CurInputWasProvided = AllocClearedArray(bool, Model->FirstUnusedInputHandle);
+		
 		CurrentIndexes = AllocClearedArray(index_t, Model->FirstUnusedIndexSetHandle);
+		for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+		{
+			CurrentIndexes[IndexSetHandle].IndexSetHandle = IndexSetHandle;
+		}
 		
 		DayOfYear = 0;
 		DaysThisYear = 365;
@@ -534,6 +520,7 @@ struct value_set_accessor
 		{
 			free(CurParameters);
 			free(CurInputs);
+			free(CurInputWasProvided);
 			free(CurResults);
 			free(LastResults);
 			free(CurrentIndexes);
@@ -547,9 +534,15 @@ struct value_set_accessor
 		{
 			memset(CurParameters,  0, sizeof(parameter_value)*Model->FirstUnusedParameterHandle);
 			memset(CurInputs,      0, sizeof(double)*Model->FirstUnusedInputHandle);
+			memset(CurInputWasProvided,      0, sizeof(bool)*Model->FirstUnusedInputHandle);
 			memset(CurResults,     0, sizeof(double)*Model->FirstUnusedEquationHandle);
 			memset(LastResults,    0, sizeof(double)*Model->FirstUnusedEquationHandle);
 			memset(CurrentIndexes, 0, sizeof(index_t)*Model->FirstUnusedIndexSetHandle);
+			
+			for(entity_handle IndexSetHandle = 1; IndexSetHandle < Model->FirstUnusedIndexSetHandle; ++IndexSetHandle)
+			{
+				CurrentIndexes[IndexSetHandle].IndexSetHandle = IndexSetHandle;
+			}
 		}
 		else
 		{
@@ -728,12 +721,12 @@ RequireIndex(inca_model *Model, index_set_h IndexSet, const char *IndexName)
 	auto Find = std::find(Spec.RequiredIndexes.begin(), Spec.RequiredIndexes.end(), IndexName);
 	if(Find != Spec.RequiredIndexes.end())
 	{
-		return (index_t)std::distance(Spec.RequiredIndexes.begin(), Find); //NOTE: This is its position in the vector.
+		return index_t(IndexSet, (u32)std::distance(Spec.RequiredIndexes.begin(), Find)); //NOTE: This is its position in the vector.
 	}
 	else
 	{
 		Spec.RequiredIndexes.push_back(IndexName);
-		return (index_t)(Spec.RequiredIndexes.size() - 1);
+		return index_t(IndexSet, (u32)(Spec.RequiredIndexes.size() - 1));
 	}
 }
 
@@ -767,7 +760,7 @@ SetParentGroup(inca_model *Model, parameter_group_h Child, parameter_group_h Par
 }
 
 inline input_h
-RegisterInput(inca_model *Model, const char *Name, bool IsAdditional = false)
+RegisterInput(inca_model *Model, const char *Name, unit_h Unit = {0}, bool IsAdditional = false)
 {
 	REGISTRATION_BLOCK(Model)
 	
@@ -776,6 +769,7 @@ RegisterInput(inca_model *Model, const char *Name, bool IsAdditional = false)
 	
 	input_spec &Spec = Model->InputSpecs[Input.Handle];
 	Spec.IsAdditional = IsAdditional;
+	Spec.Unit = Unit;
 	
 	return Input;
 }
@@ -856,12 +850,16 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 	parameter_spec &Spec = Model->ParameterSpecs[Parameter.Handle];
 	Spec.Type = ParameterType_Time;
 	
-	bool ParseSuccess = true;
-	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Default, &Spec.Default.ValTime);
-	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Min, &Spec.Min.ValTime);
-	ParseSuccess = ParseSuccess && ParseSecondsSinceEpoch(Max, &Spec.Max.ValTime);
+	bool ParseSuccessAll = true;
+	bool ParseSuccess;
+	Spec.Default.ValTime = datetime(Default, &ParseSuccess);
+	ParseSuccessAll = ParseSuccessAll && ParseSuccess;
+	Spec.Min.ValTime = datetime(Min, &ParseSuccess);
+	ParseSuccessAll = ParseSuccessAll && ParseSuccess;
+	Spec.Max.ValTime = datetime(Max, &ParseSuccess);
+	ParseSuccessAll = ParseSuccessAll && ParseSuccess;
 	
-	if(!ParseSuccess)
+	if(!ParseSuccessAll)
 	{
 		INCA_FATAL_ERROR("ERROR: Unrecognized date format for default, min or max value when registering the parameter " << Name << std::endl);
 	}
@@ -1119,7 +1117,10 @@ AddInputIndexSetDependency(inca_model *Model, input_h Input, index_set_h IndexSe
 #define INPUT(InputH) (ValueSet__->Running ? GetCurrentInput(ValueSet__, InputH) : RegisterInputDependency(ValueSet__, InputH))
 #define RESULT(ResultH, ...) (ValueSet__->Running ? GetCurrentResult(ValueSet__, ResultH, ##__VA_ARGS__) : RegisterResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
 #define LAST_RESULT(ResultH, ...) (ValueSet__->Running ? GetLastResult(ValueSet__, ResultH, ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
-#define EARLIER_RESULT(ResultH, StepBack, ...) (ValueSet__->Running ? GetEarlierResult(ValueSet__, ResultH, (StepBack), ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__)) 
+#define EARLIER_RESULT(ResultH, StepBack, ...) (ValueSet__->Running ? GetEarlierResult(ValueSet__, ResultH, (StepBack), ##__VA_ARGS__) : RegisterLastResultDependency(ValueSet__, ResultH, ##__VA_ARGS__))
+#define INPUT_WAS_PROVIDED(InputH) (ValueSet__->Running ? GetIfInputWasProvided(ValueSet__, InputH) : RegisterInputDependency(ValueSet__, InputH))
+#define IF_INPUT_ELSE_PARAMETER(InputH, ParameterH) (ValueSet__->Running ? GetCurrentInputOrParameter(ValueSet__, InputH, ParameterH) : RegisterInputAndParameterDependency(ValueSet__, InputH, ParameterH))
+
 
 #define CURRENT_DAY_OF_YEAR() (ValueSet__->DayOfYear)
 #define DAYS_THIS_YEAR() (ValueSet__->DaysThisYear)
@@ -1162,7 +1163,8 @@ GetCurrentParameter(value_set_accessor *ValueSet, parameter_bool_h Parameter)
 
 //NOTE: This does NOT do error checking to see if we provided too many override indexes or if they were out of bounds! We could maybe add an option to do that
 // that is compile-out-able?
-size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const size_t *IndexCounts, const size_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle);
+size_t OffsetForHandle(storage_structure &Structure, const index_t* CurrentIndexes, const index_t *IndexCounts, const index_t *OverrideIndexes, size_t OverrideCount, entity_handle Handle);
+//size_t OffsetForHandle(storage_structure &Structure, const index_t *CurrentIndexes, const index_t *IndexCounts, entity_handle Handle);
 
 
 template<typename... T> double
@@ -1254,6 +1256,18 @@ GetCurrentInput(value_set_accessor *ValueSet, input_h Input)
 }
 
 
+inline bool
+GetIfInputWasProvided(value_set_accessor * ValueSet, input_h Input)
+{
+	return ValueSet->CurInputWasProvided[Input.Handle];
+}
+
+inline double
+GetCurrentInputOrParameter(value_set_accessor *ValueSet, input_h Input, parameter_double_h Parameter)
+{
+	if(GetIfInputWasProvided(ValueSet, Input)) return GetCurrentInput(ValueSet, Input);
+	return GetCurrentParameter(ValueSet, Parameter);
+}
 
 
 
@@ -1289,15 +1303,23 @@ inline double
 RegisterInputDependency(value_set_accessor *ValueSet, input_h Input)
 {
 	ValueSet->InputDependencies.push_back({Input.Handle, 0});
-	//ValueSet->InputDependency[Input.Handle]++;
+	return 0.0;
+}
+
+inline double
+RegisterInputAndParameterDependency(value_set_accessor *ValueSet, input_h Input, parameter_double_h Parameter)
+{
+	RegisterInputDependency(ValueSet, Input);
+	RegisterParameterDependency(ValueSet, Parameter);
+
 	return 0.0;
 }
 
 template<typename... T> double
 RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	size_t OverrideCount = sizeof...(Indexes);
-	ValueSet->ResultDependencies.push_back({Result.Handle, OverrideCount});
+	std::vector<index_t> IndexVec = {Indexes...};
+	ValueSet->ResultDependencies.push_back({Result.Handle, IndexVec});
 	
 	return 0.0;
 }
@@ -1305,8 +1327,8 @@ RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... I
 template<typename... T> double
 RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	size_t OverrideCount = sizeof...(Indexes);
-	ValueSet->LastResultDependencies.push_back({Result.Handle, OverrideCount});
+	std::vector<index_t> IndexVec = {Indexes...};
+	ValueSet->LastResultDependencies.push_back({Result.Handle, IndexVec});
 	
 	return 0.0;
 }
@@ -1327,15 +1349,15 @@ SetResult(value_set_accessor *ValueSet, double Value, equation_h Result, T... In
 
 #define INDEX_COUNT(IndexSetH) (ValueSet__->Running ? (ValueSet__->DataSet->IndexCounts[IndexSetH.Handle]) : 1)
 #define CURRENT_INDEX(IndexSetH) (ValueSet__->Running ? GetCurrentIndex(ValueSet__, IndexSetH) : RegisterIndexSetDependency(ValueSet__, IndexSetH))
-#define PREVIOUS_INDEX(IndexSetH) (ValueSet__->Running ? GetPreviousIndex(ValueSet__, IndexSetH) : RegisterIndexSetDependency(ValueSet__, IndexSetH))
-#define FINAL_INDEX(IndexSetH) (INDEX_COUNT(IndexSetH)-1)
-#define INPUT_COUNT(IndexSetH) (ValueSet__->Running ? InputCount(ValueSet__, IndexSetH) : 0)
+#define FIRST_INDEX(IndexSetH) (index_t(IndexSetH, 0))
+#define INDEX_NUMBER(IndexSetH, Index) (index_t(IndexSetH, (u32)Index))
+#define INPUT_COUNT(IndexSetH) (ValueSet__->Running ? GetInputCount(ValueSet__, IndexSetH) : 0)
 
 inline index_t
 RegisterIndexSetDependency(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	ValueSet->DirectIndexSetDependencies.push_back(IndexSet);
-	return 0;
+	return index_t(IndexSet, 0);
 }
 
 inline index_t
@@ -1344,16 +1366,8 @@ GetCurrentIndex(value_set_accessor *ValueSet, index_set_h IndexSet)
 	return ValueSet->CurrentIndexes[IndexSet.Handle];
 }
 
-inline index_t
-GetPreviousIndex(value_set_accessor *ValueSet, index_set_h IndexSet)
-{
-	index_t CurrentIndex = GetCurrentIndex(ValueSet, IndexSet);
-	if(CurrentIndex == 0) return 0;
-	return CurrentIndex - 1;
-}
-
 inline size_t
-InputCount(value_set_accessor *ValueSet, index_set_h IndexSet)
+GetInputCount(value_set_accessor *ValueSet, index_set_h IndexSet)
 {
 	index_t Current = GetCurrentIndex(ValueSet, IndexSet);
 	return ValueSet->DataSet->BranchInputs[IndexSet.Handle][Current].Count;
@@ -1382,7 +1396,8 @@ struct branch_input_iterator
 inline branch_input_iterator
 BranchInputIteratorBegin(value_set_accessor *ValueSet, index_set_h IndexSet, index_t Branch)
 {
-	static index_t DummyData = 0;
+	static index_t DummyData;
+	DummyData = index_t(IndexSet, 0);
 	
 	branch_input_iterator Iterator;
 	Iterator.IndexSet = IndexSet;

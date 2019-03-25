@@ -95,12 +95,6 @@ parameters:
 "This is a quick box" :
 true false false
 
-"Allow inundation" :
-false false false
-
-"Allow infiltration" :
-false false false
-
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :     #(mm) [0, 9999] The initial depth of water in a box at the start of a simulation
 10 10 10
@@ -146,21 +140,6 @@ false false false
 150 150 150
 500 500 500
 500 500 500
-
-"Inundation threshold" :     #(mm) [0, 9999] The depth of water in a bucket below which inundation from the stream can occur
-10 10 10
-500 500 500
-10 10 10
-
-"Porosity" :     #(dimensionless) [0.1, 0.9] The void fraction of a box which is able to hold water
-0.2 0.2 0.2
-0.3 0.3 0.3
-0.2 0.2 0.2
-
-"Inundation offset" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0 0
-0 0 0
-0 0 0
 
 ###################### "Reaches" ######################
 "Terrestrial catchment area" :     #(km2) [0.1, 999999] The terrestrial area of a subcatchment, excluding open water

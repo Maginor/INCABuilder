@@ -69,15 +69,6 @@ parameters:
 "This is a quick box" :
 true false false
 
-"Allow inundation" :
-false false false
-
-"Allow infiltration" :
-false false false
-
-#"Use this box in SMD calculation" :
-#false true false
-
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :
 150.0 130.0 150.0 150.0 150.0 150.0
@@ -123,21 +114,6 @@ false false false
 150.0 150.0 150.0 150.0 150.0 150.0
 300.0 300.0 300.0 300.0 300.0 300.0
 250.0 250.0 240.0 240.0 240.0 240.0
-
-"Inundation threshold" :
- 10.0  10.0  10.0  10.0  10.0  10.0
-500.0 500.0 500.0 500.0 500.0 500.0
- 10.0  10.0  10.0  10.0  10.0  10.0
-
-"Porosity" :
-0.2 0.2 0.2 0.2 0.2 0.2
-0.3 0.3 0.3 0.3 0.3 0.3
-0.2 0.2 0.2 0.2 0.2 0.2
-
-"Inundation offset" :
-0.0 0.0 0.0 0.0 0.0 0.0
-0.0 0.0 0.0 0.0 0.0 0.0
-0.0 0.0 0.0 0.0 0.0 0.0
 
 ###################### "Reaches" ######################
 "Terrestrial catchment area" :

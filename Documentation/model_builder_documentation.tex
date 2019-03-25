@@ -594,6 +594,10 @@ EQUATION(Model, PrecipitationFallingAsSnow,
 
 The general rule is that if you access an entity value at any point in the equation body, you have to make sure that this entity value is accessed regardless of the state of any other values.
 
+\begin{note}
+This means that you also have to make sure that an equation does not (potentially) return before it has accessed all the values it could access!
+\end{note}
+
 \subsubsection{What to do inside of or outside of equation bodies}
 
 Generally you should try to limit what kind of expressions you use inside equation bodies. Things to do inside {\tt EQUATION} bodies:
@@ -733,11 +737,17 @@ There are a couple of things to be aware of when referencing {\tt RESULT}s insid
 
 The framework lets you access a few additional variables that tell you something about the state the equation is called under. These are.
 \begin{enumerate}[i]
-\item {\tt CURRENT\_INDEX(IndexSetHandle)} This will return an {\tt index\_t} which tells you the current index of the index set corresponding to the provided {\tt IndexSetHandle}. An {\tt index\_t} is an unsigned integer between $0$ and $N-1$, where $N$ is the number of indexes in the index set. Inside {\tt EQUATION} bodies, indexes are for performance reasons always referred to by their number (i.e. the order they were declared) instead of their string name. In addition to providing the value of the current index, {\tt CURRENT\_INDEX} forces the equation to depend on this index set, i.e. it will be evaluated for each index in the index set (otherwise, if it was not evaluated for each index in the index set, it would not make sense to ask what was the current index of that index set during evaluation).
-\item {\tt INDEX\_COUNT(IndexSetHandle)} This will return an unsigned integer which tells you the number of indexes in the index set corresponding to the provided {\tt IndexSetHandle}.
+\item {\tt CURRENT\_INDEX(IndexSetHandle)} This will return an {\tt index\_t} which tells you the current index of the index set corresponding to the provided {\tt IndexSetHandle}. An {\tt index\_t} is a small struct that contains information about what index set and what index it belongs to. In addition to providing the value of the current index, {\tt CURRENT\_INDEX} forces the equation to depend on this index set, i.e. it will be evaluated for each index in the index set (otherwise, if it was not evaluated for each index in the index set, it would not make sense to ask what was the current index of that index set during evaluation).
+\item {\tt INDEX\_COUNT(IndexSetHandle)} This will return an {\tt index\_} that is always guaranteed to be one larger than the largest index in the index set corresponding to the provided {\tt IndexSetHandle}. Registers No dependencies.
+\item {\tt FIRST\_INDEX(IndexSetHandle)} Gives you an {\tt index\_t} corresponding to the first index of that index set. Registers no dependencies.
+\item {\tt INDEX\_NUMBER(IndexSetHandle, Number)} Gives you an {\tt index\_t} corresponding to the index of that number. However, be careful when using this that the index is smaller than {\tt INDEX\_COUNT(IndexSetHandle)}. Also, it is probably better to use a predeclared index, which guarantees you that what you are referring to has the right index name  (see Section \ref{sec:predeclared} below). Registers no dependencies.
 \item {\tt CURRENT\_DAY\_OF\_YEAR()} Returns an unsigned integer telling you which day of year it is (in the current model state). January 1st is always day 1. For instance, if the model "Start date" is "1999-1-15", then during the first timestep, the current day of year will be 15.
 \item {\tt DAYS\_THIS\_YEAR()} Returns an unsigned integer that is either 365 (in a normal year) or 366 (in a leap year).
 \end{enumerate}
+
+\begin{note}
+The {\tt index\_t} structure only contains numeric info about what index set handle it belongs to and the number of the index. However, instead of specifying these directly, it is better to use one of the wrapper macros that allow you to get an index of a specific index set. There are also a couple of overloaded operators that allow you to do size comparisons or increment {\tt index\_t}'s.
+\end{note}
 
 \subsubsection{Explicit indexing and explicit iteration}
 
@@ -794,23 +804,13 @@ The explicit index you provide always has to be an {\tt index\_t}, which is just
 
 Explicit indexing of {\tt INPUT}s is currently not available.
 
-Explicit indexing of {\tt RESULT} and {\tt LAST\_RESULT} follows some of the same rules as explicit indexing of parameters, however here you have to be much more careful. For one thing, during model development, you can not be sure in which order the index set dependencies of an equation will be in, or even which index set dependencies it will have. This is after all determined by the framework at runtime. You therefore have to check that you guessed the correct order of the dependencies by looking at the equation batch structure (which could change if you for instance change the dependencies of some parameters). Another difference is that an explicitly indexed {\tt RESULT} or {\tt LAST\_RESULT} lookup will not register any index set dependencies whatsoever. The reason for this is that the order of the index set dependencies of an equation are determined after the dependency registration pass. So it is unable to determine during the dependency registration pass exactly which index set was referred to. So far we have not found a reliable way to fix this in the framework. If you have an equation that did not pick up the right dependency because of an access like this, you can use the following trick.
-
-\begin{example}
-Calling {\tt CURRENT\_INDEX} to force an index set dependency.
-\begin{lstlisting}[style=mycpp]
-EQUATION(Model, OrganicLayerToMineralLayerFraction,
-	CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits); //NOTE: This forces the equation to depend on these two index sets.
-	return RESULT(PercolationInput, MineralLayer) / RESULT(WaterDepth, OrganicLayer); //NOTE: We had to do that because we don't pick up any index set dependencies when we do explicit indexing of results.
-)
-\end{lstlisting}
-\end{example}
+Explicit indexing of {\tt RESULT} and {\tt LAST\_RESULT} follows some of the same rules as explicit indexing of parameters, however here you have to be much more careful. For one thing, during model development, you can not be sure in which order the index set dependencies of an equation will be in, or even which index set dependencies it will have. This is after all determined by the framework at runtime. You therefore have to check that you guessed the correct order of the dependencies by looking at the equation batch structure (which could change if you for instance change the dependencies of some parameters).
 
 \begin{note}
 You should generally be careful with explicit indexing of {\tt RESULT}s inside equations that are in a solver batch. If you explicitly index a result from the same batch you will either get just the end-of-timestep value (if you indexed an already evaluated index) or a 0 (if you for some reason explicitly indexed the currently evaluated index). This is because the sub-timestep values of the ODE system are not stored out to the main result storage and are discarded after (or during) integration. To give an example, while an expression like {\tt RESULT(WaterDepth, CURRENT\_INDEX(Soils))} would give the same value as {\tt RESULT(WaterDepth)} outside a solver (albeit slower), it would give a 0 inside a solver (if {\tt WaterDepth} is also evaluated in the solver). Of course, there should not be any reason to use such an expression in the first place. Explicit indexing of parameters is ok, but see the notes on performance under Section \ref{sec:performance}.
 \end{note}
 
-\subsubsection{Predeclared indexes}
+\subsubsection{Predeclared indexes}\label{sec:predeclared}
 
 In some cases you may not want the indexes of an index set to be user defined, instead you want the model to determine the indexes. In that case you can call {\tt RequireIndex} one or more times to tell the model what indexes you want in the index set. This call will also return to you an {\tt index\_t} value that you can use to explicitly refer to this index inside {\tt EQUATION}s.
 
@@ -872,7 +872,7 @@ You can turn the debug flags either on or off by setting them to 1 or 0 respecti
 
 \begin{enumerate}[i]
 \item {\tt INCA\_TIMESTEP\_VERBOSITY}. This has 3 levels. If it is set to 1 it will print out the number of the timestep for every timestep. If it is set to 2, it will also print out every time it changes the state of an index set during the iteration. If it is set to 3 it will also print out every time it finishes the evaluation of an equation (or an integration in the case of a solver), along with the value. This can give you a full sense of the model evaluation like it is described in Example \ref{ex:pseucocode} (You should probably turn down the number of timesteps if you want to test the model in this mode).
-\item {\tt INCA\_TEST\_FOR\_NAN}. If turned on, this will test every result value to see if it was an inf or nan. In the case of such a value, it will halt the model execution and print out the current timestep, the state of the index sets, and the state of all the parameter, input and result dependencies of the equation that produced the illegal value. This will make the model run a little slower even if it does not encounter an illegal value. The nan test will not work correctly if you compile with the -ffast-math flag. The -ffast-math flag may make the model run a little faster, but the underlying floating point architecture will no longer make nans detectable.
+\item {\tt INCA\_TEST\_FOR\_NAN}. If turned on, this will test every result value to see if it was an inf or nan. In the case of such a value, it will halt the model execution and print out the current timestep, the state of the index sets, and the state of all the parameter, input and result dependencies of the equation that produced the illegal value. This will make the model run a little slower even if it does not encounter an illegal value. The nan test will not work correctly if you compile with the -ffast-math flag. The -ffast-math flag may make the model run a little faster, but the underlying floating point architecture will no longer make nans detectable, which can interfer both with this safeguard and other safeguards you may put in.
 \item {\tt INCA\_PRINT\_TIMING\_INFO}. If turned on, this will time how long it took to run the model (both in milliseconds and processor instructions). This only gives very coarse information, but can be useful to detect if something weird happened (does the model suddenly run much slower after you added a new equation?).
 \item {\tt INCA\_EQUATION\_PROFILING}. This will give you very fine-grained information about how many processor ticks every equation evaluation took on average, and how many times each equation was evaluated. Note that the time to evaluate an equation is not always the same as the time to produce a result value since a solver may evaluate an equation many times to produce a result value for it. See Section \ref{sec:performance} about tips on how to improve the speed of the model. Having this flag turned on will make the framework itself a little slower.
 \item {\tt INCA\_INDEX\_BOUNDS\_TEST}. This should probably be turned on as often as possible during model development. It will catch if during explicit indexing you provided an {\tt index\_t} that was out of bounds for this index set. Unfortunately, the error message it prints does not provide a lot of information right now. Having this flag turned on will make the model run a little slower.
@@ -1086,6 +1086,7 @@ The registration procedures can only be called on a {\tt inca\_model} object tha
 \apientry{RegisterInput}{Registration procedure}{
 \apipar{inca\_model *Model}{Pointer to the model object.}
 \apipar{const char *Name}{The full name of the input.}
+\apipar{unit\_h Unit}{(optional) A unit for the input.}
 \apiret{An {\tt input\_h} handle to the newly registered input timeseries.}
 \apidesc{Register a new input timeseries with the model.}
 }

@@ -75,6 +75,25 @@ AddIncaNModel(inca_model *Model)
 	auto InitialStreamNitrateConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream nitrate concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream nitrate concentration");
 	auto InitialStreamAmmoniumConcentration = RegisterParameterDouble(Model, Reaches, "Initial stream ammonium concentration", MgPerL, 0.0, 0.0, 1000.0, "Initial stream ammonium concentration");
 	
+
+	auto NitrateFertilizerTimeseries             = RegisterInput(Model, "Fertilizer nitrate", KgPerHectarePerDay);
+	auto AmmoniumFertilizerTimeseries            = RegisterInput(Model, "Fertilizer ammonium", KgPerHectarePerDay);
+	auto NitrateWetDepositionTimeseries          = RegisterInput(Model, "Nitrate wet deposition", KgPerHectarePerDay);
+	auto NitrateDryDepositionTimeseries          = RegisterInput(Model, "Nitrate dry deposition", KgPerHectarePerDay);
+	auto AmmoniumWetDepositionTimeseries         = RegisterInput(Model, "Ammonium wet deposition", KgPerHectarePerDay);
+	auto AmmoniumDryDepositionTimeseries         = RegisterInput(Model, "Ammonium dry deposition", KgPerHectarePerDay);
+	auto NitrateEffluentConcentrationTimeseries  = RegisterInput(Model, "Effluent nitrate concentration", MgPerL);
+	auto AmmoniumEffluentConcentrationTimeseries = RegisterInput(Model, "Effluent ammonium concentration", MgPerL);
+	auto GrowthCurveOffsetTimeseries             = RegisterInput(Model, "Growth curve offset", Dimensionless);
+	auto GrowthCurveAmplitudeTimeseries          = RegisterInput(Model, "Growth curve amplitude", Dimensionless);
+	
+	auto AbstractionTimeseries = GetInputHandle(Model, "Abstraction flow");
+	auto EffluentTimeseries    = GetInputHandle(Model, "Effluent flow");
+	auto LandUseTimeseries     = GetInputHandle(Model, "%");
+	
+	auto ActualPrecipitation   = GetInputHandle(Model, "Actual precipitation");
+
+	
 	
 	auto IncaSolver = RegisterSolver(Model, "Inca solver", 0.1, IncaDascru);
 	
@@ -85,8 +104,7 @@ AddIncaNModel(inca_model *Model)
 	auto Groundwater  = RequireIndex(Model, Soils, "Groundwater");
 	
 	//NOTE: These are from PERSiST:
-	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation is subtracted.
-	auto WaterDepth4           = GetEquationHandle(Model, "Water depth 4"); //NOTE: This is right before runoff is subtracted.
+	auto WaterDepth3           = GetEquationHandle(Model, "Water depth 3"); //NOTE: This is right before percolation and runoff is subtracted.
 	auto WaterDepth            = GetEquationHandle(Model, "Water depth");   //NOTE: This is after everything is subtracted.
 	auto RunoffToReach         = GetEquationHandle(Model, "Runoff to reach");
 	auto SaturationExcessInput = GetEquationHandle(Model, "Saturation excess input");
@@ -104,6 +122,15 @@ AddIncaNModel(inca_model *Model)
 	auto SoilToReachFraction         = RegisterEquation(Model, "Soil to reach fraction", PerDay);
 	auto GroundwaterToReachFraction  = RegisterEquation(Model, "Groundwater to reach fraction", PerDay);
 	
+	auto NitrateDryDepositionToSoil  = RegisterEquation(Model, "Nitrate dry deposition to soil", KgPerHectarePerDay);
+	auto NitrateDryStorage           = RegisterEquation(Model, "Nitrate dry storage", KgPerHectare);
+	auto AmmoniumDryDepositionToSoil = RegisterEquation(Model, "Ammonium dry deposition to soil", KgPerHectarePerDay);
+	auto AmmoniumDryStorage          = RegisterEquation(Model, "Ammonium dry storage", KgPerHectare);
+	auto NitrateFertilizerAddition   = RegisterEquation(Model, "Nitrate fertilizer addition", KgPerHectarePerDay);
+	auto AmmoniumFertilizerAddition  = RegisterEquation(Model, "Ammonium fertilizer addition", KgPerHectarePerDay);
+	auto CurrentGrowthCurveOffset    = RegisterEquation(Model, "Growth curve offset", Dimensionless);
+	auto CurrentGrowthCurveAmplitude = RegisterEquation(Model, "Growth curve amplitude", Dimensionless);
+	auto CurrentPlantGrowthStartDay  = RegisterEquation(Model, "Plant growth start day", Dimensionless);
 	
 	auto DirectRunoffInitialNitrate = RegisterEquationInitialValue(Model, "Direct runoff initial nitrate", KgPerKm2);
 	auto DirectRunoffNitrate        = RegisterEquationODE(Model, "Direct runoff nitrate", KgPerKm2);
@@ -153,7 +180,13 @@ AddIncaNModel(inca_model *Model)
 	SetInitialValue(Model, GroundwaterAmmonium, GroundwaterInitialAmmonium);
 	
 	auto SoilwaterNitrateConcentration = RegisterEquation(Model, "Soil water nitrate concentration", MgPerL);
+	SetSolver(Model, SoilwaterNitrateConcentration, IncaSolver);
 	auto GroundwaterNitrateConcentration = RegisterEquation(Model, "Groundwater nitrate concentration", MgPerL);
+	SetSolver(Model, GroundwaterNitrateConcentration, IncaSolver);
+	auto SoilwaterAmmoniumConcentration = RegisterEquation(Model, "Soil water ammonium concentration", MgPerL);
+	SetSolver(Model, SoilwaterAmmoniumConcentration, IncaSolver);
+	auto GroundwaterAmmoniumConcentration = RegisterEquation(Model, "Groundwater ammonium concentration", MgPerL);
+	SetSolver(Model, GroundwaterAmmoniumConcentration, IncaSolver);
 	
 	
 	EQUATION(Model, DirectRunoffInitialNitrate,
@@ -183,12 +216,10 @@ AddIncaNModel(inca_model *Model)
 	
 	
 	EQUATION(Model, SoilwaterVolume,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Soilwater) * 1000.0;
 	)
 	
 	EQUATION(Model, GroundwaterVolume,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Groundwater) * 1000.0;
 	)
 	
@@ -200,53 +231,153 @@ AddIncaNModel(inca_model *Model)
 		return SafeDivide(RESULT(GroundwaterNitrate), RESULT(GroundwaterVolume)) * 1000.0;
 	)
 	
+	EQUATION(Model, SoilwaterAmmoniumConcentration,
+		return SafeDivide(RESULT(SoilwaterAmmonium), RESULT(SoilwaterVolume)) * 1000.0;
+	)
+	
+	EQUATION(Model, GroundwaterAmmoniumConcentration,
+		return SafeDivide(RESULT(GroundwaterAmmonium), RESULT(GroundwaterVolume)) * 1000.0;
+	)
+	
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, DirectRunoffToSoilFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, Soilwater), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, SoilToDirectRunoffFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth3, Soilwater));
 	)
 	
 	EQUATION(Model, SoilToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, Soilwater), RESULT(WaterDepth3, Soilwater));
 	)
 	
 	EQUATION(Model, SoilToGroundwaterFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth3, Soilwater));
 	)
 
 	EQUATION(Model, GroundwaterToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth3, Groundwater));
 	)
 	
 	
+	EQUATION(Model, NitrateDryDepositionToSoil,
+		double storage = LAST_RESULT(NitrateDryStorage);
+		double deposition = IF_INPUT_ELSE_PARAMETER(NitrateDryDepositionTimeseries, NitrateDryDeposition);
+		
+		if(INPUT(ActualPrecipitation) > 0.0)
+		{
+			return storage + deposition;
+		}
+		return 0.0;
+	)
+	
+	EQUATION(Model, NitrateDryStorage,
+		double storage = LAST_RESULT(NitrateDryStorage);
+		double deposition = IF_INPUT_ELSE_PARAMETER(NitrateDryDepositionTimeseries, NitrateDryDeposition);
+		if(INPUT(ActualPrecipitation) == 0.0)
+		{
+			return storage + deposition;
+		}
+		return 0.0;
+	)
+	
+	EQUATION(Model, AmmoniumDryDepositionToSoil,
+		double storage = LAST_RESULT(AmmoniumDryStorage);
+		double deposition = IF_INPUT_ELSE_PARAMETER(AmmoniumDryDepositionTimeseries, AmmoniumDryDeposition);
+		
+		if(INPUT(ActualPrecipitation) > 0.0)
+		{
+			return storage + deposition;
+		}
+		return 0.0;
+	)
+	
+	EQUATION(Model, AmmoniumDryStorage,
+		double storage = LAST_RESULT(AmmoniumDryStorage);
+		double deposition = IF_INPUT_ELSE_PARAMETER(AmmoniumDryDepositionTimeseries, AmmoniumDryDeposition);
+		if(INPUT(ActualPrecipitation) == 0.0)
+		{
+			return storage + deposition;
+		}
+		return 0.0;
+	)
+	
+	EQUATION(Model, NitrateFertilizerAddition,
+		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
+		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);
+		double currentday = (double)CURRENT_DAY_OF_YEAR();
+		double additionrate = IF_INPUT_ELSE_PARAMETER(NitrateFertilizerTimeseries, FertilizerNitrateAdditionRate);
+		
+		if(!INPUT_WAS_PROVIDED(NitrateFertilizerTimeseries) && (currentday < startday || currentday > endday))
+		{
+			additionrate = 0.0;
+		}
+		return additionrate;
+	)
+	
+	EQUATION(Model, AmmoniumFertilizerAddition,
+		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
+		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);
+		double currentday = (double)CURRENT_DAY_OF_YEAR();
+		double additionrate = IF_INPUT_ELSE_PARAMETER(AmmoniumFertilizerTimeseries, FertilizerAmmoniumAdditionRate);
+		
+		if(!INPUT_WAS_PROVIDED(AmmoniumFertilizerTimeseries) && (currentday < startday || currentday > endday))
+		{
+			additionrate = 0.0;
+		}
+		return additionrate;
+	)
 	
 	EQUATION(Model, DrynessFactor,
-		CURRENT_INDEX(Reach); //NOTE: Has to be here until we make some more fixes to the dependency system
 		double depth = RESULT(WaterDepth, Soilwater);
 		double maxratedepth = PARAMETER(MaxRateDepth);
 		double zeroratedepth = PARAMETER(ZeroRateDepth);
 		
 		return LinearResponse(depth, zeroratedepth, maxratedepth, 0.0, 1.0); //TODO: Maybe replace with one of the more smooth response functions in inca_math.h
 	)
+	
+	EQUATION(Model, CurrentGrowthCurveOffset,
+		double growthcurveoffset = IF_INPUT_ELSE_PARAMETER(GrowthCurveOffsetTimeseries, GrowthCurveOffset);
+		if(std::isnan(growthcurveoffset)) return 0.0;
+		return growthcurveoffset;
+	)
+	
+	EQUATION(Model, CurrentGrowthCurveAmplitude,
+		double growthcurveamplitude = IF_INPUT_ELSE_PARAMETER(GrowthCurveAmplitudeTimeseries, GrowthCurveAmplitude);
+		if(std::isnan(growthcurveamplitude)) return 0.0;
+		return growthcurveamplitude;
+	)
+	
+	EQUATION(Model, CurrentPlantGrowthStartDay,
+		double start = LAST_RESULT(CurrentPlantGrowthStartDay);
+		double startparam = (double)PARAMETER(PlantGrowthStartDay);
+		
+		if(LAST_RESULT(CurrentGrowthCurveAmplitude) != RESULT(CurrentGrowthCurveAmplitude))
+		{
+			start = (double)CURRENT_DAY_OF_YEAR();
+		}
+		
+		if(!INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries)) start = startparam;
+		
+		return start;
+	)
 
 	EQUATION(Model, SeasonalGrowthFactor,
-		double currentday = (double)CURRENT_DAY_OF_YEAR();
-		double startday = (double)PARAMETER(PlantGrowthStartDay);
+		double startday = (double)RESULT(CurrentPlantGrowthStartDay);
 		double daysthisyear = (double)DAYS_THIS_YEAR();
-		return PARAMETER(GrowthCurveOffset) + PARAMETER(GrowthCurveAmplitude) * sin(2.0 * Pi * (currentday - startday) / daysthisyear );
+		double currentday   = (double)CURRENT_DAY_OF_YEAR();
+		double endday   = startday + (double)PARAMETER(PlantGrowthPeriod);
+		
+		double curve = RESULT(CurrentGrowthCurveOffset) + RESULT(CurrentGrowthCurveAmplitude) * sin(2.0 * Pi * (currentday - startday) / daysthisyear );
+		
+		if(!INPUT_WAS_PROVIDED(GrowthCurveOffsetTimeseries) && (currentday < startday || currentday > endday)) return 0.0;
+		
+		return curve;
 	)
 	
 	EQUATION(Model, TemperatureFactor,
@@ -277,16 +408,12 @@ AddIncaNModel(inca_model *Model)
 		double nitrateuptake = 
 			  PARAMETER(NitratePlantUptakeRate) 
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterNitrate)
+			* RESULT(SoilwaterNitrateConcentration)
 			* RESULT(DrynessFactor)
 			* RESULT(SeasonalGrowthFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
-		double plantGrowthStartDay = (double)PARAMETER(PlantGrowthStartDay);
-		double plantGrowthEndDay   = plantGrowthStartDay + (double)PARAMETER(PlantGrowthPeriod);
-		
+			* 1000.0;
+
 		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) return 0.0;
-		if((double)CURRENT_DAY_OF_YEAR() < plantGrowthStartDay || (double)CURRENT_DAY_OF_YEAR() > plantGrowthEndDay) return 0.0;
 		
 		return nitrateuptake;
 	)
@@ -295,20 +422,18 @@ AddIncaNModel(inca_model *Model)
 		return
 			  PARAMETER(SoilwaterDenitrificationRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterNitrate)
+			* RESULT(SoilwaterNitrateConcentration)
 			* RESULT(DrynessFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 	)
 	
 	EQUATION(Model, Nitrification,
 		return
 			  PARAMETER(AmmoniumNitrificationRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterAmmonium)
+			* RESULT(SoilwaterAmmoniumConcentration)
 			* RESULT(DrynessFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 	)
   
 	EQUATION(Model, Fixation,
@@ -316,20 +441,12 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterNitrateInput,
-		double nitrateInput = 0.0;
-		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
-		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);
-		double additionrate = PARAMETER(FertilizerNitrateAdditionRate);
-		
-		if((double)CURRENT_DAY_OF_YEAR() >= startday && (double)CURRENT_DAY_OF_YEAR() <= endday)
-		{
-			nitrateInput += additionrate;
-		}
-		
-		nitrateInput += PARAMETER(NitrateDryDeposition);
-		nitrateInput += PARAMETER(NitrateWetDeposition);
-		
-		return nitrateInput * 100.0;
+		double wetdeposition = IF_INPUT_ELSE_PARAMETER(NitrateWetDepositionTimeseries, NitrateWetDeposition);  //TODO: This is incorrect! Wet deposition if provided as a parameter should be spread out according to precipitation
+	
+		return 100.0 * (
+			  RESULT(NitrateFertilizerAddition)
+			+ RESULT(NitrateDryDepositionToSoil)
+			+ wetdeposition);
 	)
     
 	EQUATION(Model, SoilwaterNitrate,
@@ -348,12 +465,13 @@ AddIncaNModel(inca_model *Model)
 		double uptake =
 			  PARAMETER(AmmoniumPlantUptakeRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterAmmonium)
+			* RESULT(SoilwaterAmmoniumConcentration)
 			* RESULT(DrynessFactor)
 			* RESULT(SeasonalGrowthFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
+			
 		if(RESULT(YearlyAccumulatedNitrogenUptake) > PARAMETER(MaximumNitrogenUptake)) uptake = 0.0;
+		
 		return uptake;
 	)
 	
@@ -361,10 +479,9 @@ AddIncaNModel(inca_model *Model)
 		return
 			  PARAMETER(AmmoniumImmobilisationRate)
 			* RESULT(TemperatureFactor)
-			* RESULT(SoilwaterAmmonium)
+			* RESULT(SoilwaterAmmoniumConcentration)
 			* RESULT(DrynessFactor)
-			/ RESULT(SoilwaterVolume)
-			* 1000000.0;
+			* 1000.0;
 	)
 
 	EQUATION(Model, Mineralisation,
@@ -372,18 +489,12 @@ AddIncaNModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SoilwaterAmmoniumInput,
-		double nitrateInput = 0.0;
-		double startday = (double)PARAMETER(FertilizerAdditionStartDay);
-		double endday   = startday + (double)PARAMETER(FertilizerAdditionPeriod);
-		double additionrate = PARAMETER(FertilizerAmmoniumAdditionRate);
-		if((double)CURRENT_DAY_OF_YEAR() >= startday && (double)CURRENT_DAY_OF_YEAR() <= endday)
-		{
-			nitrateInput += additionrate;
-		}
-		nitrateInput += PARAMETER(AmmoniumDryDeposition);
-		nitrateInput += PARAMETER(AmmoniumWetDeposition);
-		
-		return nitrateInput * 100.0;
+		double wetdeposition = IF_INPUT_ELSE_PARAMETER(AmmoniumWetDepositionTimeseries, AmmoniumWetDeposition);  //TODO: This is incorrect! Wet deposition if provided as a parameter should be spread out according to precipitation
+	
+		return 100.0 * (
+			  RESULT(AmmoniumFertilizerAddition)
+			+ RESULT(AmmoniumDryDepositionToSoil)
+			+ wetdeposition);
 	)
 
 	EQUATION(Model, SoilwaterAmmonium,
@@ -438,7 +549,8 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DiffuseNitrate,
-		return RESULT(TotalNitrateToStream) * PARAMETER(TerrestrialCatchmentArea) * PARAMETER(Percent) / 100.0;
+		double percent = IF_INPUT_ELSE_PARAMETER(LandUseTimeseries, Percent);
+		return RESULT(TotalNitrateToStream) * PARAMETER(TerrestrialCatchmentArea) * percent / 100.0;
 	)
 	
 	EQUATION(Model, TotalAmmoniumToStream,
@@ -449,7 +561,8 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DiffuseAmmonium,
-		return RESULT(TotalAmmoniumToStream) * PARAMETER(TerrestrialCatchmentArea) * PARAMETER(Percent) / 100.0;
+		double percent = IF_INPUT_ELSE_PARAMETER(LandUseTimeseries, Percent);
+		return RESULT(TotalAmmoniumToStream) * PARAMETER(TerrestrialCatchmentArea) * percent / 100.0;
 	)
 	
 	
@@ -457,6 +570,7 @@ AddIncaNModel(inca_model *Model)
 	auto ReachSolver = GetSolverHandle(Model, "Reach solver"); //NOTE: from persist
 	auto ReachFlow   = GetEquationHandle(Model, "Reach flow");
 	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
+	auto ReachAbstraction = GetEquationHandle(Model, "Reach abstraction");
 	
 	auto ReachNitrateOutput = RegisterEquation(Model, "Reach nitrate output", KgPerDay);
 	SetSolver(Model, ReachNitrateOutput, ReachSolver);
@@ -468,6 +582,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachUpstreamNitrate = RegisterEquation(Model, "Reach upstream nitrate", KgPerDay);
 	auto ReachEffluentNitrate = RegisterEquation(Model, "Reach effluent nitrate", KgPerDay);
 	auto ReachTotalNitrateInput = RegisterEquation(Model, "Reach total nitrate input", KgPerDay);
+	auto ReachNitrateAbstraction = RegisterEquation(Model, "Reach nitrate abstraction", KgPerDay);
+	SetSolver(Model, ReachNitrateAbstraction, ReachSolver);
 	auto ReachNitrateInitialValue = RegisterEquationInitialValue(Model, "Reach nitrate initial value", Kg);
 	auto ReachNitrate = RegisterEquationODE(Model, "Reach nitrate", Kg);
 	SetSolver(Model, ReachNitrate, ReachSolver);
@@ -475,6 +591,8 @@ AddIncaNModel(inca_model *Model)
 	auto ReachUpstreamAmmonium = RegisterEquation(Model, "Reach upstream ammonium", KgPerDay);
 	auto ReachEffluentAmmonium = RegisterEquation(Model, "Reach effluent ammonium", KgPerDay);
 	auto ReachTotalAmmoniumInput = RegisterEquation(Model, "Reach total ammonium input", KgPerDay);
+	auto ReachAmmoniumAbstraction = RegisterEquation(Model, "Reach ammonium abstraction", KgPerDay);
+	SetSolver(Model, ReachAmmoniumAbstraction, ReachSolver);
 	auto ReachAmmoniumOutput = RegisterEquation(Model, "Reach ammonium output", KgPerDay);
 	SetSolver(Model, ReachAmmoniumOutput, ReachSolver);
 	auto ReachAmmoniumInitialValue = RegisterEquationInitialValue(Model, "Reach ammmonium initial value", Kg);
@@ -518,13 +636,21 @@ AddIncaNModel(inca_model *Model)
 	auto ReachHasEffluentInput = GetParameterBoolHandle(Model, "Reach has effluent input");
 	
 	EQUATION(Model, ReachEffluentNitrate,
-		double effluentnitrate = PARAMETER(EffluentFlow) * PARAMETER(ReachEffluentNitrateConcentration) * 86.4;
+		double effluentflow        = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow);
+		double effluentnitrateconc = IF_INPUT_ELSE_PARAMETER(NitrateEffluentConcentrationTimeseries, ReachEffluentNitrateConcentration);
+		
+		double effluentnitrate = effluentflow * effluentnitrateconc * 86.4;
+		
 		if(!PARAMETER(ReachHasEffluentInput)) effluentnitrate = 0.0;
 		return effluentnitrate;
 	)
 	
 	EQUATION(Model, ReachTotalNitrateInput,
 		return RESULT(ReachUpstreamNitrate) + RESULT(TotalDiffuseNitrateOutput) + RESULT(ReachEffluentNitrate);
+	)
+	
+	EQUATION(Model, ReachNitrateAbstraction,
+		return RESULT(ReachNitrate) * SafeDivide(RESULT(ReachAbstraction) * 86400.0, RESULT(ReachVolume)); 
 	)
 	
 	EQUATION(Model, ReachNitrateInitialValue,
@@ -536,8 +662,8 @@ AddIncaNModel(inca_model *Model)
 			  RESULT(ReachTotalNitrateInput)
 			- RESULT(ReachNitrateOutput)
 			- RESULT(ReachDenitrification)
-			+ RESULT(ReachNitrification);
-			//-RESULT(ReachNitrateAbstraction);
+			+ RESULT(ReachNitrification)
+			- RESULT(ReachNitrateAbstraction);
 	)
 	
 	EQUATION(Model, ReachUpstreamAmmonium,
@@ -549,7 +675,11 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ReachEffluentAmmonium,
-		double effluentammonium = PARAMETER(EffluentFlow) * PARAMETER(ReachEffluentAmmoniumConcentration) * 86.4;
+		double effluentflow = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow);
+		double effluentammoniumconc = IF_INPUT_ELSE_PARAMETER(AmmoniumEffluentConcentrationTimeseries, ReachEffluentAmmoniumConcentration);
+		
+		double effluentammonium = effluentflow * effluentammoniumconc * 86.4;
+
 		if(!PARAMETER(ReachHasEffluentInput)) effluentammonium = 0.0;
 		return effluentammonium;
 	)
@@ -562,12 +692,20 @@ AddIncaNModel(inca_model *Model)
 		return RESULT(ReachAmmonium) * SafeDivide(RESULT(ReachFlow) * 86400.0, RESULT(ReachVolume));
 	)
 	
+	EQUATION(Model, ReachAmmoniumAbstraction,
+		return RESULT(ReachAmmonium) * SafeDivide(RESULT(ReachAbstraction) * 86400.0, RESULT(ReachVolume)); 
+	)
+	
 	EQUATION(Model, ReachAmmoniumInitialValue,
 		return PARAMETER(InitialStreamAmmoniumConcentration) * RESULT(ReachVolume) / 1000.0;
 	)
 	
 	EQUATION(Model, ReachAmmonium,
-		return RESULT(ReachTotalAmmoniumInput) - RESULT(ReachAmmoniumOutput) - RESULT(ReachNitrification); //-RESULT(ReachAmmoniumAbstraction);
+		return
+			  RESULT(ReachTotalAmmoniumInput)
+			- RESULT(ReachAmmoniumOutput)
+			- RESULT(ReachNitrification)
+			- RESULT(ReachAmmoniumAbstraction);
 	)
 	
 	//NOTE: Added this for easier calibration - MDN

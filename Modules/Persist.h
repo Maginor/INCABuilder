@@ -6,13 +6,16 @@ static void
 AddPersistModel(inca_model *Model)
 {
 	auto Mm                = RegisterUnit(Model, "mm");
-	auto Cm                = RegisterUnit(Model, "cm");
 	auto MmPerDay          = RegisterUnit(Model, "mm/day");
 	auto DegreesCelsius    = RegisterUnit(Model, "°C");
 	auto MmPerDegreePerDay = RegisterUnit(Model, "mm/°C/day");
 	auto MmSWE             = RegisterUnit(Model, "mm SWE");
 	auto Dimensionless     = RegisterUnit(Model);
 	auto Days              = RegisterUnit(Model, "days");
+	
+	auto MetresCubedPerSecond = RegisterUnit(Model, "m3/s");
+	auto MetersCubed          = RegisterUnit(Model, "m3");
+	auto MetresPerSecond      = RegisterUnit(Model, "m/s");
 	
 	auto System = GetParameterGroupHandle(Model, "System");
 	
@@ -43,17 +46,17 @@ AddPersistModel(inca_model *Model)
 	auto EvapotranspirationAdjustment = RegisterParameterDouble(Model, SoilsLand, "Evapotranspiration adjustment", Dimensionless, 1.0, 0.0, 10.0, "A factor to slow the rate of evapotranspiration when the depth of water in a box is below the retained water depth. Special  values include 0 (no slowing of evapotranspiration, 1 (slowing is proportional to the depth of water remaining in the bucket) and values above 10 (all evapotranspiration effectively stops when the depth of water is below the retained water depth)");
 	auto RelativeEvapotranspirationIndex = RegisterParameterDouble(Model, SoilsLand, "Relative evapotranspiration index", Dimensionless, 1.0, 0.0, 1.0, "The fraction of the total evapotranspiration in a landscape unit which is to be generated from the current bucket");
 	auto MaximumCapacity = RegisterParameterDouble(Model, SoilsLand, "Maximum capacity", Mm, 1000.0, 0.0, 9999.0, "The maximum depth of water which can be held in a bucket. For soil water, this is similar to the saturation capacity");
-	auto InundationThreshold = RegisterParameterDouble(Model, SoilsLand, "Inundation threshold", Mm, 1000.0, 0.0, 9999.0, "The depth of water in a bucket below which inundation from the stream can occur");
-	auto Porosity = RegisterParameterDouble(Model, SoilsLand, "Porosity", Dimensionless,  0.2,    0.1, 1.0, "The void fraction of a box which is able to hold water");
-	auto InundationOffset = RegisterParameterDouble(Model, SoilsLand,"Inundation offset", Mm, 0.0) ;
+	//auto InundationThreshold = RegisterParameterDouble(Model, SoilsLand, "Inundation threshold", Mm, 1000.0, 0.0, 9999.0, "The depth of water in a bucket below which inundation from the stream can occur");
+	//auto Porosity = RegisterParameterDouble(Model, SoilsLand, "Porosity", Dimensionless,  0.2,    0.1, 1.0, "The void fraction of a box which is able to hold water");
+	//auto InundationOffset = RegisterParameterDouble(Model, SoilsLand,"Inundation offset", Mm, 0.0) ;
     
 	
 	auto SoilBoxes = RegisterIndexSet(Model, "Soils");
 	auto Soils = RegisterParameterGroup(Model, "Soils", SoilBoxes);
 	
 	auto ThisIsAQuickBox = RegisterParameterBool(Model, Soils, "This is a quick box", true);
-	auto AllowInundation = RegisterParameterBool(Model, Soils, "Allow inundation", false);
-	auto AllowInfiltration = RegisterParameterBool(Model, Soils, "Allow infiltration", false);
+	//auto AllowInundation = RegisterParameterBool(Model, Soils, "Allow inundation", false);
+	//auto AllowInfiltration = RegisterParameterBool(Model, Soils, "Allow infiltration", false);
 	//auto UseThisBoxInSMDCalculation = RegisterParameterBool(Model, Soils, "Use this box in SMD calculation", true);
 	
     SetParentGroup(Model, SoilsLand, Soils);
@@ -68,10 +71,10 @@ AddPersistModel(inca_model *Model)
 	auto MilligramsPerLiter = RegisterUnit(Model, "mg/l");
 
 	auto TerrestrialCatchmentArea = RegisterParameterDouble(Model, Reaches, "Terrestrial catchment area", SquareKm, 500.0, 0.01, 999999.0, "The terrestrial area of a subcatchment, excluding open water");
-	auto ReachLenght              = RegisterParameterDouble(Model, Reaches, "Reach length", Meters, 1000.0, 1.0, 999999.0, "The length of the main stem of the stream / reach in a subcatchment");
+	auto ReachLength              = RegisterParameterDouble(Model, Reaches, "Reach length", Meters, 1000.0, 1.0, 999999.0, "The length of the main stem of the stream / reach in a subcatchment");
 	auto ReachWidth               = RegisterParameterDouble(Model, Reaches, "Reach width", Meters, 10.0, 0.1, 9999.0, "The average width of the main stem of the stream / reach in a subcatchment");
 	auto A                        = RegisterParameterDouble(Model, Reaches, "a", InverseMetersSquared, 0.4, 0.001, 1.0, "The flow velocity 'a' parameter V=aQ^b");
-	auto B                        = RegisterParameterDouble(Model, Reaches, "b", Dimensionless, 0.43, 0.001, 1.0, "The flow velocity 'b' parameter V=aQ^b");
+	auto B                        = RegisterParameterDouble(Model, Reaches, "b", Dimensionless, 0.43, 0.3, 0.5, "The flow velocity 'b' parameter V=aQ^b");
 	auto SnowThresholdTemperature = RegisterParameterDouble(Model, Reaches, "Snow threshold temperature", DegreesCelsius, 0.0, -4.0, 4.0, "The temperature at or below which precipitation will fall as snow in a subcatchment");
 	auto ReachSnowMultiplier = RegisterParameterDouble(Model, Reaches, "Reach snow multiplier", Dimensionless, 1.0, 0.5, 2.0, "The subcatchment-specific snow multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
 	auto ReachRainMultiplier = RegisterParameterDouble(Model, Reaches, "Reach rain multiplier", Dimensionless, 1.0, 0.5, 2.0, "The subcatchment specific rain multiplier needed to account for possible spatial variability between the precipitation monitoring site and the subcatchment");
@@ -110,8 +113,8 @@ AddPersistModel(inca_model *Model)
 	SetInitialValue(Model, SnowAsWaterEquivalent, InitialSnowDepth);
 	
 	
-	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation");
-	auto AirTemperature      = RegisterInput(Model, "Air temperature");
+	auto ActualPrecipitation = RegisterInput(Model, "Actual precipitation", MmPerDay);
+	auto AirTemperature      = RegisterInput(Model, "Air temperature", DegreesCelsius);
 	
 	
 	EQUATION(Model, SnowFall,
@@ -136,8 +139,6 @@ AddPersistModel(inca_model *Model)
 	EQUATION(Model, SnowAsWaterEquivalent,
 		return LAST_RESULT(SnowAsWaterEquivalent) + RESULT(SnowFall) - RESULT(SnowMelt);
 	)
-	
-	
 
 	auto PercolationInput   = RegisterEquation(Model, "Percolation input", MmPerDay);
 	auto SaturationExcessInput = RegisterEquation(Model, "Saturation excess input", MmPerDay);
@@ -167,10 +168,9 @@ AddPersistModel(inca_model *Model)
 	)
 
 	EQUATION(Model, SaturationExcessInput,
-		CURRENT_INDEX(Reach); //NOTE: To force a dependency.
 		double sumSaturationExcessInput = 0.0;
 		double relativeareaindex = PARAMETER(RelativeAreaIndex);
-		for(index_t OtherSoil = 0; OtherSoil < INDEX_COUNT(SoilBoxes); ++OtherSoil)
+		for(index_t OtherSoil = FIRST_INDEX(SoilBoxes); OtherSoil < INDEX_COUNT(SoilBoxes); ++OtherSoil)
 		{
 			sumSaturationExcessInput += LAST_RESULT(SaturationExcess, OtherSoil)
 							* PARAMETER(PercolationMatrix, OtherSoil, CURRENT_INDEX(SoilBoxes))
@@ -203,7 +203,7 @@ AddPersistModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, EvapoTranspirationX3,
-		double depth = RESULT(WaterDepth2); //NOTE: To force a dependency. Makes the batch structure of the model a little cleaner, but is actually not necessary...
+		//double depth = RESULT(WaterDepth2); //NOTE: To force a dependency. Makes the batch structure of the model a little cleaner, but is actually not necessary...
 		double x3 = Max(0.0, INPUT(AirTemperature) - PARAMETER(GrowingDegreeThreshold));
 		return x3;
 	)
@@ -291,25 +291,27 @@ AddPersistModel(inca_model *Model)
 	)
 
     
-
-	auto MetresCubedPerSecond = RegisterUnit(Model, "m3/s");
-	auto MetersCubed = RegisterUnit(Model, "m3");
-	auto MetresPerSecond = RegisterUnit(Model, "m/s");
+	auto AbstractionTimeseries = RegisterInput(Model, "Abstraction flow", MetresCubedPerSecond);
+	auto EffluentTimeseries    = RegisterInput(Model, "Effluent flow", MetresCubedPerSecond);
+	auto LandUseTimeseries     = RegisterInput(Model, "%", PercentU);
 
 	auto IncaSolver = RegisterSolver(Model, "Reach solver", 0.1, IncaDascru);
 	
 	auto DiffuseFlowOutput = RegisterEquation(Model, "Diffuse flow output", MetresCubedPerSecond);
 	auto ReachFlowInput    = RegisterEquation(Model, "Reach flow input", MetresCubedPerSecond);
+	auto ReachAbstraction  = RegisterEquation(Model, "Reach abstraction", MetresCubedPerSecond);
+	SetSolver(Model, ReachAbstraction, IncaSolver);
 	
 	auto TotalDiffuseFlowOutput = RegisterEquationCumulative(Model, "Total diffuse flow output", DiffuseFlowOutput, LandscapeUnits);
 	
-	auto InitialReachTimeConstant = RegisterEquationInitialValue(Model, "Initial reach time constant", Days);
-	auto ReachTimeConstant        = RegisterEquation(Model, "Reach time constant", Days);
-	SetSolver(Model, ReachTimeConstant, IncaSolver);
-	SetInitialValue(Model, ReachTimeConstant, InitialReachTimeConstant);
+	//auto InitialReachTimeConstant = RegisterEquationInitialValue(Model, "Initial reach time constant", Days);
+	//auto ReachTimeConstant        = RegisterEquation(Model, "Reach time constant", Days);
+	//SetSolver(Model, ReachTimeConstant, IncaSolver);
+	//SetInitialValue(Model, ReachTimeConstant, InitialReachTimeConstant);
 	
 	auto InitialReachFlow         = RegisterEquationInitialValue(Model, "Initial reach flow", MetresCubedPerSecond);
-	auto ReachFlow                = RegisterEquationODE(Model, "Reach flow", MetresCubedPerSecond);
+	//auto ReachFlow                = RegisterEquationODE(Model, "Reach flow", MetresCubedPerSecond);
+	auto ReachFlow                = RegisterEquation(Model, "Reach flow", MetresCubedPerSecond);
 	SetSolver(Model, ReachFlow, IncaSolver);
 	SetInitialValue(Model, ReachFlow, InitialReachFlow);
 	
@@ -321,24 +323,43 @@ AddPersistModel(inca_model *Model)
 	auto ReachVelocity = RegisterEquation(Model, "Reach velocity", MetresPerSecond);
 	auto ReachDepth    = RegisterEquation(Model, "Reach depth", Meters);
 	
+	
+	
+	
 	// Stream flow (m3/s) = Catchment Area (km2)
 	//                      * Landscape unit proportion (% / 100)
 	//                      * Runoff (mm/d)
 	//                      * 1e6 m2/km2 * 1e-3 m/mm * 1/86400 d/s
 	EQUATION(Model, DiffuseFlowOutput,
-		return (PARAMETER(TerrestrialCatchmentArea) * (PARAMETER(Percent) / 100.0) * RESULT(TotalRunoffToReach) * 1000000.0 * 0.001 * (1.0 / 86400.0));
+		double percent = IF_INPUT_ELSE_PARAMETER(LandUseTimeseries, Percent);
+	
+		return (PARAMETER(TerrestrialCatchmentArea) * (percent / 100.0) * RESULT(TotalRunoffToReach) * 1000000.0 * 0.001 * (1.0 / 86400.0));
 	)
 
 	EQUATION(Model, ReachFlowInput,
 		double reachInput = RESULT(TotalDiffuseFlowOutput);
-		double effluentInput = PARAMETER(EffluentFlow);
+		double effluent   = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow);
+		
 		FOREACH_INPUT(Reach,
 			reachInput += RESULT(ReachFlow, *Input);
 		)
-		if(PARAMETER(ReachHasEffluentInput)) reachInput += effluentInput;
+		if(PARAMETER(ReachHasEffluentInput)) reachInput += effluent;
 		return reachInput;
 	)
 	
+	EQUATION(Model, ReachAbstraction,
+		double abstraction = IF_INPUT_ELSE_PARAMETER(AbstractionTimeseries, AbstractionFlow);
+		
+		//TODO: This is not really a good comparison as we could allow abstraction if there is enough effluent + other inputs
+		abstraction = Min(abstraction, RESULT(ReachVolume)/86400.0);
+		if(PARAMETER(ReachHasAbstraction))
+		{
+			return abstraction;
+		}
+		return 0.0;
+	)
+	
+	/*
 	EQUATION(Model, InitialReachTimeConstant,
 		return PARAMETER(ReachLenght) / (PARAMETER(A) * pow(RESULT(ReachFlow), PARAMETER(B)) * 86400.0);
 	)
@@ -348,6 +369,7 @@ AddPersistModel(inca_model *Model)
 		if(RESULT(ReachFlow) > 0.0 && RESULT(ReachVolume) > 0.0) return tc;
 		return 0.0;
 	)
+	*/
     
 	EQUATION(Model, InitialReachFlow,
 		double upstreamFlow = 0.0;
@@ -359,18 +381,25 @@ AddPersistModel(inca_model *Model)
 		return (INPUT_COUNT(Reach) == 0) ? initialFlow : upstreamFlow;
 	)
 
+	/*
 	EQUATION(Model, ReachFlow,
-		double flow = ( RESULT(ReachFlowInput) - RESULT(ReachFlow) ) / ( RESULT(ReachTimeConstant) * (1.0 - PARAMETER(B)));
+		double flow = ( RESULT(ReachFlowInput) - RESULT(ReachAbstraction) - RESULT(ReachFlow) ) / ( RESULT(ReachTimeConstant) * (1.0 - PARAMETER(B)));
 		if(RESULT(ReachTimeConstant) > 0.0) return flow;
 		return 0.0;
 	)
+	*/
+	
+	EQUATION(Model, ReachFlow,
+		return pow(PARAMETER(A)*RESULT(ReachVolume)/(PARAMETER(ReachLength)), 1.0 / (1.0 - PARAMETER(B)));
+	)
 
 	EQUATION(Model, InitialReachVolume,
-		return RESULT(ReachFlow) * RESULT(ReachTimeConstant) * 86400.0;
+		//return RESULT(ReachFlow) * RESULT(ReachTimeConstant) * 86400.0;
+		return pow(RESULT(ReachFlow), 1.0 - PARAMETER(B)) * PARAMETER(ReachLength) / PARAMETER(A);
 	)
     
 	EQUATION(Model, ReachVolume,
-		return (RESULT(ReachFlowInput) - RESULT(ReachFlow)) * 86400.0;
+		return (RESULT(ReachFlowInput) - RESULT(ReachAbstraction) - RESULT(ReachFlow)) * 86400.0;
 	)
 
 	EQUATION(Model, ReachVelocity,
@@ -378,7 +407,8 @@ AddPersistModel(inca_model *Model)
 	)
     
 	EQUATION(Model, ReachDepth,
-		return RESULT(ReachFlow) / (RESULT(ReachVelocity) * PARAMETER(ReachWidth));
+		//return RESULT(ReachFlow) / (RESULT(ReachVelocity) * PARAMETER(ReachWidth));
+		return RESULT(ReachVolume) / (PARAMETER(ReachWidth) * PARAMETER(ReachLength));
 	)	
 }
 

@@ -1,4 +1,4 @@
-# Parameter file generated for PERSiST V1.0 at 2019-03-18 10:35:31
+# Parameter file generated for PERSiST V1.0 at 2019-03-22 14:36:03
 
 index_sets:
 "Landscape units" : {"Forest" "Wetland"}
@@ -12,6 +12,12 @@ parameters:
 
 "Start date" :     # ["1000-01-01", "3000-12-31"]
 "1970-01-01"
+
+"Latitude" :     #(°) [-90, 90] Used to compute solar radiation if no solar radiation timeseries was provided in the input data.
+58.94
+
+"Elevation" :     #(m) [0, 8848] Used to compute solar radiation if no solar radiation timeseries was provided in the input data.
+149
 
 ###################### "Landscape units" ######################
 "Snow multiplier" :     #(dimensionless) [0.5, 1.5] Adjustment factor used to account for bias in the relationship between snow measured in the gauge and effective snowfall amounts falling
@@ -69,7 +75,7 @@ parameters:
 0.05 0.05
 
 "Litter fall rate" :     #(g/m^2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-58.5 6.6
+0.05 0.6
 
 "Litter fall start day" :     #(Julian day) [1, 364]
 1 1
@@ -77,17 +83,17 @@ parameters:
 "Litter fall duration" :     #(day) [0, 365]
 365 365
 
-"SOC fast pool equilibrium fraction in the organic layer" :     #(dimensionless) [0, 1] The size that the fast SOC pool tends towards.
-0.5 0.5
+"SOC fast pool equilibrium fraction in the organic layer" :     #(dimensionless) [0, 1] The relative size that the fast SOC pool tends towards.
+0.25 0.25
 
-"SOC fast pool equilibrium fraction in the mineral layer" :     #(dimensionless) [0, 1] The size that the fast SOC pool tends towards.
-0.5 0.5
+"SOC fast pool equilibrium fraction in the mineral layer" :     #(dimensionless) [0, 1] The relative size that the fast SOC pool tends towards.
+0.13 0.105
 
 "SOC fast pool rate constant in the organic layer" :     #(dimensionless) [0, 5000] Constant used to determine the rate of exchange between the fast and slow pools of SOC.
-0.01 0.01
+50 150
 
 "SOC fast pool rate constant in the mineral layer" :     #(dimensionless) [0, 5000] Constant used to determine the rate of exchange between the fast and slow pools of SOC.
-0.01 0.01
+125 150
 
 "Soil temperature rate multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1.1 1.1
@@ -140,6 +146,30 @@ parameters:
 "Exponential effect of SO4 on organic matter solubility in mineral soil layer" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1 1
 
+"Direct runoff initial DOC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Direct runoff initial DIC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Organic soil water initial DOC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Organic soil water initial DIC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Organic soil water initial SOC mass" :     #(kg/Ha) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Mineral soil water initial DOC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Mineral soil water initial DIC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
+"Mineral soil water initial SOC mass" :     #(kg/Ha) [-1.79769313486232e+308, 1.79769313486232e+308]
+0 0
+
 ###################### "Landscape units" "Soils" "Soils" ######################
 "Percolation matrix" :     #(dimensionless) [0, 1]
 0.1 0.9 0 0
@@ -155,12 +185,6 @@ parameters:
 ###################### "Soils" ######################
 "This is a quick box" :
 true false false false
-
-"Allow inundation" :
-false false false false
-
-"Allow infiltration" :
-false false false false
 
 ###################### "Soils" "Landscape units" ######################
 "Initial water depth" :     #(mm) [0, 9999] The initial depth of water in a box at the start of a simulation
@@ -217,24 +241,6 @@ false false false false
 500 500
 500 500
 
-"Inundation threshold" :     #(mm) [0, 9999] The depth of water in a bucket below which inundation from the stream can occur
-10 10
-500 500
-500 500
-10 10
-
-"Porosity" :     #(dimensionless) [0.1, 1] The void fraction of a box which is able to hold water
-0.2 0.2
-0.3 0.3
-0.3 0.3
-0.2 0.2
-
-"Inundation offset" :     #(mm) [-1.79769313486232e+308, 1.79769313486232e+308]
-0 0
-0 0
-0 0
-0 0
-
 ###################### "Reaches" ######################
 "Terrestrial catchment area" :     #(km2) [0.01, 999999] The terrestrial area of a subcatchment, excluding open water
 0.8
@@ -248,8 +254,8 @@ false false false false
 "a" :     #(1/m2) [0.001, 1] The flow velocity 'a' parameter V=aQ^b
 0.05
 
-"b" :     #(dimensionless) [0.001, 1] The flow velocity 'b' parameter V=aQ^b
-0.99
+"b" :     #(dimensionless) [0.3, 0.5] The flow velocity 'b' parameter V=aQ^b
+0.5
 
 "Snow threshold temperature" :     #(°C) [-4, 4] The temperature at or below which precipitation will fall as snow in a subcatchment
 0
@@ -275,6 +281,12 @@ true
 "Initial stream flow" :     #(m3/s) [0.0001, 9999] The flow in the stream at the start of the simulation. This parameter is only used for reaches that don't have any other reaches as inputs.
 2
 
+"Groundwater initial DOC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Groundwater initial DIC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
 "Aquatic DOC mineralisation self-shading multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 0
 
@@ -285,6 +297,12 @@ true
 0.05
 
 "Aquatic DOC microbial mineralisation base rate" :     #(/day) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach initial DOC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
+0
+
+"Reach initial DIC concentration" :     #(mg/l) [-1.79769313486232e+308, 1.79769313486232e+308]
 0
 
 ###################### "Reaches" "Landscape units" ######################

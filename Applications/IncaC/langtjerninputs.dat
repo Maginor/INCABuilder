@@ -3,7 +3,7 @@ start_date : "1970-01-01"
 timesteps : 15706
 
 additional_timeseries :
-"Discharge"
+"Discharge" unit "m3/s"
 "DOC"
 
 

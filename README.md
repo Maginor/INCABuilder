@@ -11,7 +11,7 @@ INCABuilder can produce executables that can be run standalone or together with 
 
 There is also the option to compile the models to .dll's that can be called and interacted with from python using our python wrapper interface. The python wrapper interface is great for writing your own calibration systems or for making your own post-processing and plots.
 
-![Alt text](PythonWrapper/simplyp_plots/optimizer_MAP.png?raw=true "Example of a plot made using the framework and the python wrapper.")
+![Alt text](Documentation/img/optimizer_MAP.png?raw=true "Example of a plot made using the framework and the python wrapper.")
 
 INCABuilder is a reimplementation and extension of the functionality that was provided by https://github.com/biogeochemistry/INCA , but with a higher emphasis on run-time performance. Since then we have also started to add a few new models, ODE solvers and calibration systems.
 

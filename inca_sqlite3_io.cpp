@@ -86,10 +86,14 @@ WriteParametersForParameterGroupToDatabase(inca_data_set *DataSet, entity_handle
 	const parameter_group_spec &Spec = Model->ParameterGroupSpecs[ParameterGroupHandle];
 	for(entity_handle ParameterHandle : Spec.Parameters)
 	{
+		const parameter_spec &ParSpec = Model->ParameterSpecs[ParameterHandle];
+		
+		if(ParSpec.ShouldNotBeExposed) continue;
+		
 		int IdOfParameter = RunningID++;
 		int LftOfParameter = RunningLft++;
 		int RgtOfParameter = RunningLft++;
-		const parameter_spec &ParSpec = Model->ParameterSpecs[ParameterHandle];
+		
 		const char *Unit = 0;
 		if(IsValid(ParSpec.Unit)) Unit = GetName(Model, ParSpec.Unit);
 		const char *Description = ParSpec.Description;
@@ -592,6 +596,12 @@ ReadParametersFromDatabase(inca_data_set *DataSet, const char *Dbname)
 		else if(!Entry.IsIndexer)
 		{
 			entity_handle ParameterHandle = GetParameterHandle(Model, Entry.Name.data());
+			
+			if(Model->ParameterSpecs[ParameterHandle].ShouldNotBeExposed)
+			{
+				INCA_FATAL_ERROR("ERROR: In file " << Dbname << ". The parameter " << Entry.Name << " is computed by the model, and should not be provided in a parameter file." << std::endl);
+			}
+			
 			size_t Offset = OffsetForHandle(DataSet->ParameterStorageStructure, Indexes, Level, DataSet->IndexCounts, ParameterHandle);
 			DataSet->ParameterData[Offset] = IDToParameterValue[Entry.ID]; //TODO: Check that it exists?
 		}

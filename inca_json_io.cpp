@@ -325,6 +325,9 @@ WriteParametersToJson(inca_data_set *DataSet, const char *Filename)
 	{
 		const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
 		const char *ParameterName = Spec.Name;
+		
+		if(Spec.ShouldNotBeExposed) continue;
+		
 		parameter_type Type = Spec.Type;
 		
 		std::vector<parameter_value> Values;
@@ -424,6 +427,12 @@ ReadParametersFromJson(inca_data_set *DataSet, const char *Filename)
 			entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName.c_str());
 			std::vector<parameter_value> Values;
 			const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+			
+			if(Spec.ShouldNotBeExposed)
+			{
+				INCA_FATAL_ERROR("ERROR: In file " << Filename << ". The parameter " << ParameterName << " is computed by the model, and should not be provided in a parameter file." << std::endl);
+			}
+			
 			if(Spec.Type == ParameterType_Double)
 			{
 				std::vector<double> Val = It->get<std::vector<double>>();

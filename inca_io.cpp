@@ -172,6 +172,9 @@ WriteParametersToFile(inca_data_set *DataSet, const char *Filename)
 		for(entity_handle ParameterHandle: DataSet->ParameterStorageStructure.Units[UnitIndex].Handles)
 		{
 			const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+			
+			if(Spec.ShouldNotBeExposed) continue;
+			
 			fprintf(File, "\"%s\" :", Spec.Name);
 			bool PrintedPnd = false;
 			if(IsValid(Spec.Unit))
@@ -337,7 +340,16 @@ ReadParametersFromFile(inca_data_set *DataSet, const char *Filename)
 				Stream.ExpectToken(TokenType_Colon);
 				
 				entity_handle ParameterHandle = GetParameterHandle(Model, ParameterName);
-				parameter_type Type = Model->ParameterSpecs[ParameterHandle].Type;
+				
+				const parameter_spec &Spec = Model->ParameterSpecs[ParameterHandle];
+				
+				if(Spec.ShouldNotBeExposed)
+				{
+					Stream.PrintErrorHeader();
+					INCA_FATAL_ERROR("The parameter " << ParameterName << " is computed by the model, and should not be provided in a parameter file." << std::endl);
+				}
+				
+				parameter_type Type = Spec.Type;
 				size_t ExpectedCount = 1;
 				size_t UnitIndex = DataSet->ParameterStorageStructure.UnitForHandle[ParameterHandle];
 				for(index_set_h IndexSet : DataSet->ParameterStorageStructure.Units[UnitIndex].IndexSets)

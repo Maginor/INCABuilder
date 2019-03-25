@@ -627,7 +627,7 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto ReachSedimentInputCoefficient  = GetEquationHandle(Model, "Sediment input coefficient");
 	
 	auto ComputedPhosphorousSorptionCoefficient = RegisterEquationInitialValue(Model, "Computed phosphorous sorption coefficient", MmPerKg);
-	ParameterIsComputedBy(Model, PhosphorousSorptionCoefficient, ComputedPhosphorousSorptionCoefficient);
+	ParameterIsComputedBy(Model, PhosphorousSorptionCoefficient, ComputedPhosphorousSorptionCoefficient, false);  //NOTE: The 'false' is there to say that this parameter SHOULD still be exposed in parameter files.
 	
 	EQUATION(Model, ComputedPhosphorousSorptionCoefficient,
 		double providedvalue = PARAMETER(PhosphorousSorptionCoefficient);

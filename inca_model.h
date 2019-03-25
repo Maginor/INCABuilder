@@ -120,6 +120,7 @@ struct parameter_spec
 	const char *Description;
 	
 	equation_h IsComputedBy; //NOTE: We allow certain parameters to be computed by an initial value equation rather than being provided by a parameter file.
+	bool ShouldNotBeExposed; //NOTE: Any interface or file handler should not deal with a parameter if ShouldNotBeExposed = true;
 	
 	parameter_group_h Group;
 	
@@ -141,7 +142,7 @@ typedef std::function<double(value_set_accessor *)> inca_equation;
 typedef std::function<void(double *, double *)> inca_solver_equation_function;
 typedef std::function<void(size_t, size_t, double)> inca_matrix_insertion_function;
 typedef std::function<void(double *, inca_matrix_insertion_function &)> inca_solver_jacobi_function;
-//#define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction)
+
 #define INCA_SOLVER_FUNCTION(Name) void Name(double h, size_t n, double* x0, double* wk, const inca_solver_equation_function &EquationFunction, const inca_solver_jacobi_function &JacobiFunction, double AbsErr, double RelErr)
 typedef INCA_SOLVER_FUNCTION(inca_solver_function);
 
@@ -875,7 +876,7 @@ RegisterParameterDate(inca_model *Model, parameter_group_h Group, const char *Na
 }
 
 inline void
-ParameterIsComputedBy(inca_model *Model, parameter_double_h Parameter, equation_h Equation)
+ParameterIsComputedBy(inca_model *Model, parameter_double_h Parameter, equation_h Equation, bool ShouldNotBeExposed = true)
 {
 	parameter_spec &Spec  = Model->ParameterSpecs[Parameter.Handle];
 	equation_spec &EqSpec = Model->EquationSpecs[Equation.Handle];
@@ -889,10 +890,11 @@ ParameterIsComputedBy(inca_model *Model, parameter_double_h Parameter, equation_
 	}
 	
 	Spec.IsComputedBy = Equation;
+	Spec.ShouldNotBeExposed = ShouldNotBeExposed;
 }
 
 inline void
-ParameterIsComputedBy(inca_model *Model, parameter_uint_h Parameter, equation_h Equation)
+ParameterIsComputedBy(inca_model *Model, parameter_uint_h Parameter, equation_h Equation, bool ShouldNotBeExposed = true)
 {
 	parameter_spec &Spec  = Model->ParameterSpecs[Parameter.Handle];
 	equation_spec &EqSpec = Model->EquationSpecs[Equation.Handle];
@@ -906,6 +908,7 @@ ParameterIsComputedBy(inca_model *Model, parameter_uint_h Parameter, equation_h 
 	}
 	
 	Spec.IsComputedBy = Equation;
+	Spec.ShouldNotBeExposed = ShouldNotBeExposed;
 }
 
 inline void

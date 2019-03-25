@@ -1,4 +1,4 @@
-# Parameter file generated for PERSiST V1.0 at 2019-03-22 10:02:32
+# Parameter file generated for PERSiST V1.0 at 2019-03-22 14:36:03
 
 index_sets:
 "Landscape units" : {"Forest" "Wetland"}
@@ -75,7 +75,7 @@ parameters:
 0.05 0.05
 
 "Litter fall rate" :     #(g/m^2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
-58.5 6.6
+0.05 0.6
 
 "Litter fall start day" :     #(Julian day) [1, 364]
 1 1
@@ -83,17 +83,17 @@ parameters:
 "Litter fall duration" :     #(day) [0, 365]
 365 365
 
-"SOC fast pool equilibrium fraction in the organic layer" :     #(dimensionless) [0, 1] The size that the fast SOC pool tends towards.
-0.5 0.5
+"SOC fast pool equilibrium fraction in the organic layer" :     #(dimensionless) [0, 1] The relative size that the fast SOC pool tends towards.
+0.25 0.25
 
-"SOC fast pool equilibrium fraction in the mineral layer" :     #(dimensionless) [0, 1] The size that the fast SOC pool tends towards.
-0.5 0.5
+"SOC fast pool equilibrium fraction in the mineral layer" :     #(dimensionless) [0, 1] The relative size that the fast SOC pool tends towards.
+0.13 0.105
 
 "SOC fast pool rate constant in the organic layer" :     #(dimensionless) [0, 5000] Constant used to determine the rate of exchange between the fast and slow pools of SOC.
-0.01 0.01
+50 150
 
 "SOC fast pool rate constant in the mineral layer" :     #(dimensionless) [0, 5000] Constant used to determine the rate of exchange between the fast and slow pools of SOC.
-0.01 0.01
+125 150
 
 "Soil temperature rate multiplier" :     #(dimensionless) [-1.79769313486232e+308, 1.79769313486232e+308]
 1.1 1.1

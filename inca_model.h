@@ -181,6 +181,18 @@ GetEquationTypeName(equation_type Type)
 	return Typenames[(size_t)Type];
 }
 
+struct dependency_registration
+{
+	entity_handle Handle;
+	size_t NumExplicitIndexes;
+};
+
+struct result_dependency_registration
+{
+	entity_handle Handle;
+	std::vector<index_t> Indexes;
+};
+
 //TODO: See if we could unionize some of the data below. Not everything is needed by every type of equation.
 struct equation_spec
 {
@@ -204,13 +216,15 @@ struct equation_spec
 	
 	solver_h Solver;
 	
-	//NOTE: These are built during EndModelDefinition:
+	//NOTE: The below are built during EndModelDefinition:
 	std::set<index_set_h> IndexSetDependencies;          //NOTE: If the equation is run on a solver, the final index set dependencies of the equation will be those of the solver.
 	std::set<entity_handle>  ParameterDependencies;
 	std::set<input_h>     InputDependencies;
 	std::set<equation_h>  DirectResultDependencies;
 	std::set<equation_h>  DirectLastResultDependencies;
 	std::set<equation_h>  CrossIndexResultDependencies;
+	
+	std::vector<result_dependency_registration> IndexedResultAndLastResultDependencies; //TODO: Maybe don't store these here, we could keep them separately just locally in EndModelDefinition.
 	
 	bool TempVisited; //NOTE: For use in a graph traversal algorithm while resolving dependencies.
 	bool Visited;     //NOTE: For use in a graph traversal algorithm while resolving dependencies
@@ -494,12 +508,6 @@ struct inca_data_set
 	~inca_data_set();
 };
 
-struct dependency_registration
-{
-	entity_handle Handle;
-	size_t NumExplicitIndexes;
-};
-
 struct value_set_accessor
 {
 	// The purpose of the value set accessor is to store state during the run of the model as well as providing access to various values to each equation that gets evaluated.
@@ -543,8 +551,8 @@ struct value_set_accessor
 	//NOTE: For use during dependency registration:
 	std::vector<dependency_registration> ParameterDependencies;
 	std::vector<dependency_registration> InputDependencies;
-	std::vector<dependency_registration> ResultDependencies;
-	std::vector<dependency_registration> LastResultDependencies;
+	std::vector<result_dependency_registration> ResultDependencies;
+	std::vector<result_dependency_registration> LastResultDependencies;
 	std::vector<index_set_h> DirectIndexSetDependencies;
 
 	
@@ -1389,8 +1397,8 @@ RegisterInputAndParameterDependency(value_set_accessor *ValueSet, input_h Input,
 template<typename... T> double
 RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	size_t OverrideCount = sizeof...(Indexes);
-	ValueSet->ResultDependencies.push_back({Result.Handle, OverrideCount});
+	std::vector<index_t> IndexVec = {Indexes...};
+	ValueSet->ResultDependencies.push_back({Result.Handle, IndexVec});
 	
 	return 0.0;
 }
@@ -1398,8 +1406,8 @@ RegisterResultDependency(value_set_accessor *ValueSet, equation_h Result, T... I
 template<typename... T> double
 RegisterLastResultDependency(value_set_accessor *ValueSet, equation_h Result, T... Indexes)
 {
-	size_t OverrideCount = sizeof...(Indexes);
-	ValueSet->LastResultDependencies.push_back({Result.Handle, OverrideCount});
+	std::vector<index_t> IndexVec = {Indexes...};
+	ValueSet->LastResultDependencies.push_back({Result.Handle, IndexVec});
 	
 	return 0.0;
 }

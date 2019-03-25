@@ -216,12 +216,10 @@ AddIncaNModel(inca_model *Model)
 	
 	
 	EQUATION(Model, SoilwaterVolume,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Soilwater) * 1000.0;
 	)
 	
 	EQUATION(Model, GroundwaterVolume,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return RESULT(WaterDepth, Groundwater) * 1000.0;
 	)
 	
@@ -243,32 +241,26 @@ AddIncaNModel(inca_model *Model)
 	
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, DirectRunoffToSoilFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, Soilwater), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, SoilToDirectRunoffFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth3, Soilwater));
 	)
 	
 	EQUATION(Model, SoilToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, Soilwater), RESULT(WaterDepth3, Soilwater));
 	)
 	
 	EQUATION(Model, SoilToGroundwaterFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth3, Soilwater));
 	)
 
 	EQUATION(Model, GroundwaterToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth3, Groundwater));
 	)
 	
@@ -342,7 +334,6 @@ AddIncaNModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, DrynessFactor,
-		CURRENT_INDEX(Reach); //NOTE: Has to be here until we make some more fixes to the dependency system
 		double depth = RESULT(WaterDepth, Soilwater);
 		double maxratedepth = PARAMETER(MaxRateDepth);
 		double zeroratedepth = PARAMETER(ZeroRateDepth);

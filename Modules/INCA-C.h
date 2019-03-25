@@ -311,42 +311,34 @@ AddINCACModel(inca_model *Model)
 	//NOTE: The following equations make a lot of assumptions about where you can and can not have percolation or infiltration excess!
 	
 	EQUATION(Model, DirectRunoffToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, DirectRunoff), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, DirectRunoffToOrganicLayerFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, OrganicLayer), RESULT(WaterDepth3, DirectRunoff));
 	)
 	
 	EQUATION(Model, OrganicLayerToDirectRunoffFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(SaturationExcessInput, DirectRunoff), RESULT(WaterDepth3, OrganicLayer));
 	)
 	
 	EQUATION(Model, OrganicLayerToMineralLayerFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, MineralLayer), RESULT(WaterDepth3, OrganicLayer));
 	)
 	
 	EQUATION(Model, OrganicLayerToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, OrganicLayer), RESULT(WaterDepth3, OrganicLayer));
 	)
 	
 	EQUATION(Model, MineralLayerToGroundwaterFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(PercolationInput, Groundwater), RESULT(WaterDepth3, MineralLayer));
 	)
 	
 	EQUATION(Model, MineralLayerToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, MineralLayer), RESULT(WaterDepth3, MineralLayer));
 	)
 
 	EQUATION(Model, GroundwaterToReachFraction,
-		CURRENT_INDEX(Reach); CURRENT_INDEX(LandscapeUnits);
 		return SafeDivide(RESULT(RunoffToReach, Groundwater), RESULT(WaterDepth3, Groundwater));
 	)
 	
@@ -440,10 +432,12 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, MassTransferFromSlowToFastInOrganicLayer,
-		double totsoc = RESULT(SOCMassInOrganicLayerFastPool) + RESULT(SOCMassInOrganicLayerSlowPool);
-		double fractiondiff = (PARAMETER(FastPoolEquilibriumFractionOrganicLayer) - RESULT(SOCFastFractionInOrganicLayer));
+		double RC = PARAMETER(FastPoolRateConstantOrganicLayer) * 1e-6;
+		double Pfast = PARAMETER(FastPoolEquilibriumFractionOrganicLayer);
+		double SOCFast = RESULT(SOCMassInOrganicLayerFastPool);
+		double SOCSlow = RESULT(SOCMassInOrganicLayerSlowPool);
 		
-		return PARAMETER(FastPoolRateConstantOrganicLayer) * fractiondiff * totsoc;
+		return RC * (SOCSlow / (1.0 - Pfast) - SOCFast / Pfast);
 	)
 	
 	EQUATION(Model, SOCMassInOrganicLayerFastPool,
@@ -488,10 +482,12 @@ AddINCACModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, MassTransferFromSlowToFastInMineralLayer,
-		double totsoc = RESULT(SOCMassInMineralLayerFastPool) + RESULT(SOCMassInMineralLayerSlowPool);
-		double fractiondiff = (PARAMETER(FastPoolEquilibriumFractionMineralLayer) - RESULT(SOCFastFractionInMineralLayer));
+		double RC = PARAMETER(FastPoolRateConstantMineralLayer) * 1e-6;
+		double Pfast = PARAMETER(FastPoolEquilibriumFractionMineralLayer);
+		double SOCFast = RESULT(SOCMassInMineralLayerFastPool);
+		double SOCSlow = RESULT(SOCMassInMineralLayerSlowPool);
 		
-		return PARAMETER(FastPoolRateConstantMineralLayer) * fractiondiff * totsoc;
+		return RC * (SOCSlow / (1.0 - Pfast) - SOCFast / Pfast);
 	)
 	
 	EQUATION(Model, SOCMassInMineralLayerFastPool,

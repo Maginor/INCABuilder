@@ -348,7 +348,7 @@ EndModelDefinition(inca_model *Model)
 			Spec.ParameterDependencies.insert(Spec.InitialValue.Handle);
 		}
 		
-		for(dependency_registration ResultDependency : ValueSet.ResultDependencies)
+		for(const result_dependency_registration &ResultDependency : ValueSet.ResultDependencies)
 		{
 			entity_handle DepResultHandle = ResultDependency.Handle;
 			
@@ -357,18 +357,18 @@ EndModelDefinition(inca_model *Model)
 				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
 			}
 			
-			if(ResultDependency.NumExplicitIndexes == 0)
+			if(ResultDependency.Indexes.size() == 0)
 			{
 				Spec.DirectResultDependencies.insert(equation_h {DepResultHandle});
 			}
 			else
 			{
-				//TODO: For index set dependency resolution below, we should really keep the full information about the number of explicit indexes, however it is very tricky to actually use that correctly in the resolution...
-				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle});
+				Spec.CrossIndexResultDependencies.insert(equation_h {DepResultHandle}); //TODO: Do we really need to keep this separately?
+				Spec.IndexedResultAndLastResultDependencies.push_back(ResultDependency); //TODO: Maybe don't store these on the result spec? They are only needed in this algorithm..
 			}
 		}
 		
-		for(dependency_registration ResultDependency : ValueSet.LastResultDependencies)
+		for(const result_dependency_registration &ResultDependency : ValueSet.LastResultDependencies)
 		{
 			entity_handle DepResultHandle = ResultDependency.Handle;
 			if(Model->EquationSpecs[DepResultHandle].Type == EquationType_InitialValue)
@@ -376,11 +376,14 @@ EndModelDefinition(inca_model *Model)
 				std::cout << "ERROR: The equation " << GetName(Model, equation_h {EquationHandle}) << " depends explicitly on the result of the equation " << GetName(Model, equation_h {DepResultHandle}) << " which is an EquationInitialValue. This is not allowed, instead it should depend on the result of the equation that " << GetName(Model, equation_h {DepResultHandle}) << " is an initial value for." << std::endl;
 			}
 			
-			if(ResultDependency.NumExplicitIndexes == 0)
+			if(ResultDependency.Indexes.size() == 0)
 			{
 				Spec.DirectLastResultDependencies.insert(equation_h {DepResultHandle});
 			}
-			//else     TODO: We should keep info about this. See note above ( but tricky )
+			else
+			{
+				Spec.IndexedResultAndLastResultDependencies.push_back(ResultDependency);
+			}
 		}
 		
 		//NOTE: Every equation always depends on its initial value equation if it has one.
@@ -430,6 +433,24 @@ EndModelDefinition(inca_model *Model)
 				{
 					equation_spec &DepSpec = Model->EquationSpecs[ResultDependency.Handle];
 					Spec.IndexSetDependencies.insert(DepSpec.IndexSetDependencies.begin(), DepSpec.IndexSetDependencies.end());
+				}
+				for(const result_dependency_registration &ResultDependency : Spec.IndexedResultAndLastResultDependencies)
+				{
+					equation_spec &DepSpec = Model->EquationSpecs[ResultDependency.Handle];
+					const std::set<index_set_h> &IndexSetDependencies = DepSpec.IndexSetDependencies;
+					for(index_set_h IndexSet : IndexSetDependencies)
+					{
+						bool ExplicitlyIndexed = false;
+						for(index_t Index : ResultDependency.Indexes)
+						{
+							if(Index.IndexSetHandle == IndexSet.Handle)
+							{
+								ExplicitlyIndexed = true;
+								break;
+							}
+						}
+						if(!ExplicitlyIndexed) Spec.IndexSetDependencies.insert(IndexSet);
+					}
 				}
 			}
 			if(DependencyCount != Spec.IndexSetDependencies.size()) Changed = true;

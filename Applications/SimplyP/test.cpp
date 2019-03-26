@@ -8,7 +8,7 @@
 
 #include "../../Modules/SimplyP.h"
 
-#define READ_PARAMETER_FILE 1 //Read params from file? Or auto-generate using indexers defined below & defaults
+#define READ_PARAMETER_FILE 0 //Read params from file? Or auto-generate using indexers defined below & defaults
 
 int main()
 {

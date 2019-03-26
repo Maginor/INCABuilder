@@ -1,4 +1,4 @@
-# Parameter file generated for SimplyP V0.2 at 2019-03-05 14:46:50
+# Parameter file generated for SimplyP V0.0 at 2019-03-26 09:53:08
 
 index_sets:
 "Reaches" : {"Tarland1"}
@@ -11,9 +11,6 @@ parameters:
 
 "Start date" :     # ["1000-01-01", "3000-12-31"]
 "2004-1-1"
-
-"Run in calibration mode" :     # Run model in calibration mode? If true, the initial agricultural soil water TDP concentration (and therefore EPC0) is calibrated and used to estimate the soil water sorption constant. If false, this parameter must be entered
-true
 
 "Latitude" :     #(°) [-90, 90] Used in PET calculation if no PET timeseries was provided in the input data
 59.6
@@ -48,25 +45,25 @@ true
 "Exponent of stream velocity-discharge relationship" :     #(dimensionless) [0.1, 0.99] The b in V = aQ^b
 0.42
 
-"Reach sediment input scaling factor" :     #(kg/mm) [0, 100000]
+"Dynamic erodibility" :     # If true, simulate the change in erodibility on arable land through the year due to cropping and harvesting practices
+true
+
+"Reach sediment input scaling factor" :     #(kg/mm) [0, 100000] Calibrated parameter linking simulated sediment to simulated discharge
 1500
 
 "Sediment input non-linear coefficient" :     #(dimensionless) [0.1, 5]
 2
 
-"Day of year when soil erodibility is at its max for spring-grown crops" :     #(Julian day) [30, 335]
+"Day of year when soil erodibility is at its max for spring-grown crops" :     #(Julian day) [30, 335] Parameter only used if Dynamic erodibility is set to true and spring-sown crops are present in the catchment
 60
 
-"Day of year when soil erodibility is at its max for autumn-grown crops" :     #(Julian day) [30, 335]
+"Day of year when soil erodibility is at its max for autumn-grown crops" :     #(Julian day) [30, 335] Parameter only used if Dynamic erodibility is set to true and autumn-sown crops are present in the catchment
 304
-
-"Dynamic erodibility" :
-true
 
 "Soil mass per m2" :     #(kg/m^2) [0, 200]
 95
 
-"Phosphorous sorption coefficient" :     #(mm/kg) [0, 0.1] gradient of linear relationship between labile P and TDP concentration
+"Phosphorous sorption coefficient" :     #(mm/kg) [0, 0.1] Gradient of linear relationship between labile P and TDP concentration. Value only read in from file if calibration run mode is set to false, otherwise it is estimated by the model
 0.000113
 
 "Net annual P input to agricultural soil" :     #(kg/ha/year) [-100, 100]
@@ -84,10 +81,13 @@ true
 "SRP fraction" :     #(dimensionless) [0, 1] Factor to multiply TDP by to estimate instream SRP concentration
 0.7
 
-"Newly-converted type" :     #(dimensionless) [0, 2] 0=Agricultural (from semi-natural), 1=Semi-natural (from agricultural), 2=None
+"Newly-converted type" :     #(dimensionless) [0, 2] 0=Agricultural (from semi-natural), 2=Semi-natural (from agricultural), anything else=None
 2
 
-"Dynamic EPC0" :     # Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), so that it varies with labile P content
+"Dynamic soil water EPC0, TDP and soil labile P" :     # Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), and therefore soilwater TDP concentration, so that it varies with labile P content? The labile P will also therefore vary
+true
+
+"Run in calibration mode" :     # Run model in calibration mode? If true, the initial agricultural soil water TDP concentration (and therefore EPC0) is calibrated and used to estimate the phosphorus sorption coefficient. If false, the sorption coefficient is read in from the parameter file
 true
 
 ###################### "Reaches" ######################
@@ -103,7 +103,7 @@ true
 "Reach slope" :     #(°) [0, 90]
 0.8
 
-"Proportion of spring grown crops" :     #(dimensionless) [0, 1] Proportion spring-sown crops to make total arable land area (assume rest is autumn-sown). Only needed if Dynamic erodibility is true 
+"Proportion of spring grown crops" :     #(dimensionless) [0, 1] Proportion spring-sown crops to make total arable land area (assume rest is autumn-sown). Only needed if Dynamic erodibility is true
 0.65
 
 "Reach effluent TDP inputs" :     #(kg/day) [0, 10]
@@ -123,17 +123,18 @@ false
 0 0 0
 
 ###################### "Landscape units" ######################
-"Soil water time constant" :     #(days) [0.05, 40]
+"Soil water time constant" :     #(days) [0.05, 40] Note: arable and improved grassland are grouped as 'agricultural' land, and only the arable soil hydrology parameters are used
 1 1 10
 
-"Vegetation cover factor" :     #(dimensionless) [0, 1] Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Source from (R)USLE literature.
+"Vegetation cover factor" :     #(dimensionless) [0, 1] Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Source from (R)USLE literature and area-weight as necessary to obtain a single value for the land class.
 0.2 0.09 0.021
 
 "Reduction of load in sediment" :     #(dimensionless) [0, 1] Proportional reduction in load of sediment delivered to the stream due to management measures, e.g. buffer strips, filter fences, conservation tillage, etc.
 0 0 0
 
-"Initial soil water TDP concentration and EPC0" :     #(mg/l) [0, 10]
-0.1 0.1 0
+"Initial soil water TDP concentration and EPC0" :     #(mg/l) [0, 10] Note: arable and improved grassland are grouped as 'agricultural' land and semi-natural initial EPC0 is assumed to be zero; so only the arable value is used
+0.1 0.1 0.0
 
-"Initial total soil P content" :     #(mg/kg) [0, 10000]
+"Initial total soil P content" :     #(mg/kg) [0, 10000] Note: arable and improved grassland are grouped as 'agricultural' land, so only the arable and semi-natural values are read in
 1458 1458 873
+

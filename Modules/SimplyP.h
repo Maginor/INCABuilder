@@ -113,8 +113,8 @@ AddSimplyPHydrologyModule(inca_model *Model)
 	auto BaseflowIndex           = RegisterParameterDouble(Model, Hydrology, "Baseflow index", Dimensionless, 0.70, 0.0, 1.0);
 	auto GroundwaterTimeConstant = RegisterParameterDouble(Model, Hydrology, "Groundwater time constant", Days, 65.0, 0.5, 400.0);
 	auto MinimumGroundwaterFlow  = RegisterParameterDouble(Model, Hydrology, "Minimum groundwater flow", MmPerDay, 0.40, 0.0, 10.0);
-	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of stream velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
-	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of stream velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
+	auto A                       = RegisterParameterDouble(Model, Hydrology, "Gradient of reach velocity-discharge relationship", PerM3, 0.5, 0.00001, 0.99, "The a in V = aQ^b");
+	auto B                       = RegisterParameterDouble(Model, Hydrology, "Exponent of reach velocity-discharge relationship", Dimensionless, 0.42, 0.1, 0.99, "The b in V = aQ^b");
 	
 	// General parameters that vary by reach or sub-catchment
 	auto ReachParams = RegisterParameterGroup(Model, "General subcatchment and reach parameters", Reach);
@@ -421,7 +421,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	// Sediment params that vary by land class
 	auto SedimentLand = RegisterParameterGroup(Model, "Sediment land", LandscapeUnits);
 	auto VegetationCoverFactor                   = RegisterParameterDouble(Model, SedimentLand, "Vegetation cover factor", Dimensionless, 0.2, 0.0, 1.0, "Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Source from (R)USLE literature and area-weight as necessary to obtain a single value for the land class.");
-	auto ReductionOfLoadInSediment               = RegisterParameterDouble(Model, SedimentLand, "Reduction of load in sediment", Dimensionless, 0.0, 0.0, 1.0, "Proportional reduction in load of sediment delivered to the stream due to management measures, e.g. buffer strips, filter fences, conservation tillage, etc."); //Note: may be better indexing this by reach? TO DO	
+	auto ReductionOfLoadInSediment               = RegisterParameterDouble(Model, SedimentLand, "Reduction of load in sediment", Dimensionless, 0.0, 0.0, 1.0, "Proportional reduction in load of sediment delivered to the reach due to management measures, e.g. buffer strips, filter fences, conservation tillage, etc."); //Note: may be better indexing this by reach? TO DO	
 	
 	// Start equations
 	
@@ -604,8 +604,8 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 
 	// Add to global system parameter group
 	auto System = GetParameterGroupHandle(Model, "System");
-	auto DynamicEPC0                    = RegisterParameterBool(Model, System, "Dynamic EPC0", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), and therefore soilwater TDP concentration, so that it varies with labile P content");
-	auto CalibrationMode                = RegisterParameterBool(Model, System, "Run in calibration mode", false, "Run model in calibration mode? If true, the initial agricultural soil water TDP concentration (and therefore EPC0) is calibrated and used to estimate the phosphorus sorption coefficient. If false, the sorption coefficient is read in from the parameter file");
+	auto DynamicEPC0                    = RegisterParameterBool(Model, System, "Dynamic soil water EPC0, TDP and soil labile P", true, "Calculate a dynamic soil water EPC0 (the equilibrium P concentration of zero sorption), and therefore soilwater TDP concentration, so that it varies with labile P content? The labile P will also therefore vary");
+	auto CalibrationMode                = RegisterParameterBool(Model, System, "Run in calibration mode", true, "Run model in calibration mode? If true, the initial agricultural soil water TDP concentration (and therefore EPC0) is calibrated and used to estimate the phosphorus sorption coefficient. If false, the sorption coefficient is read in from the parameter file");
 	
 	// Params defined in hydrol or sed modules
 	auto CatchmentArea               = GetParameterDoubleHandle(Model, "Catchment area");
@@ -630,7 +630,9 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto ReachSedimentInputCoefficient  = GetEquationHandle(Model, "Sediment input coefficient");
 	
 	
-	//TODO: Leah should sort out what computation method for the sorption coefficient should be used!
+/* 	//TODO: Leah should sort out what computation method for the sorption coefficient should be used!
+	
+	// This method calculates the parameter or reads it from file, depending on calibration mode. The result is saved to the model dataset, so its value can be extracted e.g. via the python wrapper, but not output in INCAViewer
 	
 	auto ComputedPhosphorousSorptionCoefficient = RegisterEquationInitialValue(Model, "Computed phosphorous sorption coefficient", MmPerKg);
 	ParameterIsComputedBy(Model, PhosphorousSorptionCoefficient, ComputedPhosphorousSorptionCoefficient, false);  //NOTE: The 'false' is there to say that this parameter SHOULD still be exposed in parameter files.
@@ -640,16 +642,17 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		double computedvalue = 
 				1e-6 * (PARAMETER(InitialSoilPConcentration, Arable) -
 				  PARAMETER(InitialSoilPConcentration, Seminatural))
-				  /PARAMETER(InitialEPC0, Arable);
-		
+				  /ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, Arable), PARAMETER(CatchmentArea));
 		
 		//NOTE: If a value of 0 is possible, that has to be accommodated for in the equations below or otherwise it will crash.
 		
 		if(PARAMETER(CalibrationMode)) return computedvalue;
 		return providedvalue;
-	)
+	) */
 	
 	// P equations
+	
+	// Method 2: regular equation to define the sorption coefficient. Returns a constant value, which can be seen in INCAViewer.
 	auto SoilPSorptionCoefficient = RegisterEquation(Model, "Soil phosphorous sorption coefficient", MmPerKg);
 	auto InitialAgriculturalSoilWaterEPC0 = RegisterEquationInitialValue(Model, "Initial agricultural soil water EPC0", KgPerMm);
 	auto AgriculturalSoilWaterEPC0   = RegisterEquation(Model, "Agricultural soil water EPC0", KgPerMm);
@@ -658,10 +661,10 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	EQUATION(Model, SoilPSorptionCoefficient,
 		/* # Assume SN has EPC0=0, PlabConc =0. Units: (kg/mg)(mg/kgSoil)(mm/kg)
 		Kf = 10**-6*(p_LU['A']['SoilPconc']-p_LU['S']['SoilPconc'])/p_LU['A']['EPC0_0'] */
-		
+		auto InitialAgriculturalEPC0 = ConvertMgPerLToKgPerMm(PARAMETER(InitialEPC0, Arable), PARAMETER(CatchmentArea));
 		auto Kf = 1e-6 * (PARAMETER(InitialSoilPConcentration, Arable) -
 				  PARAMETER(InitialSoilPConcentration, Seminatural))
-				  /PARAMETER(InitialEPC0, Arable);
+				  /InitialAgriculturalEPC0;
 				  
 		double KfPar = PARAMETER(PhosphorousSorptionCoefficient);
 				  
@@ -943,19 +946,55 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 		return LAST_RESULT(NewlyConvertedSoilWaterEPC0);
 	)
 	
+	// Post-processing soil P equations (convert units)
+
+	// To do: add these in for newly-converted land too
+	
+	auto AgriculturalSoilwaterTDPConcentration = RegisterEquation(Model, "Agricultural soil water TDP concentration", MgPerL);
+	auto AgriculturalEPC0MgL = RegisterEquation(Model, "Agricultural soil water EPC0 in mg/l", MgPerL);
+	auto AgriculturalSoilLabilePConcentration = RegisterEquation(Model, "Agricultural soil labile P concentration", MgPerKg);
+	
+	EQUATION(Model, AgriculturalSoilwaterTDPConcentration,
+		double DynamicTDPConc = ConvertKgPerMmToMgPerL(RESULT(AgriculturalSoilTDPMass)/RESULT(AgriculturalSoilWaterVolume), PARAMETER(CatchmentArea));
+		double ConstantTDPConc = PARAMETER(InitialEPC0);
+		
+		if(!PARAMETER(DynamicEPC0)) return ConstantTDPConc;
+		return DynamicTDPConc;	
+	)
+	
+	EQUATION(Model, AgriculturalEPC0MgL,
+		double DynamicEPC0 = ConvertKgPerMmToMgPerL(RESULT(AgriculturalSoilWaterEPC0), PARAMETER(CatchmentArea));
+		double ConstantEPC0 = PARAMETER(InitialEPC0);
+		
+		if(!PARAMETER(DynamicEPC0)) return ConstantEPC0;
+		return DynamicEPC0;	
+	)	
+	
+	EQUATION(Model, AgriculturalSoilLabilePConcentration,
+/* 	df_TC['Plabile_A_mgkg'] = (10**6*df_TC['P_labile_A_kg']/
+								(p['Msoil_m2'] * 10**6 * p_SC.loc['A_catch',SC])) */
+		double LabilePMassMg = 1e6 * RESULT(AgriculturalSoilLabilePMass);
+		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
+		double ConstantLabilePConc = PARAMETER(InitialSoilPConcentration);
+		
+		if(!PARAMETER(DynamicEPC0)) return ConstantLabilePConc;
+		return LabilePMassMg/Msoil;
+	)
 	
 	
-	auto StreamTDPFlux = RegisterEquation(Model, "Stream TDP flux", KgPerDay);
+	// Reach equations	
+	
+	auto StreamTDPFlux = RegisterEquation(Model, "Reach TDP flux", KgPerDay);
 	SetSolver(Model, StreamTDPFlux, SimplyPSolver);
 	
-	auto StreamPPFlux  = RegisterEquation(Model, "Stream PP flux", KgPerDay);
+	auto StreamPPFlux  = RegisterEquation(Model, "Reach PP flux", KgPerDay);
 	SetSolver(Model, StreamPPFlux, SimplyPSolver);
 	
-	auto StreamTDPMass = RegisterEquationODE(Model, "Stream TDP mass", Kg);
+	auto StreamTDPMass = RegisterEquationODE(Model, "Reach TDP mass", Kg);
 	SetInitialValue(Model, StreamTDPMass, 0.0);
 	SetSolver(Model, StreamTDPMass, SimplyPSolver);
 	
-	auto StreamPPMass  = RegisterEquationODE(Model, "Stream PP mass", Kg);
+	auto StreamPPMass  = RegisterEquationODE(Model, "Reach PP mass", Kg);
 	SetInitialValue(Model, StreamPPMass, 0.0);
 	SetSolver(Model, StreamPPMass, SimplyPSolver);
 	

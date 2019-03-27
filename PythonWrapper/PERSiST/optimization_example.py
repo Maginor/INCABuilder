@@ -20,12 +20,16 @@ def sum_squares_error(params, dataset, calibration, objective):
 	
 	dataset.run_model()
 	
-	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
-    
-	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
-	sim = dataset.get_result_series(simname, simindexes)
+	fn, comparisons, skiptimesteps = objective
 	
-	sse = np.nansum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
+	sse = 0
+	for comparison in comparisons:
+		simname, simindexes, obsname, obsindexes = comparison
+
+		obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+		sim = dataset.get_result_series(simname, simindexes)
+	
+		sse = sse + np.nansum((obs[skiptimesteps:] - sim[skiptimesteps:])**2)
     
 	# NOTE: If we made a copy of the dataset we need to delete it so that we don't get a huge memory leak
 	# datasetcopy.delete()
@@ -80,7 +84,12 @@ max = [.7, .9]
 skiptimesteps = 365   # Skip these many of the first timesteps in the objective evaluation
 
 #NOTE: The 'objective' structure contains information about how to evaluate the objective.
-objective = (sum_squares_error, 'Reach flow', ['Coull'], 'observed Q', [], skiptimesteps)
+
+comparisons = [
+	('Reach flow', ['Coull'], 'observed Q', []),
+	]
+
+objective = (sum_squares_error, comparisons, skiptimesteps)
 
 
 #NOTE: We test the optimizer by running the model with "fake real parameters" and set that as the observation series to see if the optimizer can recover the "real" parameters.
@@ -88,8 +97,11 @@ fake_real_parameters = [0.41, 0.6]
 cf.set_values(dataset, fake_real_parameters, calibration)
 
 dataset.run_model()
-fake_discharge = dataset.get_result_series(objective[1], objective[2])
-dataset.set_input_series(objective[3], objective[4], fake_discharge, alignwithresults=True)    # Overwrites the existing input series with our result series as the fake real input.
+
+for comparison in comparisons:
+	simname, simindexes, obsname, obsindexes = comparison
+	fake_obs = dataset.get_result_series(simname, simindexes)
+	dataset.set_input_series(obsname, obsindexes, fake_obs, alignwithresults=True)    # Overwrites the existing input series with our result series as the fake real input.
 	
 param_est = cf.run_optimization(dataset, min, max, initial_guess, calibration, objective)
 
@@ -104,6 +116,8 @@ for idx, cal in enumerate(calibration) :
 hess = cf.compute_hessian(dataset, param_est, calibration, objective)
 print('Hessian matrix at optimal parameters:')
 print(hess)
+
+cf.print_goodness_of_fit(dataset, objective)
 
 
 # NOTE: If you do a real optimization run, this is how you can write the optimal values back to the dataset and then generate a new parameter file that has these values.

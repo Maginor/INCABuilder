@@ -32,7 +32,7 @@ def log_posterior(params, min, max, calibration, objective):
 
 def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk, n_steps, n_burn) :
 	
-	ll, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+	ll, comparisons, skiptimesteps = objective
 
 
 	n_dim = len(initial_guess)
@@ -86,15 +86,15 @@ def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_w
 	
 wr.initialize('simplyp.dll')
 
-dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/SimplyP/tarlandparameters.dat', '../../Applications/SimplyP/tarlandinputs.dat')
+dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/SimplyP/Tarland/TarlandParameters.dat', '../../Applications/SimplyP/Tarland/TarlandInputs.dat')
 
 #NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
 	('Proportion of precipitation that contributes to quick flow', []),
 	('Baseflow index',                                             []),
 	('Groundwater time constant',                                  []),
-	('Gradient of stream velocity-discharge relationship',         []),
-	('Exponent of stream velocity-discharge relationship',         []),
+	('Gradient of reach velocity-discharge relationship',          []),
+	('Exponent of reach velocity-discharge relationship',          []),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -111,8 +111,19 @@ cf.constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (cf.log_likelyhood, 'Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', [], skiptimesteps)
+comparisons = [
+	('Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', []),
+	#Put more here!
+	]
+
+objective = (cf.log_likelyhood, comparisons, skiptimesteps)
+
+
 
 if __name__ == '__main__': #NOTE: This line is needed, or something goes horribly wrong with the paralellization
 	samples = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=20000, n_burn=1000)
+	
+
+	
+	
 	

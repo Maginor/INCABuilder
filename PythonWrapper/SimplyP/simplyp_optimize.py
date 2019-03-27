@@ -10,15 +10,15 @@ cf = imp.load_source('inca_calibration', optimize_funs_fpath)
 
 wr.initialize('simplyp.dll')
 
-dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/SimplyP/tarlandparameters.dat', '../../Applications/SimplyP/tarlandinputs.dat')
+dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/SimplyP/Tarland/TarlandParameters.dat', '../../Applications/SimplyP/Tarland/TarlandInputs.dat')
 
 #NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
 calibration = [
 	('Proportion of precipitation that contributes to quick flow', []),
 	('Baseflow index',                                             []),
 	('Groundwater time constant',                                  []),
-	('Gradient of stream velocity-discharge relationship',         []),
-	('Exponent of stream velocity-discharge relationship',         []),
+	('Gradient of reach velocity-discharge relationship',          []),
+	('Exponent of reach velocity-discharge relationship',          []),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -35,7 +35,12 @@ cf.constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min
 
 skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
 
-objective = (cf.log_likelyhood, 'Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', [], skiptimesteps)
+comparisons = [
+	('Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', []),
+	#put more here!
+	]
+
+objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 
 
 param_est = cf.run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=False)

@@ -93,20 +93,25 @@ def log_likelyhood(params, dataset, calibration, objective):
 	
 	datasetcopy.run_model()
 	
-	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+	#fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+	fn, comparisons, skiptimesteps = objective
+	
+	like = 0
+	for comparison in comparisons:
+		simname, simindexes, obsname, obsindexes = comparison
     
-	sim = datasetcopy.get_result_series(simname, simindexes)
-	obs = datasetcopy.get_input_series(obsname, obsindexes, alignwithresults=True)
-	
-	sim2 = sim[skiptimesteps:]
-	obs2 = obs[skiptimesteps:]
-	
-	M = params[len(calibration)]
-	sigma_e = M*sim2
-	
-	likes = norm(sim2, sigma_e).logpdf(obs2)
-	
-	like = np.nansum(likes)
+		sim = datasetcopy.get_result_series(simname, simindexes)
+		obs = datasetcopy.get_input_series(obsname, obsindexes, alignwithresults=True)
+		
+		sim2 = sim[skiptimesteps:]
+		obs2 = obs[skiptimesteps:]
+		
+		M = params[len(calibration)]
+		sigma_e = M*sim2
+		
+		likes = norm(sim2, sigma_e).logpdf(obs2)
+		
+		like = like + np.nansum(likes)
     
 	# NOTE: If we made a copy of the dataset we need to delete it so that we don't get a huge memory leak
 	datasetcopy.delete()
@@ -117,8 +122,13 @@ def log_likelyhood(params, dataset, calibration, objective):
 		
 def plot_objective(dataset, objective, filename, return_fig=0):
 
-	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+	fn, comparisons, skiptimesteps = objective
 
+	comparison = comparisons[0]
+	simname, simindexes, obsname, obsindexes = comparison
+	
+	#TODO: Make it plot all the comparisons, not just the first one!!!
+	
 	sim = dataset.get_result_series(simname, simindexes)
 	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
 
@@ -142,28 +152,31 @@ def print_goodness_of_fit(dataset, objective):
 	
 	#TODO: Could probably factor the computation and printout into different functions.
 	
-	fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
+	fn, comparisons, skiptimesteps = objective
 
-	sim = dataset.get_result_series(simname, simindexes)
-	obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
-	
-	residuals = sim - obs
-	nonnan = np.count_nonzero(~np.isnan(residuals))
-	
-	bias = np.nansum(residuals) / nonnan
-	meanabs = np.nansum(np.abs(residuals)) / nonnan
-	sumsquare = np.nansum(np.square(residuals))
-	meansquare = sumsquare / nonnan
-	
-	meanob = np.nansum(obs) / nonnan
-	
-	nashsutcliffe = 1 - sumsquare / np.nansum(np.square(obs - meanob))
-	
-	print('\nGoodness of fit for %s [%s] vs %s [%s]:' % (simname, ', '.join(simindexes), obsname, ', '.join(obsindexes)))
-	print('Mean error (bias): %f' % bias)
-	print('Mean absolute error: %f' % meanabs)
-	print('Mean square error: %f' % meansquare)
-	print('Nash-Sutcliffe coefficient: %f\n' % nashsutcliffe)
+	for comparison in comparisons :
+		simname, simindexes, obsname, obsindexes = comparison
+
+		sim = dataset.get_result_series(simname, simindexes)
+		obs = dataset.get_input_series(obsname, obsindexes, alignwithresults=True)
+		
+		residuals = sim - obs
+		nonnan = np.count_nonzero(~np.isnan(residuals))
+		
+		bias = np.nansum(residuals) / nonnan
+		meanabs = np.nansum(np.abs(residuals)) / nonnan
+		sumsquare = np.nansum(np.square(residuals))
+		meansquare = sumsquare / nonnan
+		
+		meanob = np.nansum(obs) / nonnan
+		
+		nashsutcliffe = 1 - sumsquare / np.nansum(np.square(obs - meanob))
+		
+		print('\nGoodness of fit for %s [%s] vs %s [%s]:' % (simname, ', '.join(simindexes), obsname, ', '.join(obsindexes)))
+		print('Mean error (bias): %f' % bias)
+		print('Mean absolute error: %f' % meanabs)
+		print('Mean square error: %f' % meansquare)
+		print('Nash-Sutcliffe coefficient: %f\n' % nashsutcliffe)
 	
 	
 def calibration_of_group(dataset, groupname):

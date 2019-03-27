@@ -13,4 +13,4 @@ To use a model with the python wrapper, create your own .cpp file along the line
 We have already built some examples atop of inca.py to show you how you can interact with the models through the interface. See e.g. optimization_example.py or some of the SimplyP examples. There is also docstring documentation in inca.py . We have also made some calibration utilities available through inca_calibration.py .
 
 
-![Alt text](SimplyP/simplyp_plots/triangle_plot.png?raw=true "Triangle plot from running emcee on reach flow in SimplyP")
+![Alt text](../Documentation/img/triangle_plot.png?raw=true "Triangle plot from running emcee on reach flow in SimplyP")

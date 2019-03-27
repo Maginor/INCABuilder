@@ -223,6 +223,7 @@ class DataSet :
 		Keyword arguments:
 			name             -- string. The name of the input series. Example : "Air temperature"
 			indexes          -- list of strings. A list of index names to identify the particular input series. Example : ["Langtjern"] or ["Langtjern", "Forest"]
+			inputseries      -- list of double. The values to set.
 			alignwithresults -- boolean. If False: Start writing to the first timestep of the input series. If True: Start writing at the timestep corresponding to the parameter 'Start date'.
 		'''
 		array = (ctypes.c_double * len(inputseries))(*inputseries)

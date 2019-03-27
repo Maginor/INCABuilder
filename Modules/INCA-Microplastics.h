@@ -77,10 +77,14 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	SetParentGroup(Model, Store, GrainClass);
 	auto InitialSurfaceStore                    = RegisterParameterDouble(Model, Store, "Initial surface grain store", KgPerKm2, 100.0);
 	auto InitialImmobileStore                   = RegisterParameterDouble(Model, Store, "Initial immobile grain store", KgPerKm2, 100.0);
+	auto GrainInput                             = RegisterParameterDouble(Model, Store, "Grain input", KgPerKm2PerDay, 0.0);
 	
-	///////////// Erosion and sediment transport ////////////////
+	///////////// Erosion and transport ////////////////
+	
+	auto GrainInputTimeseries = RegisterInput(Model, "Grain input", KgPerKm2PerDay);
 	
 	auto SurfaceTransportCapacity     = RegisterEquation(Model, "Land surface transport capacity", KgPerKm2PerDay);
+	auto ImmobileGrainStoreBeforeMobilisation = RegisterEquation(Model, "Immobile grain store before mobilisation". KgPerKm2);
 	auto MobilisedViaSplashDetachment = RegisterEquation(Model, "Grain mass mobilised via splash detachment", KgPerKm2PerDay);
 	auto FlowErosionKFactor           = RegisterEquation(Model, "Flow erosion K factor", KgPerKm2PerDay);
 	auto SurfaceGrainStoreBeforeTransport = RegisterEquation(Model, "Surface grain store before transport", KgPerKm2);
@@ -107,12 +111,15 @@ AddINCAMicroplasticsModel(inca_model *Model)
 			* pow((1e-3 * PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(TransportCapacityNonlinearCoefficient));
 	)
 	
+	EQUATION(Model, ImmobileGrainStoreBeforeMobilisation,
+		return LAST_RESULT(ImmobileGrainStore) + IF_INPUT_ELSE_PARAMETER(GrainInputTimeseries, GrainInput);
+	)
 	
 	//TODO: Documentation says this should use Reffq = "effective precipitation". Is that the same as rainfall? Or rainfall + snowmelt?
 	EQUATION(Model, MobilisedViaSplashDetachment,
 		double Reffq = RESULT(Rainfall) / 86.4;
 		double SSD = 86400.0 * PARAMETER(SplashDetachmentScalingFactor) * Reffq * pow(PARAMETER(SplashDetachmentSoilErodibility), 10.0 / (10.0 - PARAMETER(VegetationIndex)));
-		return Min(SSD, LAST_RESULT(ImmobileGrainStore));
+		return Min(SSD, RESULT(ImmobileGrainStoreBeforeMobilisation));
 	)
 	
 	EQUATION(Model, SurfaceGrainStoreBeforeTransport,
@@ -151,7 +158,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 		
 		if(surfacestorebeforeerosion > 0.0) return 0.0; //NOTE: If there is any surface sediment left we know that we already exceeded our transport capacity, and so we can not mobilise any more.
 		
-		return Min(SFE, LAST_RESULT(ImmobileGrainStore) - RESULT(MobilisedViaSplashDetachment));
+		return Min(SFE, RESULT(ImmobileGrainStoreBeforeMobilisation) - RESULT(MobilisedViaSplashDetachment));
 	)
 	
 	auto TotalPotentiallyMobilisedViaFlowErosion = RegisterEquationCumulative(Model, "Total potentially mobilised via flow erosion", PotentiallyMobilisedViaFlowErosion, Class);
@@ -175,7 +182,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	
 	EQUATION(Model, ImmobileGrainStore,
 		//TODO: Inputs. And the inputs should probably be added BEFORE mobilisation.
-		return LAST_RESULT(ImmobileGrainStore) - RESULT(MobilisedViaSplashDetachment) - RESULT(MobilisedViaFlowErosion);
+		return RESULT(ImmobileGrainStoreBeforeMobilisation) - RESULT(MobilisedViaSplashDetachment) - RESULT(MobilisedViaFlowErosion);
 	)
 	
 	EQUATION(Model, AreaScaledGrainDeliveryToReach,

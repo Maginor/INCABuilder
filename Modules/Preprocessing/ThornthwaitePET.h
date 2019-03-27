@@ -142,9 +142,11 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 			{
 				for(int M = 0; M < 12; ++M)
 				{
+					double MonthValue = MonthlyPET[MonthIndex];
+					
 					double PrevMonthValue = MonthlyPET[MonthIndex];
 					if(Year >= StartYear || M > 0) PrevMonthValue = MonthlyPET[MonthIndex - 1];
-					double MonthValue = MonthlyPET[MonthIndex];
+					
 					double NextMonthValue = MonthlyPET[MonthIndex];
 					if(Year <= EndYear || M < 11) NextMonthValue = MonthlyPET[MonthIndex + 1];
 					

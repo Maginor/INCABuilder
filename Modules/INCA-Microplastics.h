@@ -79,12 +79,17 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	auto InitialImmobileStore                   = RegisterParameterDouble(Model, Store, "Initial immobile grain store", KgPerKm2, 100.0);
 	auto GrainInput                             = RegisterParameterDouble(Model, Store, "Grain input", KgPerKm2PerDay, 0.0);
 	
+	
+	auto TransferMatrix = RegisterParameterGroup(Model, "Transfer matrix", Class);
+	SetParentGroup(Model, TransferMatrix, GrainClass);
+	auto LandMassTransferRateBetweenClasses = RegisterParameterDouble(Model, TransferMatrix, "Mass transfer rate between classes on land", Dimensionless, 0.0, 0.0, 1.0);
+	
 	///////////// Erosion and transport ////////////////
 	
 	auto GrainInputTimeseries = RegisterInput(Model, "Grain input", KgPerKm2PerDay);
 	
 	auto SurfaceTransportCapacity     = RegisterEquation(Model, "Land surface transport capacity", KgPerKm2PerDay);
-	auto ImmobileGrainStoreBeforeMobilisation = RegisterEquation(Model, "Immobile grain store before mobilisation". KgPerKm2);
+	auto ImmobileGrainStoreBeforeMobilisation = RegisterEquation(Model, "Immobile grain store before mobilisation", KgPerKm2);
 	auto MobilisedViaSplashDetachment = RegisterEquation(Model, "Grain mass mobilised via splash detachment", KgPerKm2PerDay);
 	auto FlowErosionKFactor           = RegisterEquation(Model, "Flow erosion K factor", KgPerKm2PerDay);
 	auto SurfaceGrainStoreBeforeTransport = RegisterEquation(Model, "Surface grain store before transport", KgPerKm2);
@@ -92,9 +97,11 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	auto PotentiallyMobilisedViaFlowErosion = RegisterEquation(Model, "Grain mass potentially mobilised via flow erosion", KgPerKm2PerDay);
 	auto MobilisedViaFlowErosion      = RegisterEquation(Model, "Grain mass mobilised via flow erosion", KgPerKm2PerDay);
 	
+	auto SurfaceGrainStoreAfterAllTransport = RegisterEquation(Model, "Surface grain store after transport", KgPerKm2);
 	auto SurfaceGrainStore   = RegisterEquation(Model, "Surface grain store", KgPerKm2);
 	SetInitialValue(Model, SurfaceGrainStore, InitialSurfaceStore);
 	
+	auto ImmobileGrainStoreAfterMobilisation = RegisterEquation(Model, "Immobile grain store after mobilisation", KgPerKm2);
 	auto ImmobileGrainStore     = RegisterEquation(Model, "Immobile grain store", KgPerKm2);
 	SetInitialValue(Model, ImmobileGrainStore, InitialImmobileStore);
 	
@@ -108,7 +115,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 		double qquick = RESULT(RunoffToReach, DirectRunoff) / 86.4;
 		double flow = Max(0.0, qquick - PARAMETER(TransportCapacityDirectRunoffThreshold));
 		return 86400.0 * PARAMETER(TransportCapacityScalingFactor) 
-			* pow((1e-3 * PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(TransportCapacityNonlinearCoefficient));
+			* pow((PARAMETER(SubcatchmentArea) / PARAMETER(ReachLength))*flow, PARAMETER(TransportCapacityNonlinearCoefficient));
 	)
 	
 	EQUATION(Model, ImmobileGrainStoreBeforeMobilisation,
@@ -176,13 +183,56 @@ AddINCAMicroplasticsModel(inca_model *Model)
 		return RESULT(TransportBeforeFlowErosion) + RESULT(MobilisedViaFlowErosion);
 	)
 	
-	EQUATION(Model, SurfaceGrainStore,
+	EQUATION(Model, SurfaceGrainStoreAfterAllTransport,
 		return RESULT(SurfaceGrainStoreBeforeTransport) - RESULT(TransportBeforeFlowErosion); //NOTE: Flow erosion is removed from the immobile store directly.
 	)
 	
-	EQUATION(Model, ImmobileGrainStore,
+	EQUATION(Model, SurfaceGrainStore,
+		
+		double aftertransport   = RESULT(SurfaceGrainStoreAfterAllTransport);
+		
+		double fromotherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			double otherclassmass = RESULT(SurfaceGrainStoreAfterAllTransport, OtherClass);
+			fromotherclasses += PARAMETER(LandMassTransferRateBetweenClasses, OtherClass, CURRENT_INDEX(Class)) * otherclassmass;
+		}
+		
+		double tootherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			tootherclasses += PARAMETER(LandMassTransferRateBetweenClasses, CURRENT_INDEX(Class), OtherClass) * aftertransport;
+		}
+		
+		return aftertransport + fromotherclasses - tootherclasses;
+	)
+	
+	EQUATION(Model, ImmobileGrainStoreAfterMobilisation,
 		//TODO: Inputs. And the inputs should probably be added BEFORE mobilisation.
 		return RESULT(ImmobileGrainStoreBeforeMobilisation) - RESULT(MobilisedViaSplashDetachment) - RESULT(MobilisedViaFlowErosion);
+	)
+	
+	EQUATION(Model, ImmobileGrainStore,
+		double aftermob   = RESULT(ImmobileGrainStoreAfterMobilisation);
+		
+		double fromotherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			double otherclassmass = RESULT(ImmobileGrainStoreAfterMobilisation, OtherClass);
+			fromotherclasses += PARAMETER(LandMassTransferRateBetweenClasses, OtherClass, CURRENT_INDEX(Class)) * otherclassmass;
+		}
+		
+		double tootherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			tootherclasses += PARAMETER(LandMassTransferRateBetweenClasses, CURRENT_INDEX(Class), OtherClass) * aftermob;
+		}
+		
+		return aftermob + fromotherclasses - tootherclasses;
 	)
 	
 	EQUATION(Model, AreaScaledGrainDeliveryToReach,

@@ -24,7 +24,7 @@ AnnualThornthwaite(const std::vector<double> &MonthlyMeanT, const std::vector<do
 		T = T >= 0.0 ? T : 0.0;
 		double L = MonthlyMeanDLH[M];
 		double N = (double)MonthLength(Year, M);
-		PETOut[M] = 1.6 * (L / 12.0) * (N / 30.0) * (10.0 * pow(10.0 * T / I, a));
+		PETOut[M] = 16.0 * (L / 12.0) * (N / 30.0) * pow(10.0 * T / I, a);
 	}
 }
 
@@ -41,10 +41,10 @@ MonthlyMeanDLH(double Latitude, s32 Year, std::vector<double> &DLHOut)
 		int Len = MonthLength(Year, M);
 		for(int Day = 1; Day <= Len; ++Day)
 		{
-			double SD = 0.409 * sin((2.0 * Pi / Ylen)*(double)DayOfYear - 1.39);
+			double SD = 0.409 * sin((2.0 * Pi / Ylen)*(double)DayOfYear - 1.39); //Solar declination
 			double CosSha = -tan(Latitude) * tan(SD);
-			double Sha = acos(Min(Max(CosSha, -1.0), 1.0)); //Sunset hour angle
-			Dlh += (24.0 / Pi) * Sha;
+			double Sha = acos(std::min(std::max(CosSha, -1.0), 1.0)); //Sunset hour angle
+			Dlh += (24.0 / Pi) * Sha; //Daylight hours
 			++DayOfYear;
 		}
 		DLHOut[M] = Dlh / (double)Len;
@@ -131,7 +131,7 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 					PET[M] /= (double)MonthLen;         //Turn average monthly into average daily.
 				}
 				
-				MonthlyPET.insert(MonthlyPET.begin(), PET.begin(), PET.end());
+				MonthlyPET.insert(MonthlyPET.end(), PET.begin(), PET.end());
 			}
 			
 			std::vector<double> PET(Timesteps);
@@ -140,7 +140,6 @@ ComputeThornthwaitePET(inca_data_set *DataSet)
 			Timestep = 0;
 			for(s32 Year = StartYear; Year <= EndYear; ++Year)
 			{
-				std::vector<double> MonthlyMeanT(12);
 				for(int M = 0; M < 12; ++M)
 				{
 					double PrevMonthValue = MonthlyPET[MonthIndex];

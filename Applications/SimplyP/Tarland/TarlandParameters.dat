@@ -39,10 +39,10 @@ parameters:
 "Minimum groundwater flow" :     #(mm/day) [0, 10]
 0.4
 
-"Gradient of stream velocity-discharge relationship" :     #(m^{-3}) [1e-05, 0.99] The a in V = aQ^b
+"Gradient of reach velocity-discharge relationship" :     #(m^{-3}) [1e-05, 0.99] The a in V = aQ^b
 0.5
 
-"Exponent of stream velocity-discharge relationship" :     #(dimensionless) [0.1, 0.99] The b in V = aQ^b
+"Exponent of reach velocity-discharge relationship" :     #(dimensionless) [0.1, 0.99] The b in V = aQ^b
 0.42
 
 "Dynamic erodibility" :     # If true, simulate the change in erodibility on arable land through the year due to cropping and harvesting practices

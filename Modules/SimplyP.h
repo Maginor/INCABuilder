@@ -452,7 +452,7 @@ AddSimplyPSedimentModule(inca_model *Model)
 	SetSolver(Model, DailyMeanSuspendedSedimentFlux, SimplyPSolver);
 	ResetEveryTimestep(Model, DailyMeanSuspendedSedimentFlux);
 	
-	auto SuspendedSedimentConcentration = RegisterEquation(Model, "Suspended sediment concentration (volume weighted daily mean)", MgPerL);
+	auto SuspendedSedimentConcentration = RegisterEquation(Model, "Reach suspended sediment concentration", MgPerL); //Volume-weighted daily mean
 	
 	EQUATION(Model, TimeDependentVegetationCoverFactor,
 		
@@ -955,30 +955,30 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	auto AgriculturalSoilLabilePConcentration = RegisterEquation(Model, "Agricultural soil labile P concentration", MgPerKg);
 	
 	EQUATION(Model, AgriculturalSoilwaterTDPConcentration,
-		double DynamicTDPConc = ConvertKgPerMmToMgPerL(RESULT(AgriculturalSoilTDPMass)/RESULT(AgriculturalSoilWaterVolume), PARAMETER(CatchmentArea));
-		double ConstantTDPConc = PARAMETER(InitialEPC0);
+		double dynamicTDPConc = ConvertKgPerMmToMgPerL(RESULT(AgriculturalSoilTDPMass)/RESULT(AgriculturalSoilWaterVolume), PARAMETER(CatchmentArea));
+		double constantTDPConc = PARAMETER(InitialEPC0);
 		
-		if(!PARAMETER(DynamicEPC0)) return ConstantTDPConc;
-		return DynamicTDPConc;	
+		if(!PARAMETER(DynamicEPC0)) return constantTDPConc;
+		return dynamicTDPConc;		
 	)
 	
 	EQUATION(Model, AgriculturalEPC0MgL,
-		double DynamicEPC0 = ConvertKgPerMmToMgPerL(RESULT(AgriculturalSoilWaterEPC0), PARAMETER(CatchmentArea));
-		double ConstantEPC0 = PARAMETER(InitialEPC0);
+		double dynamic_EPC0 = ConvertKgPerMmToMgPerL(RESULT(AgriculturalSoilWaterEPC0), PARAMETER(CatchmentArea));
+		double constantEPC0 = PARAMETER(InitialEPC0);
 		
-		if(!PARAMETER(DynamicEPC0)) return ConstantEPC0;
-		return DynamicEPC0;	
-	)	
+		if(!PARAMETER(DynamicEPC0)) return constantEPC0;
+		return dynamic_EPC0;
+	)
 	
 	EQUATION(Model, AgriculturalSoilLabilePConcentration,
 /* 	df_TC['Plabile_A_mgkg'] = (10**6*df_TC['P_labile_A_kg']/
 								(p['Msoil_m2'] * 10**6 * p_SC.loc['A_catch',SC])) */
-		double LabilePMassMg = 1e6 * RESULT(AgriculturalSoilLabilePMass);
+		double labilePMassMg = 1e6 * RESULT(AgriculturalSoilLabilePMass);
 		double Msoil = PARAMETER(MSoilPerM2) * 1e6 * PARAMETER(CatchmentArea);
-		double ConstantLabilePConc = PARAMETER(InitialSoilPConcentration);
+		double constantLabilePConc = PARAMETER(InitialSoilPConcentration);
 		
-		if(!PARAMETER(DynamicEPC0)) return ConstantLabilePConc;
-		return LabilePMassMg/Msoil;
+		if(!PARAMETER(DynamicEPC0)) return constantLabilePConc;
+		return labilePMassMg/Msoil;
 	)
 	
 	
@@ -1120,12 +1120,12 @@ AddSimplyPPhosphorusModule(inca_model *Model)
 	
 	// Post-processing equations (mostly unit conversions)
 	
-	auto TDPConcentration = RegisterEquation(Model, "Reach TDP concentration (volume weighted daily mean)", MgPerL);
-	auto PPConcentration  = RegisterEquation(Model, "Reach PP concentration (volume weighted daily mean)", MgPerL);
+	auto TDPConcentration = RegisterEquation(Model, "Reach TDP concentration", MgPerL); //Volume-weighted daily mean
+	auto PPConcentration  = RegisterEquation(Model, "Reach PP concentration", MgPerL); //Volume-weighted daily mean
 	auto DailyMeanStreamTPFlux = RegisterEquation(Model, "Reach daily mean TP flux", KgPerDay);
-	auto TPConcentration  = RegisterEquation(Model, "Reach TP concentration (volume weighted daily mean)", MgPerL);
+	auto TPConcentration  = RegisterEquation(Model, "Reach TP concentration", MgPerL); //Volume-weighted daily mean
 	auto DailyMeanStreamSRPFlux = RegisterEquation(Model, "Reach daily mean SRP flux", KgPerDay);
-	auto SRPConcentration = RegisterEquation(Model, "Reach SRP concentration (volume weighted daily mean)", MgPerL);
+	auto SRPConcentration = RegisterEquation(Model, "Reach SRP concentration", MgPerL); //Volume-weighted daily mean
 	
 	EQUATION(Model, TDPConcentration,
 		return ConvertKgPerMmToMgPerL(RESULT(DailyMeanStreamTDPFlux) / RESULT(DailyMeanReachFlow), PARAMETER(CatchmentArea));

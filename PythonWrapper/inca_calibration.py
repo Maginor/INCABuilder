@@ -111,7 +111,7 @@ def log_likelyhood(params, dataset, calibration, objective):
 		
 		likes = norm(sim2, sigma_e).logpdf(obs2)
 		
-		like = like + np.nanmean(likes)
+		like = like + np.nansum(likes)
     
 	# NOTE: If we made a copy of the dataset we need to delete it so that we don't get a huge memory leak
 	datasetcopy.delete()

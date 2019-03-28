@@ -1,6 +1,6 @@
 
 
-import matplotlib.pyplot as plt, seaborn as sn, emcee, corner, imp
+import matplotlib, matplotlib.pyplot as plt, seaborn as sn, emcee, corner, imp, pandas as pd, datetime as dt, random
 import numpy as np
 import time
 
@@ -44,7 +44,9 @@ def log_posterior(params, min, max, calibration, objective):
 		return log_pri + log_like
 	return -np.inf
 
-def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk, n_steps, n_burn) :
+
+	
+def run_emcee(min, max, initial_guess, calibration, objective, n_walk, n_steps) :
 	
 	ll, comparisons, skiptimesteps = objective
 
@@ -68,23 +70,43 @@ def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_w
 	
 	print('EMCEE average acceptance rate: %f' % np.mean(sampler.acceptance_fraction))
 
-	param_labels = ['%s [%s] (%s)' % (cal[0], ', '.join(cal[1]), dataset.get_parameter_unit(cal[0])) 
-					for cal in calibration]
-	param_labels.append('M')
+	samples = sampler.chain
+	
+	lnprobs = sampler.lnprobability
+	
+	pool.close()
+
+	return samples, lnprobs
+
+def chain_plot(samples, calibration, labels_long, filename):
+	#NOTE: This one needs non-reshaped samples
+	
+	n_dim = samples.shape[2]
 
 	fig, axes = plt.subplots(nrows=n_dim, ncols=1, figsize=(10, 20))    
-	for idx, title in enumerate(param_labels):        
-		axes[idx].plot(sampler.chain[:,:,idx].T, '-', color='k', alpha=0.3)
+	for idx, title in enumerate(labels_long):        
+		axes[idx].plot(samples[:,:,idx].T, '-', color='k', alpha=0.3)
 		axes[idx].set_title(title, fontsize=16) 
 	plt.subplots_adjust(hspace=0.7)    
-	fig.savefig('simplyp_plots\\chains.png')
-
-	samples = sampler.chain[:, n_burn:, :].reshape((-1, n_dim))
 	
-	lnprobs = sampler.lnprobability[:, n_burn:].reshape((-1))
-
-	# Triangle plot
-	tri = corner.corner(samples,
+	fig.savefig(filename)
+	
+def reshape_samples(samples, lnprobs, n_burn):
+	n_dim = samples.shape[2]
+	s = samples[:, n_burn:, :].reshape((-1, n_dim))
+	ln = lnprobs[:, n_burn:].reshape((-1))
+	
+	return s, ln
+	
+def best_sample(samplelist, lnproblist):
+	#NOTE Needs reshaped samples
+	index_max = np.argmax(lnproblist)
+	best_sample = samplelist[index_max]
+	return best_sample	
+	
+def triangle_plot(samplelist, labels_short, filename):
+	#NOTE Needs reshaped samples
+	tri = corner.corner(samplelist,
 						labels=labels_short,
 						#truths=truths,
 						quantiles=[0.025, 0.5, 0.975],
@@ -92,56 +114,114 @@ def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_w
 						title_args={'fontsize': 24},
 						label_kwargs={'fontsize': 20})
 
-	tri.savefig("simplyp_plots\\triangle_plot.png")
+	tri.savefig(filename)
 	
-	pool.close()
+def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, n_random_samples, filename) :
 
-	return samples, lnprobs
-
+	llfun, comparisons, skiptimesteps = objective
 	
+	comparisontolookat = comparisons[0] #TODO: Do all comparisons in multiplot?
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	fig, ax = plt.subplots()
+	
+	start_date = dt.datetime.strptime(dataset.get_parameter_time('Start date', []),'%Y-%m-%d')
+	timesteps = dataset.get_parameter_uint('Timesteps', [])
+	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
+	
+	for it in range(1, n_random_samples) :       #TODO: Should be paralellized, really..
+		
+		random_index = random.randint(0, len(samplelist)-1)
+		#print(random_index)
+		random_sample = samplelist[random_index]
+		#print(random_sample)
+		
+		cf.set_values(dataset, random_sample, calibration)
+		dataset.run_model()
+	
+		sim = dataset.get_result_series(simname, simindexes)
+	
+		a = max(1/256, 1/n_random_samples)
+		#a = 0.01
+		ax.plot(date_idx, sim, color='black', alpha=a, label='_nolegend_') #,linewidth=1)
+		
+	obs = dataset.get_input_series(obsname, obsindexes, True)
+	pobs = ax.plot(date_idx, obs, color = 'orange', label = 'observed')
+	
+	best = best_sample(samplelist, lnproblist)
+	cf.set_values(dataset, best, calibration)
+	dataset.run_model()
+	
+	sim = dataset.get_result_series(simname, simindexes)
+	
+	psim = ax.plot(date_idx, sim, color = 'blue', label='best simulated')
+	
+	ax.legend()
+	
+	ax.set_xlabel('Date')
+	ax.set_ylabel('%s $%s$' % (obsname, dataset.get_result_unit(simname)))
+	
+	fig.savefig(filename)
+
+
 	
 wr.initialize('simplyp.dll')
 
 dataset = wr.DataSet.setup_from_parameter_and_input_files('../../Applications/SimplyP/Tarland/TarlandParameters.dat', '../../Applications/SimplyP/Tarland/TarlandInputs.dat')
 
-#NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
-calibration = [
-	('Proportion of precipitation that contributes to quick flow', []),
-	('Baseflow index',                                             []),
-	('Groundwater time constant',                                  []),
-	('Gradient of reach velocity-discharge relationship',          []),
-	('Exponent of reach velocity-discharge relationship',          []),
-	('Soil water time constant',                                   ['Arable']),
-	('Soil water time constant',                                   ['Semi-natural']),
-	]
-
-labels_short = [r'$f_{quick}$', r'$\beta$', r'$T_g$', r'$a$', r'$b$', r'$T_s[A]$', r'$T_s[S]$', r'M']
-
-initial_guess = cf.default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
-initial_guess.append(0.23)
-
-min = [0.1 * x for x in initial_guess]
-max = [10.0 * x for x in initial_guess]
-
-cf.constrain_min_max(dataset, calibration, min, max) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
-
-skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
-
-comparisons = [
-	('Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', []),
-	#Put more here!
-	]
-
-objective = (cf.log_likelyhood, comparisons, skiptimesteps)
-
 
 if __name__ == '__main__': #NOTE: This line is needed, or something goes horribly wrong with the paralellization
-	samples, lnprobs = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=10, n_burn=5)
-	
-	index_max = np.argmax(probs)
-	best_sample = samples[index_max]
-	
-	print(best_sample)
 
+	#NOTE: The 'calibration' structure is a list of (indexed) parameters that we want to calibrate
+	calibration = [
+		('Proportion of precipitation that contributes to quick flow', []),
+		('Baseflow index',                                             []),
+		('Groundwater time constant',                                  []),
+		('Gradient of reach velocity-discharge relationship',          []),
+		('Exponent of reach velocity-discharge relationship',          []),
+		('Soil water time constant',                                   ['Arable']),
+		('Soil water time constant',                                   ['Semi-natural']),
+		]
+
+	labels_short = [r'$f_{quick}$', r'$\beta$', r'$T_g$', r'$a$', r'$b$', r'$T_s[A]$', r'$T_s[S]$', r'M']
+
+	labels_long  = ['%s [%s] (%s)' % (cal[0], ', '.join(cal[1]), dataset.get_parameter_unit(cal[0])) 
+						for cal in calibration]
+	labels_long.append('M')
+
+	initial_guess = cf.default_initial_guess(dataset, calibration)    #NOTE: This reads the initial guess that was provided by the parameter file.
+	initial_guess.append(0.23)
+
+	minval = [0.1 * x for x in initial_guess]
+	maxval = [10.0 * x for x in initial_guess]
+
+	cf.constrain_min_max(dataset, calibration, minval, maxval) #NOTE: Constrain to the min and max values recommended by the model in case we made our bounds too wide.
+
+	skiptimesteps = 50   # Skip these many of the first timesteps in the objective evaluation
+
+	comparisons = [
+		('Reach flow (daily mean, cumecs)', ['Tarland1'], 'observed Q', []),
+		#Put more here!
+		]
+		
+	objective = (cf.log_likelyhood, comparisons, skiptimesteps)
+	
+	
+
+	n_walk = 20
+	n_steps = 2000
+	n_burn = 1000
+
+	samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, n_walk=n_walk, n_steps=n_steps)
+	
+	chain_plot(samp, calibration, labels_long, "simplyp_plots\\chains.png")
+	
+	samplelist, lnproblist = reshape_samples(samp, lnprob, n_burn)
+	
+	triangle_plot(samplelist, labels_short, "simplyp_plots\\triangle_plot.png")
+	
+	plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, 1000, "simplyp_plots\\random_samples.png")
+
+	plt.show()
 	
 	

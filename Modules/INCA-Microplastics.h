@@ -37,17 +37,17 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	
 	auto DirectRunoff = RequireIndex(Model, SoilBoxes, "Direct runoff");
 	
-	auto SedimentReach = RegisterParameterGroup(Model, "Sediment reach", Reach);
+	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
 	
 	//TODO : Find default/min/max/description for these
 	
 	//TODO: Some of these should probably also be per grain class
-	auto FlowErosionScalingFactor               = RegisterParameterDouble(Model, SedimentReach, "Flow erosion scaling factor", SPerM2, 1.0);
-	auto FlowErosionDirectRunoffThreshold       = RegisterParameterDouble(Model, SedimentReach, "Flow erosion direct runoff threshold", M3PerSPerKm2, 0.001);
-	auto FlowErosionNonlinearCoefficient        = RegisterParameterDouble(Model, SedimentReach, "Flow erosion non-linear coefficient", Dimensionless, 1.0);
-	auto TransportCapacityScalingFactor         = RegisterParameterDouble(Model, SedimentReach, "Transport capacity scaling factor", KgPerM2PerKm2, 1.0);
-	auto TransportCapacityDirectRunoffThreshold = RegisterParameterDouble(Model, SedimentReach, "Transport capacity direct runoff threshold", M3PerSPerKm2, 0.001);
-	auto TransportCapacityNonlinearCoefficient  = RegisterParameterDouble(Model, SedimentReach, "Transport capacity non-linear coefficient", Dimensionless, 1.0);
+	auto FlowErosionScalingFactor               = RegisterParameterDouble(Model, Reaches, "Flow erosion scaling factor", SPerM2, 1.0);
+	auto FlowErosionDirectRunoffThreshold       = RegisterParameterDouble(Model, Reaches, "Flow erosion direct runoff threshold", M3PerSPerKm2, 0.001);
+	auto FlowErosionNonlinearCoefficient        = RegisterParameterDouble(Model, Reaches, "Flow erosion non-linear coefficient", Dimensionless, 1.0);
+	auto TransportCapacityScalingFactor         = RegisterParameterDouble(Model, Reaches, "Transport capacity scaling factor", KgPerM2PerKm2, 1.0);
+	auto TransportCapacityDirectRunoffThreshold = RegisterParameterDouble(Model, Reaches, "Transport capacity direct runoff threshold", M3PerSPerKm2, 0.001);
+	auto TransportCapacityNonlinearCoefficient  = RegisterParameterDouble(Model, Reaches, "Transport capacity non-linear coefficient", Dimensionless, 1.0);
 	
 	
 	auto SubcatchmentArea = GetParameterDoubleHandle(Model, "Terrestrial catchment area");
@@ -64,20 +64,17 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	auto LargestDiameterOfClass         = RegisterParameterDouble(Model, GrainClass, "Largest diameter of grain in class", Metres, 2e-6);
 	auto DensityOfClass                 = RegisterParameterDouble(Model, GrainClass, "Density of grain class", KgPerM3, 1000.0);
 	
+	auto Land = GetParameterGroupHandle(Model, "Landscape units");
+	auto VegetationIndex                        = RegisterParameterDouble(Model, Land, "Vegetation index", Dimensionless, 1.0); //Could this be the same as the canopy interception though?
+	
 	auto SedimentLand = RegisterParameterGroup(Model, "Sediment land", LandscapeUnits);
-	auto VegetationIndex                        = RegisterParameterDouble(Model, SedimentLand, "Vegetation index", Dimensionless, 1.0); //Could this be the same as the canopy interception though?
-	
-	auto Erosion = RegisterParameterGroup(Model, "Erosion", LandscapeUnits);
-	SetParentGroup(Model, Erosion, GrainClass);
-	auto SplashDetachmentScalingFactor          = RegisterParameterDouble(Model, Erosion, "Splash detachment scaling factor", SPerM, 0.001);
-	auto FlowErosionPotential                   = RegisterParameterDouble(Model, Erosion, "Flow erosion potential", KgPerSPerKm2, 0.074);
-	auto SplashDetachmentSoilErodibility        = RegisterParameterDouble(Model, Erosion, "Splash detachment soil erodibility", KgPerM2PerS, 1.0);
-	
-	auto Store = RegisterParameterGroup(Model, "Grain store", Reach);
-	SetParentGroup(Model, Store, GrainClass);
-	auto InitialSurfaceStore                    = RegisterParameterDouble(Model, Store, "Initial surface grain store", KgPerKm2, 100.0);
-	auto InitialImmobileStore                   = RegisterParameterDouble(Model, Store, "Initial immobile grain store", KgPerKm2, 100.0);
-	auto GrainInput                             = RegisterParameterDouble(Model, Store, "Grain input to land", KgPerKm2PerDay, 0.0);
+	SetParentGroup(Model, SedimentLand, GrainClass);
+	auto SplashDetachmentScalingFactor          = RegisterParameterDouble(Model, SedimentLand, "Splash detachment scaling factor", SPerM, 0.001);
+	auto FlowErosionPotential                   = RegisterParameterDouble(Model, SedimentLand, "Flow erosion potential", KgPerSPerKm2, 0.074);
+	auto SplashDetachmentSoilErodibility        = RegisterParameterDouble(Model, SedimentLand, "Splash detachment soil erodibility", KgPerM2PerS, 1.0);
+	auto InitialSurfaceStore                    = RegisterParameterDouble(Model, SedimentLand, "Initial surface grain store", KgPerKm2, 100.0);
+	auto InitialImmobileStore                   = RegisterParameterDouble(Model, SedimentLand, "Initial immobile grain store", KgPerKm2, 100.0);
+	auto GrainInput                             = RegisterParameterDouble(Model, SedimentLand, "Grain input to land", KgPerKm2PerDay, 0.0);
 	
 	
 	auto TransferMatrix = RegisterParameterGroup(Model, "Transfer matrix", Class);
@@ -244,11 +241,12 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	
 	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.01, BoostRosenbrock4, 1e-3, 1e-3);
 	
-	auto EffluentGrainConcentration       = RegisterParameterDouble(Model, Store, "Effluent grain concentration", MgPerL, 0.0);
-	auto InitialMassOfBedGrainPerUnitArea = RegisterParameterDouble(Model, Store, "Initial mass of bed grain per unit area", KgPerM2, 10);
-	auto InitialSuspendedGrainMass        = RegisterParameterDouble(Model, Store, "Initial suspended grain mass", Kg, 1e2);
+	auto SedimentReach = RegisterParameterGroup(Model, "Sediment reach", Reach);
+	SetParentGroup(Model, SedimentReach, GrainClass);
 	
-	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
+	auto EffluentGrainConcentration       = RegisterParameterDouble(Model, SedimentReach, "Effluent grain concentration", MgPerL, 0.0);
+	auto InitialMassOfBedGrainPerUnitArea = RegisterParameterDouble(Model, SedimentReach, "Initial mass of bed grain per unit area", KgPerM2, 10);
+	auto InitialSuspendedGrainMass        = RegisterParameterDouble(Model, SedimentReach, "Initial suspended grain mass", Kg, 1e2);
 	
 	//auto BankErosionScalingFactor        = RegisterParameterDouble(Model, Reaches, "Bank erosion scaling factor", KgPerM2PerM3SPerDay, 1.0);
 	//auto BankErosionNonlinearCoefficient = RegisterParameterDouble(Model, Reaches, "Bank erosion non-linear coefficient", Dimensionless, 1.0);

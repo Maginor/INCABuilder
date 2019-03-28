@@ -2,7 +2,7 @@
 
 // NOTE NOTE NOTE This module is in development and is not finished!!!!
 
-//#include "../boost_solvers.h"
+#include "../boost_solvers.h"
 
 static void
 AddINCAMicroplasticsModel(inca_model *Model)
@@ -77,7 +77,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	SetParentGroup(Model, Store, GrainClass);
 	auto InitialSurfaceStore                    = RegisterParameterDouble(Model, Store, "Initial surface grain store", KgPerKm2, 100.0);
 	auto InitialImmobileStore                   = RegisterParameterDouble(Model, Store, "Initial immobile grain store", KgPerKm2, 100.0);
-	auto GrainInput                             = RegisterParameterDouble(Model, Store, "Grain input", KgPerKm2PerDay, 0.0);
+	auto GrainInput                             = RegisterParameterDouble(Model, Store, "Grain input to land", KgPerKm2PerDay, 0.0);
 	
 	
 	auto TransferMatrix = RegisterParameterGroup(Model, "Transfer matrix", Class);
@@ -86,7 +86,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	
 	///////////// Erosion and transport ////////////////
 	
-	auto GrainInputTimeseries = RegisterInput(Model, "Grain input", KgPerKm2PerDay);
+	auto GrainInputTimeseries = RegisterInput(Model, "Grain input to land", KgPerKm2PerDay);
 	
 	auto SurfaceTransportCapacity     = RegisterEquation(Model, "Land surface transport capacity", KgPerKm2PerDay);
 	auto ImmobileGrainStoreBeforeMobilisation = RegisterEquation(Model, "Immobile grain store before mobilisation", KgPerKm2);
@@ -240,84 +240,82 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	)
 
 	
+	///////////////// Suspended in reach ////////////////////////////////
 	
-#if 0
-	///////////////// Suspended sediment ////////////////////////////////
+	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.01, BoostRosenbrock4, 1e-3, 1e-3);
 	
-	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.1, BoostRosenbrock4, 1e-3, 1e-3);
-	
-	auto SedimentReach = RegisterParameterGroup(Model, "Sediment reach", Reach);
-	SetParentGroup(Model, SedimentReach, GrainClass);
-	
-	auto EffluentSedimentConcentration   = RegisterParameterDouble(Model, SedimentReach, "Effluent sediment concentration", MgPerL, 0.0);
+	auto EffluentGrainConcentration       = RegisterParameterDouble(Model, Store, "Effluent grain concentration", MgPerL, 0.0);
+	auto InitialMassOfBedGrainPerUnitArea = RegisterParameterDouble(Model, Store, "Initial mass of bed grain per unit area", KgPerM2, 10);
+	auto InitialSuspendedGrainMass        = RegisterParameterDouble(Model, Store, "Initial suspended grain mass", Kg, 1e2);
 	
 	auto Reaches = GetParameterGroupHandle(Model, "Reaches");
 	
-	auto BankErosionScalingFactor        = RegisterParameterDouble(Model, Reaches, "Bank erosion scaling factor", KgPerM2PerM3SPerDay, 1.0);
-	auto BankErosionNonlinearCoefficient = RegisterParameterDouble(Model, Reaches, "Bank erosion non-linear coefficient", Dimensionless, 1.0);
+	//auto BankErosionScalingFactor        = RegisterParameterDouble(Model, Reaches, "Bank erosion scaling factor", KgPerM2PerM3SPerDay, 1.0);
+	//auto BankErosionNonlinearCoefficient = RegisterParameterDouble(Model, Reaches, "Bank erosion non-linear coefficient", Dimensionless, 1.0);
 	auto ShearVelocityCoefficient        = RegisterParameterDouble(Model, Reaches, "Shear velocity coefficient", Dimensionless, 1.0);
 	auto MeanChannelSlope                = RegisterParameterDouble(Model, Reaches, "Mean channel slope", Dimensionless, 2.0);
 	auto EntrainmentCoefficient          = RegisterParameterDouble(Model, Reaches, "Entrainment coefficient", S2PerKg, 1.0);
-	auto InitialMassOfBedSedimentPerUnitArea = RegisterParameterDouble(Model, SedimentReach, "Initial mass of bed sediment per unit area", KgPerM2, 10);
 	
-	auto InitialSuspendedSedimentMass    = RegisterParameterDouble(Model, SedimentReach, "Initial suspended sediment mass", Kg, 1e2);
+	auto ReachUpstreamSuspendedGrain         = RegisterEquation(Model, "Reach upstream suspended grain", KgPerDay);
+	//auto ClayReleaseFromChannelBanks       = RegisterEquation(Model, "Clay release from channel banks", KgPerM2PerDay);
+	auto ReachFrictionFactor                 = RegisterEquation(Model, "Reach friction factor", Dimensionless);
+	auto ReachShearVelocity                  = RegisterEquation(Model, "Reach shear velocity", MPerS);
+	auto ProportionOfGrainThatCanBeEntrained = RegisterEquation(Model, "Proportion of grain that can be entrained", Dimensionless);
+	auto StreamPower                         = RegisterEquation(Model, "Stream power", JPerSPerM2);
 	
-	auto SedimentOfSizeClassDeliveredToReach = RegisterEquation(Model, "Sediment of size class delivered to reach", KgPerDay);
-	auto ReachUpstreamSuspendedSediment     = RegisterEquation(Model, "Reach upstream suspended sediment", KgPerDay);
-	auto ClayReleaseFromChannelBanks        = RegisterEquation(Model, "Clay release from channel banks", KgPerM2PerDay);
-	auto ReachFrictionFactor                = RegisterEquation(Model, "Reach friction factor", Dimensionless);
-	auto ReachShearVelocity                 = RegisterEquation(Model, "Reach shear velocity", MPerS);
-	auto ProportionOfSedimentThatCanBeEntrained = RegisterEquation(Model, "Proportion of sediment that can be entrained", Dimensionless);
-	auto StreamPower                        = RegisterEquation(Model, "Stream power", JPerSPerM2);
+	auto EffluentGrain                   = RegisterEquation(Model, "Effluent grain inputs", KgPerDay);
+	auto GrainAbstraction                = RegisterEquation(Model, "Grain abstraction", KgPerDay);
+	SetSolver(Model, GrainAbstraction, InstreamSedimentSolver);
 	
-	auto SedimentEntrainment                = RegisterEquation(Model, "Sediment entrainment", KgPerM2PerDay);
-	SetSolver(Model, SedimentEntrainment, InstreamSedimentSolver);
+	auto GrainEntrainment                = RegisterEquation(Model, "Grain entrainment", KgPerM2PerDay);
+	SetSolver(Model, GrainEntrainment, InstreamSedimentSolver);
 	
-	auto SedimentDeposition                 = RegisterEquation(Model, "Sediment deposition", KgPerM2PerDay);
-	SetSolver(Model, SedimentDeposition, InstreamSedimentSolver);
+	auto GrainDeposition                 = RegisterEquation(Model, "Grain deposition", KgPerM2PerDay);
+	SetSolver(Model, GrainDeposition, InstreamSedimentSolver);
 	
-	auto ReachSuspendedSedimentOutput       = RegisterEquation(Model, "Reach suspended sediment output", KgPerDay);
-	SetSolver(Model, ReachSuspendedSedimentOutput, InstreamSedimentSolver);
+	auto ReachSuspendedGrainOutput       = RegisterEquation(Model, "Reach suspended grain output", KgPerDay);
+	SetSolver(Model, ReachSuspendedGrainOutput, InstreamSedimentSolver);
 	
-	auto MassOfBedSedimentPerUnitArea       = RegisterEquationODE(Model, "Mass of bed sediment per unit area", KgPerM2);
-	SetInitialValue(Model, MassOfBedSedimentPerUnitArea, InitialMassOfBedSedimentPerUnitArea);
-	SetSolver(Model, MassOfBedSedimentPerUnitArea, InstreamSedimentSolver);
+	auto MassOfBedGrainPerUnitArea       = RegisterEquationODE(Model, "Mass of bed grain per unit area", KgPerM2);
+	SetInitialValue(Model, MassOfBedGrainPerUnitArea, InitialMassOfBedGrainPerUnitArea);
+	SetSolver(Model, MassOfBedGrainPerUnitArea, InstreamSedimentSolver);
 	
-	auto SuspendedSedimentMass = RegisterEquationODE(Model, "Suspended sediment mass", Kg);
-	SetInitialValue(Model, SuspendedSedimentMass, InitialSuspendedSedimentMass);
-	SetSolver(Model, SuspendedSedimentMass, InstreamSedimentSolver);
+	auto SuspendedGrainMass = RegisterEquationODE(Model, "Suspended grain mass", Kg);
+	SetInitialValue(Model, SuspendedGrainMass, InitialSuspendedGrainMass);
+	SetSolver(Model, SuspendedGrainMass, InstreamSedimentSolver);
 	
 	
 	
-	auto ReachWidth = GetParameterDoubleHandle(Model, "Reach width");
+	auto ReachWidth   = GetParameterDoubleHandle(Model, "Reach width");
 	auto EffluentFlow = GetParameterDoubleHandle(Model, "Effluent flow");
-	auto ReachDepth = GetEquationHandle(Model, "Reach depth");
-	auto ReachFlow  = GetEquationHandle(Model, "Reach flow");
-	auto ReachVolume = GetEquationHandle(Model, "Reach volume");
+	auto ReachHasEffluentInputs = GetParameterBoolHandle(Model, "Reach has effluent input");
+	auto EffluentTimeseries = GetInputHandle(Model, "Effluent flow");
+	
+	auto ReachDepth    = GetEquationHandle(Model, "Reach depth");
+	auto ReachFlow     = GetEquationHandle(Model, "Reach flow");
+	auto ReachVolume   = GetEquationHandle(Model, "Reach volume");
 	auto ReachVelocity = GetEquationHandle(Model, "Reach velocity");
+	auto ReachAbstraction = GetEquationHandle(Model, "Reach abstraction");
 	
 	
-	
-	EQUATION(Model, SedimentOfSizeClassDeliveredToReach,
-		return RESULT(TotalSedimentDeliveryToReach) * PARAMETER(PercentageOfSedimentInGrainSizeClass) / 100.0;
-	)
-	
-	EQUATION(Model, ReachUpstreamSuspendedSediment,
+	EQUATION(Model, ReachUpstreamSuspendedGrain,
 		//CURRENT_INDEX(SizeClass); //TODO: Has to be here until we fix the dependency system some more..
 		double sum = 0.0;
 		FOREACH_INPUT(Reach,
-			sum += RESULT(ReachSuspendedSedimentOutput, *Input);
+			sum += RESULT(ReachSuspendedGrainOutput, *Input);
 		)
 		return sum;
 	)
 	
-	EQUATION(Model, ReachSuspendedSedimentOutput,
-		return 86400.0 * RESULT(SuspendedSedimentMass) * RESULT(ReachFlow) / RESULT(ReachVolume);
+	EQUATION(Model, ReachSuspendedGrainOutput,
+		return 86400.0 * RESULT(SuspendedGrainMass) * SafeDivide(RESULT(ReachFlow), RESULT(ReachVolume));
 	)
 	
+	/*
 	EQUATION(Model, ClayReleaseFromChannelBanks,
 		return PARAMETER(BankErosionScalingFactor) * pow(RESULT(ReachFlow), PARAMETER(BankErosionNonlinearCoefficient));
 	)
+	*/
 	
 	EQUATION(Model, ReachFrictionFactor,
 		return 4.0 * RESULT(ReachDepth) / (2.0 * RESULT(ReachDepth) + PARAMETER(ReachWidth));
@@ -328,10 +326,10 @@ AddINCAMicroplasticsModel(inca_model *Model)
 		return sqrt(earthsurfacegravity * RESULT(ReachDepth) * PARAMETER(ShearVelocityCoefficient) * PARAMETER(MeanChannelSlope));
 	)
 	
-	EQUATION(Model, ProportionOfSedimentThatCanBeEntrained,
+	EQUATION(Model, ProportionOfGrainThatCanBeEntrained,
 		double Dmax = 9.99 * pow(RESULT(ReachShearVelocity), 2.52);
-		double Dlow = PARAMETER(SmallestDiameterOfSedimentClass);
-		double Dupp = PARAMETER(LargestDiameterOfSedimentClass);
+		double Dlow = PARAMETER(SmallestDiameterOfClass);
+		double Dupp = PARAMETER(LargestDiameterOfClass);
 		if(Dmax < Dlow) return 0.0;
 		if(Dmax > Dupp) return 1.0;
 		return (Dmax - Dlow) / (Dupp - Dlow);
@@ -343,40 +341,52 @@ AddINCAMicroplasticsModel(inca_model *Model)
 		return waterdensity * earthsurfacegravity * PARAMETER(MeanChannelSlope) * RESULT(ReachVelocity) * RESULT(ReachDepth);
 	)
 	
-	EQUATION(Model, SedimentEntrainment,
-		double value = 86400.0 * PARAMETER(EntrainmentCoefficient) * RESULT(MassOfBedSedimentPerUnitArea) * RESULT(ProportionOfSedimentThatCanBeEntrained) * RESULT(StreamPower) * RESULT(ReachFrictionFactor);
+	EQUATION(Model, GrainEntrainment,
+		double value = 86400.0 * PARAMETER(EntrainmentCoefficient) * RESULT(MassOfBedGrainPerUnitArea) * RESULT(ProportionOfGrainThatCanBeEntrained) * RESULT(StreamPower) * RESULT(ReachFrictionFactor);
 		return value;
 	)
-	
-	EQUATION(Model, SedimentDeposition,
-		double mediangrainsize = (PARAMETER(SmallestDiameterOfSedimentClass) + PARAMETER(LargestDiameterOfSedimentClass)) / 2.0;
-		double sedimentdensity = 2650.0;
+	 
+	EQUATION(Model, GrainDeposition,
+		double mediangrainsize = (PARAMETER(SmallestDiameterOfClass) + PARAMETER(LargestDiameterOfClass)) / 2.0;
+		double sedimentdensity = PARAMETER(DensityOfClass);
 		double waterdensity    = 1000.0;
 		double earthsurfacegravity = 9.807;
 		double fluidviscosity = 0.001;
 		double terminalsettlingvelocity = (sedimentdensity - waterdensity) * earthsurfacegravity * Square(mediangrainsize) / (18.0 * fluidviscosity);
 		
-		double value = 86400.0 * terminalsettlingvelocity * RESULT(SuspendedSedimentMass) / RESULT(ReachVolume);
+		double value = 86400.0 * terminalsettlingvelocity * SafeDivide(RESULT(SuspendedGrainMass), RESULT(ReachVolume));
 		
 		return value;
 	)
 	
-	EQUATION(Model, MassOfBedSedimentPerUnitArea,
-		return RESULT(SedimentDeposition) - RESULT(SedimentEntrainment);
+	EQUATION(Model, MassOfBedGrainPerUnitArea,
+		return RESULT(GrainDeposition) - RESULT(GrainEntrainment);
 	)
 	
-	EQUATION(Model, SuspendedSedimentMass,
-		double clayrelease = RESULT(ClayReleaseFromChannelBanks);
-		if(CURRENT_INDEX(SizeClass) != 0) clayrelease = 0.0;      //NOTE: This assumes that index 0 is always clay though...
-		
-		return 
-			  RESULT(SedimentOfSizeClassDeliveredToReach) 
-			+ PARAMETER(EffluentSedimentConcentration) * PARAMETER(EffluentFlow)
-			+ RESULT(ReachUpstreamSuspendedSediment) 
-			- RESULT(ReachSuspendedSedimentOutput) 
-			+ PARAMETER(ReachLength) * PARAMETER(ReachWidth) * (RESULT(SedimentEntrainment) + clayrelease - RESULT(SedimentDeposition));
+	EQUATION(Model, GrainAbstraction,
+		return RESULT(ReachAbstraction) * 86400.0 * SafeDivide(RESULT(SuspendedGrainMass), RESULT(ReachVolume)); 
 	)
-#endif
+	
+	EQUATION(Model, EffluentGrain,
+		double effluentflow = IF_INPUT_ELSE_PARAMETER(EffluentTimeseries, EffluentFlow) * 86400.0;
+		double effluentconc = PARAMETER(EffluentGrainConcentration) * 1e-3;
+		
+		if(PARAMETER(ReachHasEffluentInputs)) return effluentflow * effluentconc;
+		
+		return 0.0;
+	)
+	
+	EQUATION(Model, SuspendedGrainMass,
+		return 
+			  RESULT(TotalGrainDeliveryToReach) 
+			+ RESULT(EffluentGrain)
+			+ RESULT(ReachUpstreamSuspendedGrain) 
+			- RESULT(ReachSuspendedGrainOutput)
+			- RESULT(GrainAbstraction)
+			+ PARAMETER(ReachLength) * PARAMETER(ReachWidth) * (RESULT(GrainEntrainment) - RESULT(GrainDeposition));
+	)
+	
+	//TODO: In-reach and in-bed breakdown between classes.
 }
 
 

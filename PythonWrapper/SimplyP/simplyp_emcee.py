@@ -93,8 +93,8 @@ calibration = [
 	('Proportion of precipitation that contributes to quick flow', []),
 	('Baseflow index',                                             []),
 	('Groundwater time constant',                                  []),
-	('Gradient of reach velocity-discharge relationship',          []),
-	('Exponent of reach velocity-discharge relationship',          []),
+	('Gradient of stream velocity-discharge relationship',         []),
+	('Exponent of stream velocity-discharge relationship',         []),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -119,11 +119,9 @@ comparisons = [
 objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 
 
-
 if __name__ == '__main__': #NOTE: This line is needed, or something goes horribly wrong with the paralellization
 	samples = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=20000, n_burn=1000)
 	
 
-	
 	
 	

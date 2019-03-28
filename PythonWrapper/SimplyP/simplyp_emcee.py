@@ -1,6 +1,6 @@
 
 
-import matplotlib.pyplot as plt, seaborn as sn, emcee, corner, mpld3, imp
+import matplotlib.pyplot as plt, seaborn as sn, emcee, corner, imp
 import numpy as np
 import time
 
@@ -14,6 +14,11 @@ from multiprocessing import Pool
 
 
 def log_prior(params, min, max) :
+	"""
+	params: list or array of parameter values
+	min: list or array of minimum parameter values
+	max: list or array of maximum parameter values
+	"""
 	if cf.check_min_max(params, min, max) :
 		return 0
 	return -np.inf
@@ -21,6 +26,15 @@ def log_prior(params, min, max) :
 #IMPORTANT NOTE: If you want to run emcee multithreaded: The log_posterior function has to access the dataset as a global. It can not take it as an argument. This is because ctypes of pointer type can not be 'pickled',
 #  which is what python does when it sends arguments to functions on separate threads. In that case, you will end up with a garbage value for the pointer.
 def log_posterior(params, min, max, calibration, objective):
+	"""
+	params: list or array of parameter values
+	min: list or array of minimum parameter values
+	max: list or array of maximum parameter values
+	calibration: 'calibration' structure is a list of tuples, each tuple containing (param name string, [index string])
+	objective: tuple (- function to use as measure of model performance,
+					  - list containing simulated and observed variables you want to compare. Each element in the list is a 4-element tuple, with    items (name of simulated result, [index result applies to], name of observation input data, [index for observed data])
+					  - skiptimesteps: integer, the number of timesteps to discard from the start of the model run when comparing performance (i.e. warmup period)
+	"""
 	log_pri = log_prior(params, min, max)
 	
 	llfun = objective[0]
@@ -120,7 +134,7 @@ objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 
 
 if __name__ == '__main__': #NOTE: This line is needed, or something goes horribly wrong with the paralellization
-	samples = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=20000, n_burn=1000)
+	samples = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=10, n_burn=5)
 	
 
 	

@@ -80,6 +80,8 @@ def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_w
 	fig.savefig('simplyp_plots\\chains.png')
 
 	samples = sampler.chain[:, n_burn:, :].reshape((-1, n_dim))
+	
+	lnprobs = sampler.lnprobability[:, n_burn:].reshape((-1))
 
 	# Triangle plot
 	tri = corner.corner(samples,
@@ -94,7 +96,7 @@ def run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_w
 	
 	pool.close()
 
-	return samples	
+	return samples, lnprobs
 
 	
 	
@@ -107,8 +109,8 @@ calibration = [
 	('Proportion of precipitation that contributes to quick flow', []),
 	('Baseflow index',                                             []),
 	('Groundwater time constant',                                  []),
-	('Gradient of stream velocity-discharge relationship',         []),
-	('Exponent of stream velocity-discharge relationship',         []),
+	('Gradient of reach velocity-discharge relationship',          []),
+	('Exponent of reach velocity-discharge relationship',          []),
 	('Soil water time constant',                                   ['Arable']),
 	('Soil water time constant',                                   ['Semi-natural']),
 	]
@@ -134,8 +136,12 @@ objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 
 
 if __name__ == '__main__': #NOTE: This line is needed, or something goes horribly wrong with the paralellization
-	samples = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=10, n_burn=5)
+	samples, lnprobs = run_emcee(min, max, initial_guess, calibration, labels_short, objective, n_walk=20, n_steps=10, n_burn=5)
 	
+	index_max = np.argmax(probs)
+	best_sample = samples[index_max]
+	
+	print(best_sample)
 
 	
 	

@@ -4,6 +4,7 @@
 #define INCA_TEST_FOR_NAN 0
 #define INCA_EQUATION_PROFILING 1
 #define INCA_PRINT_TIMING_INFO 1
+#define INCA_INDEX_BOUNDS_TESTS 1
 
 #include "../../inca.h"
 
@@ -32,6 +33,7 @@ int main()
 	inca_data_set *DataSet = GenerateDataSet(Model);
     
 	ReadParametersFromFile(DataSet, ParameterFile);
+	
     
 	ReadInputsFromFile(DataSet, InputFile);
 	

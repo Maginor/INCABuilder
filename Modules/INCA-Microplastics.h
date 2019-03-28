@@ -297,10 +297,10 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	
 	
 	EQUATION(Model, ReachUpstreamSuspendedGrain,
-		//CURRENT_INDEX(SizeClass); //TODO: Has to be here until we fix the dependency system some more..
 		double sum = 0.0;
+		index_t GrainIndex = CURRENT_INDEX(Class);
 		FOREACH_INPUT(Reach,
-			sum += RESULT(ReachSuspendedGrainOutput, *Input);
+			sum += RESULT(ReachSuspendedGrainOutput, *Input, GrainIndex);
 		)
 		return sum;
 	)

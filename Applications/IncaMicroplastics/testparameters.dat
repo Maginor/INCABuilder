@@ -167,7 +167,7 @@ true
 2
 
 "Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
-1
+1e-7
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
@@ -175,10 +175,10 @@ true
 
 ###################### "Grain class" ######################
 "Smallest diameter of grain in class" :     #(m) [0, 2000]
-0    6e-5 6e-5 6e-4 2e-3
+0    6e-5 6e-5 6e-4 2e-2
 
 "Largest diameter of grain in class" :     #(m) [-1.79769313486232e+308, 1.79769313486232e+308]
-6e-5 6e-4 6e-4 2e-3 2e-2
+6e-5 6e-4 6e-4 2e-3 2e-1
 
 "Density of grain class" :     #(kg/m3) [-1.79769313486232e+308, 1.79769313486232e+308]
 2650 2650 1200 1200 2650

@@ -148,9 +148,7 @@ def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, o
 	return sims, overall
 	
 	
-def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, n_samples, filename) :
-
-	comparison_idx = 0 #TODO: Do all comparisons in multiplot?
+def plot_simulations(dataset, best, simulationresults, calibration, objective, comparison_idx, filename) :
 
 	llfun, comparisons, skiptimesteps = objective
 	
@@ -163,16 +161,15 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	timesteps = dataset.get_parameter_uint('Timesteps', [])
 	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
 	
-	sims, overall = do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, n_samples, comparison_idx)
+	#for sim in sims :
+	for sim in simulationresults :
 	
-	for sim in sims :
-
+		a = 0.01
 		ax.plot(date_idx, sim, color='black', alpha=a, label='_nolegend_') #,linewidth=1)
 		
 	obs = dataset.get_input_series(obsname, obsindexes, True)
 	pobs = ax.plot(date_idx, obs, color = 'orange', label = 'observed')
 	
-	best = best_sample(samplelist, lnproblist)
 	cf.set_values(dataset, best, calibration)
 	dataset.run_model()
 	
@@ -186,10 +183,6 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	ax.set_ylabel('%s $%s$' % (obsname, dataset.get_result_unit(simname)))
 	
 	fig.savefig(filename)
-	
-	#TODO: Do stuff with overall too
-	
-	#To get percentiles, should work to do e.g.  np.percentile(sims, [0.025 0.5 0.975], axis=1) or np.percentile(overall, [0.025 0.5 0.975], axis=1)
 
 
 	
@@ -234,8 +227,6 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 		
 	objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 	
-	
-
 	n_walk = 20
 	n_steps = 200
 	n_burn = 100
@@ -248,8 +239,17 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	
 	triangle_plot(samplelist, labels_short, "simplyp_plots\\triangle_plot.png")
 	
-	plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, 100, "simplyp_plots\\random_samples.png")
+	comparison_idx = 0 #TODO: Allow you to do multiple at the same time?
+	
+	sims, overall = do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, 100, comparison_idx)
+	
+	best = best_sample(samplelist, lnproblist)
+	#plot_simulations(dataset, best, sims, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
+	plot_simulations(dataset, best, overall, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
 
+	#TODO: Do stuff with percentiles..
+	#To get percentiles, should work to do e.g.  np.percentile(sims, [0.025 0.5 0.975], axis=1) or np.percentile(overall, [0.025 0.5 0.975], axis=1)
+	
 	plt.show()
 	
 	

@@ -3,6 +3,7 @@
 import matplotlib, matplotlib.pyplot as plt, seaborn as sn, emcee, corner, imp, pandas as pd, datetime as dt, random
 import numpy as np
 import time
+from scipy.stats import norm
 
 wrapper_fpath = (r"..\inca.py")
 optimize_funs_fpath = (r'..\inca_calibration.py')
@@ -116,15 +117,16 @@ def triangle_plot(samplelist, labels_short, filename):
 
 	tri.savefig(filename)
 	
-def do_n_random_simulations(dataset, samplelist, calibration, objective, n_samples) :
+def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, n_samples, comparison_idx) :
 
 	llfun, comparisons, skiptimesteps = objective
 	
-	comparisontolookat = comparisons[0] #TODO: Allow you to select others or multiple?
+	comparisontolookat = comparisons[comparison_idx] #TODO: Allow you to select multiple?
 	simname, simindexes, obsname, obsindexes = comparisontolookat
 	
-	sims = []
-	for it in range(1, n_random_samples) :       #TODO: Should be paralellized, really..
+	sims    = []
+	overall = []
+	for it in range(1, n_samples) :       #TODO: Should be paralellized, really..
 		
 		random_index = random.randint(0, len(samplelist)-1)
 		random_sample = samplelist[random_index]
@@ -135,15 +137,24 @@ def do_n_random_simulations(dataset, samplelist, calibration, objective, n_sampl
 		sim = dataset.get_result_series(simname, simindexes)
 	
 		sims.append(sim)
-	
-	return sims
 		
+		M = random_sample[len(calibration) + comparison_idx]
+		
+		stoch = norm.rvs(loc=0, scale=M*sim, size=len(sim))
+		perturbed = sim + stoch
+
+		overall.append(perturbed)
+	
+	return sims, overall
+	
 	
 def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, n_samples, filename) :
 
+	comparison_idx = 0 #TODO: Do all comparisons in multiplot?
+
 	llfun, comparisons, skiptimesteps = objective
 	
-	comparisontolookat = comparisons[0] #TODO: Do all comparisons in multiplot?
+	comparisontolookat = comparisons[comparison_idx] 
 	simname, simindexes, obsname, obsindexes = comparisontolookat
 	
 	fig, ax = plt.subplots()
@@ -152,7 +163,7 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	timesteps = dataset.get_parameter_uint('Timesteps', [])
 	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
 	
-	sims = do_n_random_simulations(dataset, samplelist, calibration, objective, n_samples)
+	sims, overall = do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, n_samples, comparison_idx)
 	
 	for sim in sims :
 
@@ -175,6 +186,10 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	ax.set_ylabel('%s $%s$' % (obsname, dataset.get_result_unit(simname)))
 	
 	fig.savefig(filename)
+	
+	#TODO: Do stuff with overall too
+	
+	#To get percentiles, should work to do e.g.  np.percentile(sims, [0.025 0.5 0.975], axis=1) or np.percentile(overall, [0.025 0.5 0.975], axis=1)
 
 
 	
@@ -222,8 +237,8 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	
 
 	n_walk = 20
-	n_steps = 2000
-	n_burn = 1000
+	n_steps = 200
+	n_burn = 100
 
 	samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, n_walk=n_walk, n_steps=n_steps)
 	
@@ -233,7 +248,7 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	
 	triangle_plot(samplelist, labels_short, "simplyp_plots\\triangle_plot.png")
 	
-	plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, 1000, "simplyp_plots\\random_samples.png")
+	plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, 100, "simplyp_plots\\random_samples.png")
 
 	plt.show()
 	

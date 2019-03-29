@@ -188,7 +188,6 @@ def plot_simulations(dataset, best, simulationresults, calibration, objective, c
 def plot_percentiles(dataset, simulationresults, calibration, objective, comparison_idx, perc, filename) :
 
 	llfun, comparisons, skiptimesteps = objective
-	
 	comparisontolookat = comparisons[comparison_idx] 
 	simname, simindexes, obsname, obsindexes = comparisontolookat
 	
@@ -209,6 +208,32 @@ def plot_percentiles(dataset, simulationresults, calibration, objective, compari
 	ax.legend()
 	
 	fig.savefig(filename)
+	
+	
+def simulation_of_median_parameters(dataset, samplelist, calibration, objective, comparison_idx) :
+	median_sample = np.median(samplelist, axis=0)
+	
+	cf.set_values(dataset, median_sample, calibration)
+	
+	dataset.run_model()
+	
+	llfun, comparisons, skiptimesteps = objective
+	comparisontolookat = comparisons[comparison_idx] 
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	obs = dataset.get_input_series(obsname, obsindexes, True)
+	
+	sim_med = dataset.get_result_series(simname, simindexes)
+	
+	err_raw = obs - sim_med
+	
+	M_med = median_sample[len(calibration) + comparison_idx]
+	
+	sigma_e = M_med*sim_med
+	
+	err_std = err_raw / sigma_e
+	
+	return median_sample, sim_med, err_std
 	
 	
 wr.initialize('simplyp.dll')
@@ -278,6 +303,12 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	plot_percentiles(dataset, overall, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles.png")
 	
 	plot_percentiles(dataset, param_only, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles2.png")
+	
+	median_sample, sim_med, err_std = simulation_of_median_parameters(dataset, samplelist, calibration, objective, comparison_idx)
+	
+	#TODO: This doesn't work because 1. there are nans in err_std, and 2. the axes are wrong. Figure out what to do.
+	#pd.tools.plotting.autocorrelation_plot(err_std)
+	#print(err_std)
 	
 	plt.show()
 	

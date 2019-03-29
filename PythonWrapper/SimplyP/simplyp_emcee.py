@@ -124,7 +124,7 @@ def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, o
 	comparisontolookat = comparisons[comparison_idx] #TODO: Allow you to select multiple?
 	simname, simindexes, obsname, obsindexes = comparisontolookat
 	
-	sims    = []
+	param_only    = []
 	overall = []
 	for it in range(1, n_samples) :       #TODO: Should be paralellized, really..
 		
@@ -136,7 +136,7 @@ def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, o
 	
 		sim = dataset.get_result_series(simname, simindexes)
 	
-		sims.append(sim)
+		param_only.append(sim)
 		
 		M = random_sample[len(calibration) + comparison_idx]
 		
@@ -145,7 +145,7 @@ def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, o
 
 		overall.append(perturbed)
 	
-	return sims, overall
+	return param_only, overall
 	
 	
 def plot_simulations(dataset, best, simulationresults, calibration, objective, comparison_idx, filename) :
@@ -168,14 +168,14 @@ def plot_simulations(dataset, best, simulationresults, calibration, objective, c
 		ax.plot(date_idx, sim, color='black', alpha=a, label='_nolegend_') #,linewidth=1)
 		
 	obs = dataset.get_input_series(obsname, obsindexes, True)
-	pobs = ax.plot(date_idx, obs, color = 'orange', label = 'observed')
+	ax.plot(date_idx, obs, color = 'orange', label = 'observed')
 	
 	cf.set_values(dataset, best, calibration)
 	dataset.run_model()
 	
-	sim = dataset.get_result_series(simname, simindexes)
+	bestsim = dataset.get_result_series(simname, simindexes)
 	
-	psim = ax.plot(date_idx, sim, color = 'blue', label='best simulated')
+	ax.plot(date_idx, bestsim, color = 'blue', label='best simulated')
 	
 	ax.legend()
 	
@@ -184,7 +184,31 @@ def plot_simulations(dataset, best, simulationresults, calibration, objective, c
 	
 	fig.savefig(filename)
 
+def plot_percentiles(dataset, simulationresults, calibration, objective, comparison_idx, perc, filename) :
 
+	llfun, comparisons, skiptimesteps = objective
+	
+	comparisontolookat = comparisons[comparison_idx] 
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	percentiles = np.percentile(simulationresults, perc, axis=0)
+	
+	fig, ax = plt.subplots()
+	
+	start_date = dt.datetime.strptime(dataset.get_parameter_time('Start date', []),'%Y-%m-%d')
+	timesteps = dataset.get_parameter_uint('Timesteps', [])
+	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
+	
+	ax.plot(date_idx, percentiles[1], color='red', label='median simulated')
+	ax.fill_between(date_idx, percentiles[0], percentiles[2], color='red', alpha=0.3)
+	
+	obs = dataset.get_input_series(obsname, obsindexes, True)
+	ax.plot(date_idx, obs, color = 'black', label = 'observed')
+	
+	ax.legend()
+	
+	fig.savefig(filename)
+	
 	
 wr.initialize('simplyp.dll')
 
@@ -228,8 +252,10 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 	
 	n_walk = 20
-	n_steps = 200
-	n_burn = 100
+	n_steps = 2000
+	n_burn = 1000
+	
+	n_random_samples = 1000
 
 	samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, n_walk=n_walk, n_steps=n_steps)
 	
@@ -241,14 +267,16 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	
 	comparison_idx = 0 #TODO: Allow you to do multiple at the same time?
 	
-	sims, overall = do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, 100, comparison_idx)
+	param_only, overall = do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, n_random_samples, comparison_idx)
 	
 	best = best_sample(samplelist, lnproblist)
-	#plot_simulations(dataset, best, sims, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
-	plot_simulations(dataset, best, overall, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
-
-	#TODO: Do stuff with percentiles..
-	#To get percentiles, should work to do e.g.  np.percentile(sims, [0.025 0.5 0.975], axis=1) or np.percentile(overall, [0.025 0.5 0.975], axis=1)
+	#plot_simulations(dataset, best, param_only, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
+	#plot_simulations(dataset, best, overall, calibration, objective, comparison_idx, "simplyp_plots\\random_samples2.png")
+	
+	perc = [0.025, 0.5, 0.975]
+	plot_percentiles(dataset, overall, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles.png")
+	
+	plot_percentiles(dataset, param_only, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles2.png")
 	
 	plt.show()
 	

@@ -141,6 +141,7 @@ def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, o
 		M = random_sample[len(calibration) + comparison_idx]
 		
 		stoch = norm.rvs(loc=0, scale=M*sim, size=len(sim))
+		
 		perturbed = sim + stoch
 
 		overall.append(perturbed)
@@ -252,10 +253,10 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 	
 	n_walk = 20
-	n_steps = 2000
-	n_burn = 1000
+	n_steps = 200
+	n_burn = 100
 	
-	n_random_samples = 1000
+	n_random_samples = 100
 
 	samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, n_walk=n_walk, n_steps=n_steps)
 	
@@ -273,7 +274,7 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	#plot_simulations(dataset, best, param_only, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
 	#plot_simulations(dataset, best, overall, calibration, objective, comparison_idx, "simplyp_plots\\random_samples2.png")
 	
-	perc = [0.025, 0.5, 0.975]
+	perc = [2.5, 50, 97.5]
 	plot_percentiles(dataset, overall, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles.png")
 	
 	plot_percentiles(dataset, param_only, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles2.png")

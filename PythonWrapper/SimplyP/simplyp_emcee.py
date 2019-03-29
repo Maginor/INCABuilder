@@ -306,7 +306,7 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	
 	median_sample, sim_med, err_std = simulation_of_median_parameters(dataset, samplelist, calibration, objective, comparison_idx)
 	
-	#TODO: This doesn't work because 1. there are nans in err_std, and 2. the axes are wrong. Figure out what to do.
+	#TODO: This doesn't work because 1. there are nans in err_std (because of nans in the obs), and 2. the axes are wrong. Figure out what to do.
 	#pd.tools.plotting.autocorrelation_plot(err_std)
 	#print(err_std)
 	

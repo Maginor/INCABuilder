@@ -12,9 +12,9 @@ import itertools
 
 #from emcee.utils import MPIPool
 
-def set_values(dataset, values, calibration):
+def set_values(dataset, values, calibration, ignore_end_params=0):
 	#TODO: Allow for linking parameters across indexes (say you want the Time constant for soil water to be the same across all landscape units)
-	for idx, cal in enumerate(calibration):
+	for idx, cal in enumerate(calibration[:ignore_end_params]):
 		parname, parindexes = cal
 		dataset.set_parameter_double(parname, parindexes, values[idx])
 		
@@ -75,11 +75,11 @@ def default_initial_guess(dataset, calibration) :
 	#NOTE: Just reads the values that were provided in the file
 	return [dataset.get_parameter_double(cal[0], cal[1]) for cal in calibration]
 	
-def constrain_min_max(dataset, calibration, minvec, maxvec) :
+def constrain_min_max(dataset, calibration, minvec, maxvec, ignore_end_params=0) :
 	'''
 		Constrain the min and max values in the provided vectors to the recommended min and max values set for these parameters by the model.
 	'''
-	for idx, cal in enumerate(calibration) :
+	for idx, cal in enumerate(calibration[:ignore_end_params]) :
 		min, max = dataset.get_parameter_double_min_max(cal[0])
 		if minvec[idx] < min : minvec[idx] = min
 		if maxvec[idx] > max : maxvec[idx] = max
@@ -89,15 +89,19 @@ def log_likelyhood(params, dataset, calibration, objective):
 	# (in that case, only use the copy when setting parameter values, running the model, and extracting results below)
 	datasetcopy = dataset.copy()
 	
-	set_values(datasetcopy, params, calibration)
-	
-	datasetcopy.run_model()
-	
 	#fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
 	fn, comparisons, skiptimesteps = objective
 	
+	n_comparisons = len(comparisons) # How many variables to include in likelihood?
+	Ms = params[len(calibration)-n_comparisons:] # Pick out associated error terms from calibration
+	
+	set_values(datasetcopy, params, calibration, n_comparisons) # Drop Ms from calibration
+	
+	datasetcopy.run_model()
+	
 	like = 0
-	for comparison in comparisons:
+	
+	for i, comparison in enumerate(comparisons):
 		simname, simindexes, obsname, obsindexes = comparison
     
 		sim = datasetcopy.get_result_series(simname, simindexes)
@@ -106,7 +110,7 @@ def log_likelyhood(params, dataset, calibration, objective):
 		sim2 = sim[skiptimesteps:]
 		obs2 = obs[skiptimesteps:]
 		
-		M = params[len(calibration)]
+		M = Ms[i]
 		sigma_e = M*sim2
 		
 		likes = norm(sim2, sigma_e).logpdf(obs2)

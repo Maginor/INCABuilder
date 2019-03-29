@@ -116,7 +116,30 @@ def triangle_plot(samplelist, labels_short, filename):
 
 	tri.savefig(filename)
 	
-def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, n_random_samples, filename) :
+def do_n_random_simulations(dataset, samplelist, calibration, objective, n_samples) :
+
+	llfun, comparisons, skiptimesteps = objective
+	
+	comparisontolookat = comparisons[0] #TODO: Allow you to select others or multiple?
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	sims = []
+	for it in range(1, n_random_samples) :       #TODO: Should be paralellized, really..
+		
+		random_index = random.randint(0, len(samplelist)-1)
+		random_sample = samplelist[random_index]
+		
+		cf.set_values(dataset, random_sample, calibration)
+		dataset.run_model()
+	
+		sim = dataset.get_result_series(simname, simindexes)
+	
+		sims.append(sim)
+	
+	return sims
+		
+	
+def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, n_samples, filename) :
 
 	llfun, comparisons, skiptimesteps = objective
 	
@@ -129,20 +152,10 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	timesteps = dataset.get_parameter_uint('Timesteps', [])
 	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
 	
-	for it in range(1, n_random_samples) :       #TODO: Should be paralellized, really..
-		
-		random_index = random.randint(0, len(samplelist)-1)
-		#print(random_index)
-		random_sample = samplelist[random_index]
-		#print(random_sample)
-		
-		cf.set_values(dataset, random_sample, calibration)
-		dataset.run_model()
+	sims = do_n_random_simulations(dataset, samplelist, calibration, objective, n_samples)
 	
-		sim = dataset.get_result_series(simname, simindexes)
-	
-		a = max(1/256, 1/n_random_samples)
-		#a = 0.01
+	for sim in sims :
+
 		ax.plot(date_idx, sim, color='black', alpha=a, label='_nolegend_') #,linewidth=1)
 		
 	obs = dataset.get_input_series(obsname, obsindexes, True)

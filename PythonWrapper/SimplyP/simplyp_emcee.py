@@ -3,6 +3,7 @@
 import matplotlib, matplotlib.pyplot as plt, seaborn as sn, emcee, corner, imp, pandas as pd, datetime as dt, random
 import numpy as np
 import time
+from scipy.stats import norm
 
 wrapper_fpath = (r"..\inca.py")
 optimize_funs_fpath = (r'..\inca_calibration.py')
@@ -116,11 +117,43 @@ def triangle_plot(samplelist, labels_short, filename):
 
 	tri.savefig(filename)
 	
-def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, n_random_samples, filename) :
+def do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, n_samples, comparison_idx) :
 
 	llfun, comparisons, skiptimesteps = objective
 	
-	comparisontolookat = comparisons[0] #TODO: Do all comparisons in multiplot?
+	comparisontolookat = comparisons[comparison_idx] #TODO: Allow you to select multiple?
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	param_only    = []
+	overall = []
+	for it in range(1, n_samples) :       #TODO: Should be paralellized, really..
+		
+		random_index = random.randint(0, len(samplelist)-1)
+		random_sample = samplelist[random_index]
+		
+		cf.set_values(dataset, random_sample, calibration)
+		dataset.run_model()
+	
+		sim = dataset.get_result_series(simname, simindexes)
+	
+		param_only.append(sim)
+		
+		M = random_sample[len(calibration) + comparison_idx]
+		
+		stoch = norm.rvs(loc=0, scale=M*sim, size=len(sim))
+		
+		perturbed = sim + stoch
+
+		overall.append(perturbed)
+	
+	return param_only, overall
+	
+	
+def plot_simulations(dataset, best, simulationresults, calibration, objective, comparison_idx, filename) :
+
+	llfun, comparisons, skiptimesteps = objective
+	
+	comparisontolookat = comparisons[comparison_idx] 
 	simname, simindexes, obsname, obsindexes = comparisontolookat
 	
 	fig, ax = plt.subplots()
@@ -129,32 +162,21 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	timesteps = dataset.get_parameter_uint('Timesteps', [])
 	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
 	
-	for it in range(1, n_random_samples) :       #TODO: Should be paralellized, really..
-		
-		random_index = random.randint(0, len(samplelist)-1)
-		#print(random_index)
-		random_sample = samplelist[random_index]
-		#print(random_sample)
-		
-		cf.set_values(dataset, random_sample, calibration)
-		dataset.run_model()
+	#for sim in sims :
+	for sim in simulationresults :
 	
-		sim = dataset.get_result_series(simname, simindexes)
-	
-		a = max(1/256, 1/n_random_samples)
-		#a = 0.01
+		a = 0.01
 		ax.plot(date_idx, sim, color='black', alpha=a, label='_nolegend_') #,linewidth=1)
 		
 	obs = dataset.get_input_series(obsname, obsindexes, True)
-	pobs = ax.plot(date_idx, obs, color = 'orange', label = 'observed')
+	ax.plot(date_idx, obs, color = 'orange', label = 'observed')
 	
-	best = best_sample(samplelist, lnproblist)
 	cf.set_values(dataset, best, calibration)
 	dataset.run_model()
 	
-	sim = dataset.get_result_series(simname, simindexes)
+	bestsim = dataset.get_result_series(simname, simindexes)
 	
-	psim = ax.plot(date_idx, sim, color = 'blue', label='best simulated')
+	ax.plot(date_idx, bestsim, color = 'blue', label='best simulated')
 	
 	ax.legend()
 	
@@ -163,7 +185,56 @@ def plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objectiv
 	
 	fig.savefig(filename)
 
+def plot_percentiles(dataset, simulationresults, calibration, objective, comparison_idx, perc, filename) :
 
+	llfun, comparisons, skiptimesteps = objective
+	comparisontolookat = comparisons[comparison_idx] 
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	percentiles = np.percentile(simulationresults, perc, axis=0)
+	
+	fig, ax = plt.subplots()
+	
+	start_date = dt.datetime.strptime(dataset.get_parameter_time('Start date', []),'%Y-%m-%d')
+	timesteps = dataset.get_parameter_uint('Timesteps', [])
+	date_idx = np.array(pd.date_range(start_date, periods=timesteps))
+	
+	ax.plot(date_idx, percentiles[1], color='red', label='median simulated')
+	ax.fill_between(date_idx, percentiles[0], percentiles[2], color='red', alpha=0.3)
+	
+	obs = dataset.get_input_series(obsname, obsindexes, True)
+	ax.plot(date_idx, obs, color = 'black', label = 'observed')
+	
+	ax.legend()
+	
+	fig.savefig(filename)
+	
+	
+def simulation_of_median_parameters(dataset, samplelist, calibration, objective, comparison_idx) :
+	median_sample = np.median(samplelist, axis=0)
+	
+	cf.set_values(dataset, median_sample, calibration)
+	
+	dataset.run_model()
+	
+	llfun, comparisons, skiptimesteps = objective
+	comparisontolookat = comparisons[comparison_idx] 
+	simname, simindexes, obsname, obsindexes = comparisontolookat
+	
+	obs = dataset.get_input_series(obsname, obsindexes, True)
+	
+	sim_med = dataset.get_result_series(simname, simindexes)
+	
+	err_raw = obs - sim_med
+	
+	M_med = median_sample[len(calibration) + comparison_idx]
+	
+	sigma_e = M_med*sim_med
+	
+	err_std = err_raw / sigma_e
+	
+	return median_sample, sim_med, err_std
+	
 	
 wr.initialize('simplyp.dll')
 
@@ -206,11 +277,11 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 		
 	objective = (cf.log_likelyhood, comparisons, skiptimesteps)
 	
-	
-
 	n_walk = 20
-	n_steps = 2000
-	n_burn = 1000
+	n_steps = 200
+	n_burn = 100
+	
+	n_random_samples = 100
 
 	samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, n_walk=n_walk, n_steps=n_steps)
 	
@@ -220,8 +291,25 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
 	
 	triangle_plot(samplelist, labels_short, "simplyp_plots\\triangle_plot.png")
 	
-	plot_n_random_samples(dataset, samplelist, lnproblist, calibration, objective, 1000, "simplyp_plots\\random_samples.png")
-
+	comparison_idx = 0 #TODO: Allow you to do multiple at the same time?
+	
+	param_only, overall = do_n_random_simulations_from_sample_list(dataset, samplelist, calibration, objective, n_random_samples, comparison_idx)
+	
+	best = best_sample(samplelist, lnproblist)
+	#plot_simulations(dataset, best, param_only, calibration, objective, comparison_idx, "simplyp_plots\\random_samples.png")
+	#plot_simulations(dataset, best, overall, calibration, objective, comparison_idx, "simplyp_plots\\random_samples2.png")
+	
+	perc = [2.5, 50, 97.5]
+	plot_percentiles(dataset, overall, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles.png")
+	
+	plot_percentiles(dataset, param_only, calibration, objective, comparison_idx, perc, "simplyp_plots\\percentiles2.png")
+	
+	median_sample, sim_med, err_std = simulation_of_median_parameters(dataset, samplelist, calibration, objective, comparison_idx)
+	
+	#TODO: This doesn't work because 1. there are nans in err_std (because of nans in the obs), and 2. the axes are wrong. Figure out what to do.
+	#pd.tools.plotting.autocorrelation_plot(err_std)
+	#print(err_std)
+	
 	plt.show()
 	
 	

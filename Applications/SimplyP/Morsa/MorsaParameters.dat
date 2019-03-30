@@ -7,10 +7,10 @@ index_sets:
 parameters:
 ###################### (no index sets) ######################
 "Timesteps" :     #(days) [0, 18446744073709551615]
-17167
+730
 
 "Start date" :     # ["1000-01-01", "3000-12-31"]
-"1971-01-01"
+"2015-11-01"
 
 "Latitude" :     #(°) [-90, 90] Used in PET calculation if no PET timeseries was provided in the input data
 59.6
@@ -25,16 +25,16 @@ parameters:
 0.02
 
 "PET multiplication factor" :     #(dimensionless) [0, 1]
-1
+0.7
 
 "Soil field capacity" :     #(mm) [0, 5000]
 200
 
 "Baseflow index" :     #(dimensionless) [0, 1]
-0.6
+0.5
 
 "Groundwater time constant" :     #(days) [0.5, 400]
-20
+10
 
 "Minimum groundwater flow" :     #(mm/day) [0, 10]
 0.2
@@ -95,7 +95,7 @@ true
 304.65
 
 "Reach length" :     #(m) [0, 10000000]
-35000
+10000  # realistically more like 35000
 
 "Initial in-stream flow" :     #(m^3/s) [0, 1000000] This parameter is only used by reaches that don't have other reaches as inputs.
 1
@@ -107,7 +107,7 @@ true
 0.65
 
 "Reach effluent TDP inputs" :     #(kg/day) [0, 10]
-0.0
+2.0
 
 "Is input to water body" :     # Whether or not the flow and various fluxes from this reach should be summed up in the calculation of inputs to a water body or lake
 false
@@ -124,7 +124,7 @@ false
 
 ###################### "Landscape units" ######################
 "Soil water time constant" :     #(days) [0.05, 40] Note: arable and improved grassland are grouped as 'agricultural' land, and only the arable soil hydrology parameters are used
-1 1 10
+1 1 3
 
 "Vegetation cover factor" :     #(dimensionless) [0, 1] Vegetation cover factor, describing ratio between long-term erosion under the land use class, compared to under bare soil of the same soil type, slope, etc. Source from (R)USLE literature and area-weight as necessary to obtain a single value for the land class.
 0.3 0.09 0.021

@@ -207,7 +207,6 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	)
 	
 	EQUATION(Model, ImmobileGrainStoreAfterMobilisation,
-		//TODO: Inputs. And the inputs should probably be added BEFORE mobilisation.
 		return RESULT(ImmobileGrainStoreBeforeMobilisation) - RESULT(MobilisedViaSplashDetachment) - RESULT(MobilisedViaFlowErosion);
 	)
 	

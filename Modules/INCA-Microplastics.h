@@ -95,10 +95,14 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	auto MobilisedViaFlowErosion      = RegisterEquation(Model, "Grain mass mobilised via flow erosion", KgPerKm2PerDay);
 	
 	auto SurfaceGrainStoreAfterAllTransport = RegisterEquation(Model, "Surface grain store after transport", KgPerKm2);
+	auto SurfaceGrainStoreMassTransferFromOtherClasses = RegisterEquation(Model, "Mass transfer to and from other classes in the surface grain store", KgPerKm2PerDay);
+	
 	auto SurfaceGrainStore   = RegisterEquation(Model, "Surface grain store", KgPerKm2);
 	SetInitialValue(Model, SurfaceGrainStore, InitialSurfaceStore);
 	
 	auto ImmobileGrainStoreAfterMobilisation = RegisterEquation(Model, "Immobile grain store after mobilisation", KgPerKm2);
+	auto ImmobileGrainStoreMassTransferFromOtherClasses = RegisterEquation(Model, "Mass transfer to and from other classes in the immobile grain store", KgPerKm2PerDay);
+	
 	auto ImmobileGrainStore     = RegisterEquation(Model, "Immobile grain store", KgPerKm2);
 	SetInitialValue(Model, ImmobileGrainStore, InitialImmobileStore);
 	
@@ -184,8 +188,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 		return RESULT(SurfaceGrainStoreBeforeTransport) - RESULT(TransportBeforeFlowErosion); //NOTE: Flow erosion is removed from the immobile store directly.
 	)
 	
-	EQUATION(Model, SurfaceGrainStore,
-		
+	EQUATION(Model, SurfaceGrainStoreMassTransferFromOtherClasses,
 		double aftertransport   = RESULT(SurfaceGrainStoreAfterAllTransport);
 		
 		double fromotherclasses = 0.0;
@@ -203,14 +206,18 @@ AddINCAMicroplasticsModel(inca_model *Model)
 			tootherclasses += PARAMETER(LandMassTransferRateBetweenClasses, CURRENT_INDEX(Class), OtherClass) * aftertransport;
 		}
 		
-		return aftertransport + fromotherclasses - tootherclasses;
+		return fromotherclasses - tootherclasses;
+	)
+	
+	EQUATION(Model, SurfaceGrainStore,
+		return RESULT(SurfaceGrainStoreAfterAllTransport) + RESULT(SurfaceGrainStoreMassTransferFromOtherClasses);
 	)
 	
 	EQUATION(Model, ImmobileGrainStoreAfterMobilisation,
 		return RESULT(ImmobileGrainStoreBeforeMobilisation) - RESULT(MobilisedViaSplashDetachment) - RESULT(MobilisedViaFlowErosion);
 	)
 	
-	EQUATION(Model, ImmobileGrainStore,
+	EQUATION(Model, ImmobileGrainStoreMassTransferFromOtherClasses,
 		double aftermob   = RESULT(ImmobileGrainStoreAfterMobilisation);
 		
 		double fromotherclasses = 0.0;
@@ -228,7 +235,11 @@ AddINCAMicroplasticsModel(inca_model *Model)
 			tootherclasses += PARAMETER(LandMassTransferRateBetweenClasses, CURRENT_INDEX(Class), OtherClass) * aftermob;
 		}
 		
-		return aftermob + fromotherclasses - tootherclasses;
+		return fromotherclasses - tootherclasses;
+	)
+	
+	EQUATION(Model, ImmobileGrainStore,
+		return RESULT(ImmobileGrainStoreAfterMobilisation) + RESULT(ImmobileGrainStoreMassTransferFromOtherClasses);
 	)
 	
 	EQUATION(Model, AreaScaledGrainDeliveryToReach,
@@ -238,7 +249,7 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	
 	///////////////// Suspended in reach ////////////////////////////////
 	
-	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.01, BoostRosenbrock4, 1e-3, 1e-3);
+	auto InstreamSedimentSolver = RegisterSolver(Model, "In-stream sediment solver", 0.1, BoostRosenbrock4, 1e-3, 1e-3);
 	
 	auto SedimentReach = RegisterParameterGroup(Model, "Sediment reach", Reach);
 	SetParentGroup(Model, SedimentReach, GrainClass);
@@ -252,6 +263,8 @@ AddINCAMicroplasticsModel(inca_model *Model)
 	auto ShearVelocityCoefficient        = RegisterParameterDouble(Model, Reaches, "Shear velocity coefficient", Dimensionless, 1.0);
 	auto MeanChannelSlope                = RegisterParameterDouble(Model, Reaches, "Mean channel slope", Dimensionless, 2.0);
 	auto EntrainmentCoefficient          = RegisterParameterDouble(Model, Reaches, "Entrainment coefficient", S2PerKg, 1.0);
+	
+	auto ReachMassTransferRateBetweenClasses = RegisterParameterDouble(Model, TransferMatrix, "Mass transfer rate between classes in the reach", Dimensionless, 0.0, 0.0, 1.0);
 	
 	auto ReachUpstreamSuspendedGrain         = RegisterEquation(Model, "Reach upstream suspended grain", KgPerDay);
 	//auto ClayReleaseFromChannelBanks       = RegisterEquation(Model, "Clay release from channel banks", KgPerM2PerDay);
@@ -381,6 +394,69 @@ AddINCAMicroplasticsModel(inca_model *Model)
 			- RESULT(ReachSuspendedGrainOutput)
 			- RESULT(GrainAbstraction)
 			+ PARAMETER(ReachLength) * PARAMETER(ReachWidth) * (RESULT(GrainEntrainment) - RESULT(GrainDeposition));
+	)
+	
+	
+	/// Transferring mass between classes due to breakdown and other causes.
+	
+	auto SuspendedGrainMassTransferFromOtherClasses = RegisterEquation(Model, "Mass transfer to and from other classes in the suspended grain store", KgPerDay);
+	auto BedGrainMassTransferFromOtherClasses       = RegisterEquation(Model, "Mass transfer to and from other classes in the bed grain store", KgPerM2PerDay);
+	auto ReachMassTransferControl                   = RegisterEquation(Model, "(Code that facilitates mass transfer between classes in the reach. Return value of this equation has no meaning)", Dimensionless);
+	
+	EQUATION(Model, SuspendedGrainMassTransferFromOtherClasses,
+		double suspendedmass = RESULT(SuspendedGrainMass);
+		
+		double fromotherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			double otherclassmass = RESULT(SuspendedGrainMass, OtherClass);
+			fromotherclasses += PARAMETER(ReachMassTransferRateBetweenClasses, OtherClass, CURRENT_INDEX(Class)) * otherclassmass;
+		}
+		
+		double tootherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			tootherclasses += PARAMETER(ReachMassTransferRateBetweenClasses, CURRENT_INDEX(Class), OtherClass) * suspendedmass;
+		}
+		
+		return fromotherclasses - tootherclasses;
+	)
+	
+	EQUATION(Model, BedGrainMassTransferFromOtherClasses,
+		double bedmass = RESULT(MassOfBedGrainPerUnitArea);
+		
+		double fromotherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			double otherclassmass = RESULT(MassOfBedGrainPerUnitArea, OtherClass);
+			fromotherclasses += PARAMETER(ReachMassTransferRateBetweenClasses, OtherClass, CURRENT_INDEX(Class)) * otherclassmass;
+		}
+		
+		double tootherclasses = 0.0;
+		
+		for(index_t OtherClass = FIRST_INDEX(Class); OtherClass < INDEX_COUNT(Class); ++OtherClass)
+		{
+			tootherclasses += PARAMETER(ReachMassTransferRateBetweenClasses, CURRENT_INDEX(Class), OtherClass) * bedmass;
+		}
+		
+		return fromotherclasses - tootherclasses;
+	)
+	
+	EQUATION(Model, ReachMassTransferControl,
+		double suspendedmass = RESULT(SuspendedGrainMass);
+		double suspendedmasstransfer = RESULT(SuspendedGrainMassTransferFromOtherClasses);
+		
+		SET_RESULT(SuspendedGrainMass, suspendedmass + suspendedmasstransfer);
+		
+		double bedmass = RESULT(MassOfBedGrainPerUnitArea);
+		double bedmasstransfer = RESULT(BedGrainMassTransferFromOtherClasses);
+		
+		SET_RESULT(MassOfBedGrainPerUnitArea, bedmass + bedmasstransfer);
+		
+		return 0.0;
 	)
 	
 	//TODO: In-reach and in-bed breakdown between classes.

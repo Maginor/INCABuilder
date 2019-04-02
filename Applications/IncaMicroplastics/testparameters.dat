@@ -1,4 +1,4 @@
-# Parameter file generated for INCA-Microplastics V0.0 at 2019-03-28 09:33:05
+# Parameter file generated for INCA-Microplastics V0.0 at 2019-04-02 12:36:23
 
 index_sets:
 "Landscape units" : {"Forest" "Agricultural"}
@@ -167,7 +167,7 @@ true
 2
 
 "Entrainment coefficient" :     #(s2/kg) [-1.79769313486232e+308, 1.79769313486232e+308]
-1e-7
+1e-007
 
 ###################### "Reaches" "Landscape units" ######################
 "%" :     #(%) [0, 100] The percentage of a subcatchment occupied by a specific land cover type
@@ -175,10 +175,10 @@ true
 
 ###################### "Grain class" ######################
 "Smallest diameter of grain in class" :     #(m) [0, 2000]
-0    6e-5 6e-5 6e-4 2e-2
+0 6e-005 6e-005 0.0006 0.02
 
 "Largest diameter of grain in class" :     #(m) [-1.79769313486232e+308, 1.79769313486232e+308]
-6e-5 6e-4 6e-4 2e-3 2e-1
+6e-005 0.0006 0.0006 0.002 0.2
 
 "Density of grain class" :     #(kg/m3) [-1.79769313486232e+308, 1.79769313486232e+308]
 2650 2650 1200 1200 2650
@@ -213,11 +213,11 @@ true
 0 0
 
 "Initial immobile grain store" :     #(kg/km2) [-1.79769313486232e+308, 1.79769313486232e+308]
-1e20  1e20
-1e20  1e20
-1000  1000
-1000  1000
-0     0
+1e+020 1e+020
+1e+020 1e+020
+1000 1000
+1000 1000
+0 0
 
 "Grain input to land" :     #(kg/km2/day) [-1.79769313486232e+308, 1.79769313486232e+308]
 0 0
@@ -227,7 +227,6 @@ true
 0 0
 
 ###################### "Grain class" "Reaches" ######################
-
 "Effluent grain concentration" :     #(mg/L) [-1.79769313486232e+308, 1.79769313486232e+308]
 0
 0
@@ -251,8 +250,16 @@ true
 
 ###################### "Grain class" "Grain class" ######################
 "Mass transfer rate between classes on land" :     #(dimensionless) [0, 1]
-0 0 0    0    0
-0 0 0    0    0
-0 0 0    1e-5 1e-5
-0 0 0    0    1e-5
-0 0 0    0    0
+0 0 0 0 0
+0 0 0 0 0
+0 0 0 1e-005 1e-005
+0 0 0 0 1e-005
+0 0 0 0 0
+
+"Mass transfer rate between classes in the reach" :     #(dimensionless) [0, 1]
+0 0 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+0 0 0 0 0
+

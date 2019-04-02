@@ -93,7 +93,10 @@ def log_likelyhood(params, dataset, calibration, objective):
 	fn, comparisons, skiptimesteps = objective
 	
 	n_comparisons = len(comparisons) # How many variables to include in likelihood?
-	Ms = params[len(calibration)-n_comparisons:] # Pick out associated error terms from calibration
+	
+	#Ms = params[len(calibration)-n_comparisons:] # Pick out associated error terms from calibration
+	Ms = [params[len(calibration)-3], params[len(calibration)-2],
+	      params[len(calibration)-1], params[len(calibration)-1], params[len(calibration)-1]] #NOTE: for tying Ms between vars
 	
 	set_values(datasetcopy, params, calibration, n_comparisons) # Drop Ms from calibration
 	
@@ -180,7 +183,8 @@ def print_goodness_of_fit(dataset, objective):
 		print('Mean error (bias): %f' % bias)
 		print('Mean absolute error: %f' % meanabs)
 		print('Mean square error: %f' % meansquare)
-		print('Nash-Sutcliffe coefficient: %f\n' % nashsutcliffe)
+		print('Nash-Sutcliffe coefficient: %f' % nashsutcliffe)
+		print('Number of observations: %s\n' %nonnan)
 	
 	
 def calibration_of_group(dataset, groupname):

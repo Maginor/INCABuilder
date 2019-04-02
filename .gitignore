@@ -11,3 +11,4 @@ json/json.hpp
 *.pyc
 *.dll
 *.o
+*.png

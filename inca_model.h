@@ -5,7 +5,6 @@
 //NOTE: The purpose of having unit_h, input_h, equation_h etc. be structs that contain a numeric handle rather than just letting them be a handle directly is that we can then use the C++ type system to get type safety. Unfortunately, C++ does not allow you to typedef a unique copy of a type that is not interchangable with others. However the type system WILL distinguish between two differently named structs even though they are otherwise equal.
 
 typedef u32 entity_handle;
-//typedef size_t index_t;
 
 #define MODEL_ENTITY_HANDLE(Type) struct Type \
 { \
@@ -65,19 +64,19 @@ struct index_t
 	
 	bool operator<=(const index_t& Other) const
 	{
-		//NOTE: This does NOT check if they came from a different index set, that check should probably be done somewhere else?
+		//NOTE: This does NOT check if they came from a different index set. That check has to be done by the caller if needed.
 		return Index <= Other.Index;
 	}
 	
 	bool operator<(const index_t& Other) const
 	{
-		//NOTE: This does NOT check if they came from a different index set, that check should probably be done somewhere else?
+		//NOTE: This does NOT check if they came from a different index set. That check has to be done by the caller if needed.
 		return Index < Other.Index;
 	}
 	
 	operator size_t() const
 	{
-		return Index;
+		return (size_t)Index;
 	}
 };
 
@@ -94,7 +93,7 @@ union parameter_value
 
 enum parameter_type
 {
-	ParameterType_Double,
+	ParameterType_Double = 0,
 	ParameterType_UInt,
 	ParameterType_Bool,
 	ParameterType_Time,
@@ -120,7 +119,7 @@ struct parameter_spec
 	const char *Description;
 	
 	equation_h IsComputedBy; //NOTE: We allow certain parameters to be computed by an initial value equation rather than being provided by a parameter file.
-	bool ShouldNotBeExposed; //NOTE: Any interface or file handler should not deal with a parameter if ShouldNotBeExposed = true;
+	bool ShouldNotBeExposed; //NOTE: Any user interface or file handler should not deal with a parameter if ShouldNotBeExposed = true;
 	
 	parameter_group_h Group;
 	
@@ -1412,6 +1411,9 @@ GetInputCount(value_set_accessor *ValueSet, index_set_h IndexSet)
 	return ValueSet->DataSet->BranchInputs[IndexSet.Handle][Current].Count;
 }
 
+
+//TODO: The branch input iterator is more complicated than it needs to be. Could be redesigned.
+
 inline size_t
 BranchInputIteratorEnd(value_set_accessor *ValueSet, index_set_h IndexSet, index_t Branch)
 {
@@ -1420,7 +1422,6 @@ BranchInputIteratorEnd(value_set_accessor *ValueSet, index_set_h IndexSet, index
 
 struct branch_input_iterator
 {
-	index_set_h IndexSet;
 	index_t *InputIndexes;
 	size_t CurrentInputIndexIndex;
 	
@@ -1439,7 +1440,6 @@ BranchInputIteratorBegin(value_set_accessor *ValueSet, index_set_h IndexSet, ind
 	DummyData = index_t(IndexSet, 0);
 	
 	branch_input_iterator Iterator;
-	Iterator.IndexSet = IndexSet;
 	Iterator.InputIndexes = ValueSet->Running ? ValueSet->DataSet->BranchInputs[IndexSet.Handle][Branch].Inputs : &DummyData;
 	Iterator.CurrentInputIndexIndex = 0;
 	return Iterator;

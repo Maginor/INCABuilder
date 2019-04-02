@@ -779,6 +779,12 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 				
 				for(entity_handle Handle : Tree.Handles)
 				{
+					if(Mode == 1)
+					{
+						size_t Offset = OffsetForHandle(StorageStructure, Indexes, CurrentLevel+1, DataSet->IndexCounts, Handle);
+						if(!DataSet->InputTimeseriesWasProvided[Offset]) continue;
+					}
+					
 					int LftOfHandle = RunningLft++;
 					int RgtOfHandle = RunningLft++;
 					int IDOfHandle  = RunningID++;
@@ -816,6 +822,12 @@ WriteStructureToDatabaseRecursively(inca_data_set *DataSet, storage_structure &S
 		{
 			for(entity_handle Handle : Tree.Handles)
 			{
+				if(Mode == 1)
+				{
+					size_t Offset = OffsetForHandle(StorageStructure, Indexes, CurrentLevel+1, DataSet->IndexCounts, Handle);
+					if(!DataSet->InputTimeseriesWasProvided[Offset]) continue;
+				}
+				
 				int LftOfHandle = RunningLft++;
 				int RgtOfHandle = RunningLft++;
 				int IDOfHandle  = RunningID++;

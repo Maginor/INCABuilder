@@ -12,3 +12,4 @@ json/json.hpp
 *.dll
 *.o
 *.png
+*.pkl

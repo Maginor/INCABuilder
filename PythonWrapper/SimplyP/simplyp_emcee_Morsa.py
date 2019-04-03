@@ -34,7 +34,7 @@ def log_prior(params, min, max) :
 # as a global. It can not take it as an argument. This is because ctypes of pointer type can not be 'pickled',
 # which is what python does when it sends arguments to functions on separate threads. In that case, you will end 
 # up with a garbage value for the pointer.
-def log_posterior(params, min, max, calibration, objective):
+def log_posterior(params, min, max, calibration, objective, n_ms):
     """
     params: list or array of parameter values
     min: list or array of minimum parameter values
@@ -52,15 +52,13 @@ def log_posterior(params, min, max, calibration, objective):
     llfun = objective[0]
     
     if(np.isfinite(log_pri)):
-        log_like = llfun(params, dataset, calibration, objective)
+        log_like = llfun(params, dataset, calibration, objective, n_ms)
         return log_pri + log_like
     return -np.inf
     
-def run_emcee(min, max, initial_guess, calibration, objective, n_walk, n_steps):
+def run_emcee(min, max, initial_guess, calibration, objective, n_walk, n_steps, n_ms):
     """
     """    
-    ll, comparisons, skiptimesteps = objective
-
     n_dim = len(initial_guess)
 
     # Starting locations for walkers. Either:
@@ -77,7 +75,7 @@ def run_emcee(min, max, initial_guess, calibration, objective, n_walk, n_steps):
                                     log_posterior, 
                                     #threads=8,
                                     pool=pool,
-                                    args=[min, max, calibration, objective])
+                                    args=[min, max, calibration, objective, n_ms])
 
     start = time.time()
     pos, prob, state = sampler.run_mcmc(starting_guesses, n_steps)
@@ -204,11 +202,11 @@ def simulation_of_median_parameters(dataset, samplelist, calibration, objective,
     
     return median_sample, sim_med, err_std
     
-def GoF_stats_single_sample(samplelist, lnproblist, dataset, calibration, objective, n_comparisons):
+def GoF_stats_single_sample(samplelist, lnproblist, dataset, calibration, objective, n_ms):
     """
     """
     bestSample = best_sample(samplelist, lnproblist)
-    cf.set_values(dataset, bestSample, calibration, n_comparisons)
+    cf.set_values(dataset, bestSample, calibration, n_ms)
     dataset.run_model()
     print('\nBest sample (max log likelihood):')
     cf.print_goodness_of_fit(dataset, objective)
@@ -238,14 +236,19 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
     n_walk = settings_dict['n_walk']
     n_steps = settings_dict['n_steps']
     n_burn = settings_dict['n_burn']
-                  
-    n_comparisons = len(comparisons)   
 
     objective = (cf.log_likelyhood, comparisons, skiptimesteps)
     
     # Perform sampling
-    samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, n_walk=n_walk, n_steps=n_steps)
+    samp, lnprob = run_emcee(minval, maxval, initial_guess, calibration, objective, 
+                             n_walk=n_walk, n_steps=n_steps, n_ms=n_ms)
 
+    # Save results
+    emcee_result_li = (samp, lnprob)
+    pickle_fpath = r'pickled\\emcee_results_morsa_v3.pkl'
+    with open(pickle_fpath, 'wb') as output:
+        pickle.dump(emcee_result_li, output)
+        
     # Post-processing of results
     chain_plot(samp, labels_long, "simplyp_plots\\chains.png")
     # TO DO: chain plot of how log likelihood evolves for each chain (all chains on one plot)
@@ -254,10 +257,4 @@ if __name__ == '__main__': #NOTE: This line is needed, or something goes horribl
     
     triangle_plot(samplelist, labels_short, "simplyp_plots\\triangle_plot.png")
 
-    GoF_stats_single_sample(samplelist, lnproblist, dataset, calibration, objective, n_comparisons)
-    
-    # Save results
-    emcee_result_li = [samp, lnprob]    
-    pickle_fpath = r'pickled\\emcee_results_morsa_v3.pkl'
-    with open(pickle_fpath, 'wb') as output:
-        pickle.dump(emcee_result_li, output)
+    GoF_stats_single_sample(samplelist, lnproblist, dataset, calibration, objective, n_ms)

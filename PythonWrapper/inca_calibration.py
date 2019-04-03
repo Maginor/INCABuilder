@@ -24,7 +24,7 @@ def check_min_max(params, min, max):
             return False
     return True
 
-def run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=True):
+def run_optimization(dataset, min, max, initial_guess, calibration, objective, minimize=True, n_ms=0):
     """
     """
     
@@ -46,14 +46,14 @@ def run_optimization(dataset, min, max, initial_guess, calibration, objective, m
             # NOTE: This version of the Nelder-Mead algorithm does not allow for bounds, so we have to hack them in
             if not check_min_max(params, min, max):
                 return np.inf
-            return objective_fun(params, dataset, calibration, objective) 
+            return objective_fun(params, dataset, calibration, objective, n_ms) 
         
         return optimize.fmin(eval, initial_guess, maxfun=10000)
     else :
         def eval(params) :
             if not check_min_max(params, min, max):
                 return np.inf
-            return -objective_fun(params, dataset, calibration, objective) 
+            return -objective_fun(params, dataset, calibration, objective, n_ms) 
         
         return optimize.fmin(eval, initial_guess, maxfun=10000)
 
@@ -97,7 +97,7 @@ def constrain_min_max(dataset, calibration, minvec, maxvec, ignore_end_params=0)
             print('Adjusting max for %s.' % cal)
             maxvec[idx] = pmax
 
-def log_likelyhood(params, dataset, calibration, objective):
+def log_likelyhood(params, dataset, calibration, objective, n_ms=0):
     """
     """
     # NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
@@ -107,13 +107,11 @@ def log_likelyhood(params, dataset, calibration, objective):
     #fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
     fn, comparisons, skiptimesteps = objective
     
-    n_comparisons = len(comparisons) # How many variables to include in likelihood?
-    
     #Ms = params[len(calibration)-n_comparisons:] # Pick out associated error terms from calibration
     Ms = [params[len(calibration)-3], params[len(calibration)-2],
           params[len(calibration)-1], params[len(calibration)-1], params[len(calibration)-1]] #NOTE: for tying Ms between vars
     
-    set_values(datasetcopy, params, calibration, n_comparisons) # Drop Ms from calibration
+    set_values(datasetcopy, params, calibration, n_ms) # Drop Ms from calibration
     
     datasetcopy.run_model()
     
@@ -142,7 +140,7 @@ def log_likelyhood(params, dataset, calibration, objective):
     
     return like	
 
-def sum_of_squares(params, dataset, calibration, objective):	
+def sum_of_squares(params, dataset, calibration, objective, n_ms=0):	
     """
     """
     # NOTE: If we use a parallellized optimizer we need to make a copy of the dataset to not have several threads overwrite each other.
@@ -152,9 +150,7 @@ def sum_of_squares(params, dataset, calibration, objective):
     #fn, simname, simindexes, obsname, obsindexes, skiptimesteps = objective
     fn, comparisons, skiptimesteps = objective
     
-    n_comparisons = len(comparisons) # How many variables to include in likelihood?
-    
-    set_values(datasetcopy, params, calibration, n_comparisons) # Drop Ms from calibration
+    set_values(datasetcopy, params, calibration, n_ms) # Drop Ms from calibration
     
     datasetcopy.run_model()
     

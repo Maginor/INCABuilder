@@ -1,6 +1,6 @@
 
 
-This file covers the licenses and copyrights of some of the libraries that are used by certain optional modules of the INCABuilder framework. None of the licenses in this file apply to the INCABuilder framework itself.
+This file covers the licenses and copyrights of some of the libraries that are used by certain optional modules of the INCABuilder framework. None of the licenses in this file apply to the INCABuilder framework itself. If distribute an INCABuilder application that is using external libraries it is your responsability to make sure you comply with the licenses of these libraries.
 
 See LICENSE.md for the license of the INCABuilder framework itself.
 

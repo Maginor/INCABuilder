@@ -7,10 +7,10 @@ See LICENSE.md for the license of the INCABuilder framework itself.
 These license, notice and copyright texts were obtained on 04.04.2019
 
 
-*BOOST LICENSE*
+#BOOST LICENSE
 
 Any model using boost_solvers.h relies on the Boost.Numeric.Odeint package
-The various C++ autocalibraton routines use Boost.Accumulators
+The various C++ autocalibraton routines (optimizer, GLUE, MCMC) use Boost.Accumulators
 The code in the Utilities folder uses Boost.Regex and Boost.Lexical_Cast
 
 Boost.Numeric.Odeint Copyright © 2009-2015 Karsten Ahnert and Mario Mulansky
@@ -44,7 +44,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 
-*APACHE LICENSE*
+#APACHE LICENSE
 
 The C++ mcmc component uses the MCMCLib library, which is licensed under the Apache 2.0 license
 
@@ -55,11 +55,11 @@ Copyright 2011-2018 Keith O'Hara
 This product includes software developed by Keith O'Hara (http://www.kthohr.com)
 
 
-
+*****
 
 The kthohr/mcmc library again uses the armadillo library
 
-*NOTICE.txt from the Armadillo library*
+#NOTICE.txt from the Armadillo library
 Armadillo C++ Linear Algebra Library
 Copyright 2008-2018 Conrad Sanderson (http://conradsanderson.id.au)
 Copyright 2008-2016 National ICT Australia (NICTA)
@@ -71,14 +71,12 @@ This product includes software developed at National ICT Australia (NICTA)
 This product includes software developed at Arroyo Consortium
 This product includes software developed at Data61, CSIRO
 
+*****
 
 
-
-*MIT LICENSE*
+#MIT LICENSE
 
 The json_io.cpp file uses the nlohmann/json library Copyright © 2013-2018 Niels Lohmann
-
-
 
 
 

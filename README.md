@@ -1,6 +1,6 @@
 # Project has moved!
 
-The modelling framework has been renamed to Mobius and moved to
+The modelling framework has been renamed to Mobius and has moved to
 
 https://github.com/NIVANorge/Mobius
 
